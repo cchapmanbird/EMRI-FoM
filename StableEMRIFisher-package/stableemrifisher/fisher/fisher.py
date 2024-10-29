@@ -30,7 +30,7 @@ class StableEMRIFisher:
     
     def __init__(self, M, mu, a, p0, e0, Y0, dist, qS, phiS, qK, phiK,
                  Phi_phi0, Phi_theta0, Phi_r0, dt = 10., T = 1.0, param_args = None, EMRI_waveform_gen = None, window = None, noise_model = noise_PSD_AE, noise_kwargs={}, channels=["A","E"],
-                 param_names=None, deltas=None, der_order=2, Ndelta=8, CovEllipse=False, stability_plot=False, interpolation_factor=10, spline_order=7,
+                 param_names=None, deltas=None, der_order=2, Ndelta=8, CovEllipse=False, stability_plot=False,
                  live_dangerously = False, filename=None, suffix=None, stats_for_nerds=False, use_gpu=False, waveform_kwargs=None):
         """
             This class computes the Fisher matrix for an Extreme Mass Ratio Inspiral (EMRI) system.
@@ -58,9 +58,6 @@ class StableEMRIFisher:
                 noise_model (func): function to calculate the noise of the instrument at a given frequency and noise configuration (default is noise_PSD_AE)
                 noise_kwargs (dict): additional keyword arguments to be provided to the noise model function
                 channels (list): list of LISA response channels (default is ["A","E"]
-
-                interpolation_factor (int, optional): factor by which to upsample the inspiral trajectory. This trades stability for expense. Default is 10.
-                spline_order (int, optional): order of interpolation spline used to calculate the upsampled trajectory points. valid values are '3', '5', '7'. Default is 7.
                 live_dangerously (bool, optional): If True, perform calculations without basic consistency checks. Default is False.
                 filename (string, optional): If not None, save the Fisher matrix, stable deltas, and covariance triangle plot in the folder with the same filename.
                 suffix (string, optional): Used in case multiple Fishers are to be stored under the same filename.
@@ -122,41 +119,6 @@ class StableEMRIFisher:
         except:
             self.response = "LWA"
             self.channels = ["I","II"]
-
-        # filthy method for applying our post-trajectory upsampling to curb the erroneous behaviour in current FEW
-        # dont feel bad if you are confused by wtf is going on here, because it is bad practice
-        repl_fun = get_inspiral_overwrite_fun(interpolation_factor=interpolation_factor, spline_order=spline_order)
-        
-        
-        if self.response in ["TDI1", "TDI2"]:
-            try:
-                if hasattr(self.waveform_generator.waveform_gen.waveform_generator.inspiral_generator, "get_inspiral_inner"):
-                    pass
-                else:
-                    self.waveform_generator.waveform_gen.waveform_generator.inspiral_generator.get_inspiral_inner = self.waveform_generator.waveform_gen.waveform_generator.inspiral_generator.get_inspiral.__get__(
-		            self.waveform_generator.waveform_gen.waveform_generator.inspiral_generator
-		        )
-		        
-                    self.waveform_generator.waveform_gen.waveform_generator.inspiral_generator.get_inspiral = repl_fun.__get__(self.waveform_generator.waveform_gen.waveform_generator.inspiral_generator)
-		
-            except:
-                if hasattr(self.waveform_generator.wave_gen.waveform_generator.inspiral_generator, "get_inspiral_inner"):
-                    pass
-                else:
-                    self.waveform_generator.wave_gen.waveform_generator.inspiral_generator.get_inspiral_inner = self.waveform_generator.wave_gen.waveform_generator.inspiral_generator.get_inspiral.__get__(
-                    self.waveform_generator.wave_gen.waveform_generator.inspiral_generator
-		        )
-
-                    self.waveform_generator.wave_gen.waveform_generator.inspiral_generator.get_inspiral = repl_fun.__get__(self.waveform_generator.wave_gen.waveform_generator.inspiral_generator)
-		
-		
-        else:
-            if hasattr(self.waveform_generator.waveform_generator.inspiral_generator, "get_inspiral_inner"):
-                pass
-            else:
-                self.waveform_generator.waveform_generator.inspiral_generator.get_inspiral_inner = self.waveform_generator.waveform_generator.inspiral_generator.get_inspiral.__get__(self.waveform_generator.waveform_generator.inspiral_generator)
-                self.waveform_generator.waveform_generator.inspiral_generator.get_inspiral = repl_fun.__get__(self.waveform_generator.waveform_generator.inspiral_generator)
-	
 	
         if waveform_kwargs is None:
             waveform_kwargs = {}
@@ -411,7 +373,7 @@ class StableEMRIFisher:
 
             
             if relerr_flag == False:
-                Gamma = xp.asnumpy(xp.array(Gamma))
+                Gamma = xp.asarray(xp.array(Gamma))
                 
                 if (Gamma[1:] == 0.).any(): #handle non-contributing parameters
                     relerr = np.ones(len(Gamma)-1)
@@ -438,7 +400,7 @@ class StableEMRIFisher:
                         else:
                             StabilityPlot(delta_init,Gamma,param_name=self.param_names[i],filename=os.path.join(self.filename,f'stability_{self.param_names[i]}.png'))
                     else:
-                        StabilityPlot(delta_init,Gamma,param_name=self.param_name[i])
+                        StabilityPlot(delta_init,Gamma,param_name=self.param_names[i])
         logger.debug(f'stable deltas: {deltas}')
         
         self.deltas = deltas
@@ -481,7 +443,7 @@ class StableEMRIFisher:
 
         for i in range(self.npar):
             for j in range(i,self.npar):
-                Fisher[i,j] = np.float64(xp.asnumpy(inner_product(dtv[i],dtv[j],self.PSD_funcs, self.dt, window=self.window, use_gpu=self.use_gpu).real))
+                Fisher[i,j] = np.float64(xp.asarray(inner_product(dtv[i],dtv[j],self.PSD_funcs, self.dt, window=self.window, use_gpu=self.use_gpu).real))
 
                 #Exploiting symmetric property of the Fisher Matrix
                 Fisher[j,i] = Fisher[i,j]
