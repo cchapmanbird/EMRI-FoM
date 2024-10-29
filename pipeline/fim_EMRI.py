@@ -92,7 +92,7 @@ if args.parameter_file is None:
     Ms = [1e6] * 5
     mu = [1e1, 3e1, 1e1, 1e1, 1e1]
     ecc = [0.6, 0.6, 0.6, 0.01, 0.6]
-    spin = (0.* np.array([0.89, 0.89, 0.5, 0.89, 0.1])).tolist()
+    spin = [0.89, 0.89, 0.5, 0.89, 0.1]
     xI = [1.] * 5
 
     redshift = 1.
