@@ -391,7 +391,12 @@ class StableEMRIFisher:
                 if np.min(relerr) >= 0.01:
                     logger.warning('minimum relative error is greater than 1%. Fisher may be unstable!')
 
-                deltas[self.param_names[i]] = delta_init[relerr_min_i].item()
+
+                if self.use_gpu:
+                    deltas[self.param_names[i]] = delta_init[relerr_min_i.get()].item()
+                else:
+                    deltas[self.param_names[i]] = delta_init[relerr_min_i].item()
+                
                 
                 if self.stability_plot:
                     if self.filename != None:

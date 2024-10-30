@@ -1,5 +1,6 @@
 """
 Parameter estimation precision for EMRIs, averaged over nuisance parameters
+python fim_EMRI.py FastKerrEccentricEquatorialFlux example_psd.npy 10. 3.5 --use_gpu --device 7
 """
 import logging
 import argparse
@@ -9,7 +10,7 @@ from few.waveform import GenerateEMRIWaveform, EMRIInspiral
 from few.utils.utility import get_p_at_t, get_separatrix
 from fastlisaresponse import ResponseWrapper
 from scipy.interpolate import CubicSpline
-
+from few.summation.interpolatedmodesum import CubicSplineInterpolant
 try:
     import cupy as xp
 except:
@@ -46,7 +47,14 @@ parser.add_argument("--use_gpu", help="Whether to use GPU for FIM computation", 
 parser.add_argument("--parameter_file", help="Path to a file containing source parameters, organised as (N_source, N_montecarlo, N_params)")
 parser.add_argument("--deltas_file", help="Path to a file containing stable delta values for all sources, organised as (N_source, N_montecarlo, N_params)")
 parser.add_argument("--seed", help="numpy seed for random operations.",  action="store_const", const=42)
+parser.add_argument("--device", help="GPU device", type=int, default=0)
+
 args = parser.parse_args()
+
+# set device for GPU
+if args.use_gpu:
+    xp.cuda.Device(args.device).use()
+    xp.random.seed(args.seed)
 
 np.random.seed(args.seed)
 
@@ -124,7 +132,7 @@ else:
     assert params_file.shape == deltas_file.shape
 
 psdf, psdv = np.load(args.psd_file).T
-psd_interp = CubicSpline(psdf, psdv)
+psd_interp = CubicSplineInterpolant(psdf, psdv, use_gpu=args.use_gpu)
 psd_wrap = lambda f, **kwargs: psd_interp(f)
 
 # run a test covariance matrix to check everything is working and determine shape
