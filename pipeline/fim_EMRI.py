@@ -129,8 +129,6 @@ else:
     logger.info("Received stable deltas file. These step sizes will be used for FIM computation.")
     deltas_file = np.load(args.deltas_file)
 
-    assert params_file.shape == deltas_file.shape
-
 psdf, psdv = np.load(args.psd_file).T
 psd_interp = CubicSplineInterpolant(psdf, psdv, use_gpu=args.use_gpu)
 psd_wrap = lambda f, **kwargs: psd_interp(f)
@@ -157,7 +155,7 @@ Nsources = params_file.shape[0]
 N_montecarlo = params_file.shape[1]
 
 cov_out = np.zeros((Nsources, N_montecarlo, cov.shape[0], cov.shape[0]))
-deltas_cache = np.zeros_like(params_file)
+deltas_cache = np.zeros((Nsources, N_montecarlo, cov.shape[0]))
 
 for source_num in range(Nsources):
     for montecarlo_num in range(N_montecarlo):
