@@ -142,10 +142,8 @@ def get_covariance_matrix(
         outdir=None, 
         params=None,
         deltas=None,
+        **kwargs,
     ):
-
-    dt = 10.0
-    T = 0.1
 
     if inspiral_kwargs is None:
         inspiral_kwargs = {}
@@ -181,12 +179,31 @@ def get_covariance_matrix(
     #initialization
     fish = StableEMRIFisher(*parameters, dt=dt, T=T, EMRI_waveform_gen=model, noise_model=psd, noise_kwargs=dict(TDI="TDI2"),
                 param_names=param_names, stats_for_nerds=False, use_gpu=use_gpu, deltas=deltas, der_order=4.,
-                filename=outdir, CovEllipse=False, stability_plot=False,live_dangerously=False)
+                filename=outdir, **kwargs)
 
     #execution
     fim = fish()
     cov = np.linalg.inv(fim)
     return cov, fish
+
+def draw_sources(fix_params, N_per_source, seed=0):
+    np.random.seed(seed)
+    Nsources = fix_params.shape[0]
+    params_out = np.zeros((Nsources, N_per_source, 14))
+
+    # fill fixed parameters
+    params_out[:,:,:7] = fix_params[:,None,:]
+
+    # random draws of other parameters
+    params_out[:,:,7] = np.pi/2 - np.arcsin(np.random.uniform(-1, 1, (Nsources, N_per_source)))
+    params_out[:,:,8] = np.random.uniform(0, 2*np.pi, (Nsources, N_per_source))
+    params_out[:,:,9] = np.pi/2 - np.arcsin(np.random.uniform(-1, 1, (Nsources, N_per_source)))
+    params_out[:,:,10] = np.random.uniform(0, 2*np.pi, (Nsources, N_per_source))
+    params_out[:,:,11] = np.random.uniform(0, 2*np.pi, (Nsources, N_per_source))
+    params_out[:,:,12] = np.random.uniform(0, 2*np.pi, (Nsources, N_per_source))
+    params_out[:,:,13] = np.random.uniform(0, 2*np.pi, (Nsources, N_per_source))
+
+    return params_out
 
 if __name__ == "__main__":
 
@@ -273,7 +290,7 @@ if __name__ == "__main__":
     psdf, psdv = np.load(args.psd_file).T
     psd_interp = CubicSpline(psdf, psdv)
     psd_wrap = lambda f, **kwargs: psd_interp(f)
-
+    
     cov, fisher_object = get_covariance_matrix(model, parameters, dt=args.dt, T=args.T, psd=psd_wrap, use_gpu=args.use_gpu)
 
     print(cov)

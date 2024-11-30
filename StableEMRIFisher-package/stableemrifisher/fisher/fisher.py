@@ -133,6 +133,7 @@ class StableEMRIFisher:
             self.traj_module = self.waveform_generator.waveform_generator.inspiral_generator
             self.traj_module_func = self.waveform_generator.waveform_generator.inspiral_kwargs['func']
 
+        self.traj_module_func = str(self.traj_module_func)
         # Define what EMRI waveform model we are using  
         if 'Schwarz' in self.traj_module_func:
             self.waveform_model_choice = "SchwarzEccFlux"

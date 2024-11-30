@@ -1,6 +1,12 @@
 # EMRI Figures of Merit (FoMs) Computation
 
 This repository contains codes for computing Figures of Merit (FoMs) related to Extreme Mass Ratio Inspirals (EMRIs).
+## TODO
+
+List of tasks:
+- obtain Fisher for Red Book sources
+- horizon redshift for sources
+- define what good is
 
 ## Installation Instructions
 
@@ -9,9 +15,10 @@ Follow these steps to set up the environment and install the necessary packages:
 1. **Create a Virtual Environment**
 
     ```sh
-    mamba create -n fom -c conda-forge -y gcc_linux-64 gxx_linux-64 h5py wget gsl liblapacke lapack openblas python=3.10
-    mamba activate fom
+    conda create -n fom -c conda-forge -y gcc_linux-64 gxx_linux-64 h5py wget gsl liblapacke lapack openblas python=3.10
+    conda activate fom
     pip install numpy Cython scipy tqdm jupyter ipython requests rich matplotlib
+    pip install multispline numba
     ```
 
 2. **Clone the Repository**
