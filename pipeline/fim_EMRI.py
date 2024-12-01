@@ -1,6 +1,6 @@
 """
 Parameter estimation precision for EMRIs, averaged over nuisance parameters
-python fim_EMRI.py test example_psd.npy 10.0 1.0 --use_gpu --device 7 --deltas_file EMRI_deltas.npy 
+python fim_EMRI.py science_obj example_psd.npy 10.0 1.0 --use_gpu --device 7 --parameter_file EMRI_parameters.npy 
 """
 import os
 import logging
@@ -12,6 +12,7 @@ from few.utils.utility import get_p_at_t, get_separatrix
 from fastlisaresponse import ResponseWrapper
 from scipy.interpolate import CubicSpline
 from few.summation.interpolatedmodesum import CubicSplineInterpolant
+from stableemrifisher.plot import CovEllipsePlot, StabilityPlot
 try:
     import cupy as xp
 except:
@@ -91,13 +92,13 @@ traj_model = base_wave.waveform_generator.inspiral_generator
 if args.parameter_file is None:
     logger.critical("--parameter_file not supplied. This file will now be produced.")
     
-    Ms = [1e6, 5e5] 
-    mu = [1e1, 1e1] 
-    ecc = [0.3, 0.2] 
-    spin = [0.9, 0.9] 
-    xI = [1., 1.] 
+    Ms = [5e5, 1e6, 5e6] 
+    mu = [1e1, 1e1, 1e1] 
+    ecc = [0.1, 0.1, 0.1] 
+    spin = [0.9, 0.9, 0.9] 
+    xI = [1., 1., 1.]
 
-    redshift = [1.0, 1.0]
+    redshift = [1.0, 1.0, 1.0]
     dists = [standard_cosmology(H0=67.).dl_zH0(el) / 1000. for el in redshift]
 
     p0 = []
@@ -108,9 +109,11 @@ if args.parameter_file is None:
         p0.append(p0v)
 
     fixed_pars = np.vstack((Ms, mu, spin, p0, ecc, xI, dists)).T
-    params_file = draw_sources(fixed_pars, N_per_source=1, seed=args.seed)
+    params_file = draw_sources(fixed_pars, N_per_source=10, seed=args.seed)
 
     np.save(args.outdir + "/EMRI_parameters", params_file)
+    # print shape of the data array
+    print(params_file.shape)
 
 else:
     params_file = np.load(args.parameter_file)
@@ -140,12 +143,11 @@ cov, fisher_object = get_covariance_matrix(
     outdir=args.outdir, 
     deltas=deltas_file[0,0] if deltas_file is not None else None
 )
+# print("Covariance is")
+# print(cov)
 
-print("Covariance is")
-print(cov)
-
-print("Deltas:")
-print(fisher_object.deltas)
+# print("Deltas:")
+# print(fisher_object.deltas)
 
 Nsources = params_file.shape[0]
 N_montecarlo = params_file.shape[1]
@@ -156,13 +158,14 @@ deltas_cache = np.zeros((Nsources, N_montecarlo, cov.shape[0]))
 
 # Compute covariance matrices for all sources and Monte Carlo draws
 for source_num in range(Nsources):
+    print("------------------------------------------------------------")
     for montecarlo_num in range(N_montecarlo):
-        print("------------------------------------------------------------")
+        print("^^^^^^^^^^^^^^^^^^")
         print(f"(Source num, random draw num) = ({Nsources, N_montecarlo})")
         if deltas_file is not None:
             deltas = deltas_file[source_num, montecarlo_num]
         else:
-            deltas=None
+            deltas = None
         
         # current folder
         current = '/source_{0}_draw_{1}'.format(source_num, montecarlo_num)
@@ -175,8 +178,6 @@ for source_num in range(Nsources):
             use_gpu=args.use_gpu,
             outdir=args.outdir + current,
             deltas=deltas,
-            CovEllipse=True, 
-            stability_plot=False,
         )
 
         # save fisher deltas
@@ -184,35 +185,16 @@ for source_num in range(Nsources):
         # save covariance
         np.save(args.outdir + current + f"/source_{source_num}_draw_{montecarlo_num}_cov", cov_here)
         # save params
-        breakpoint()
         np.save(args.outdir + current + f"/source_{source_num}_draw_{montecarlo_num}_params", params_file[source_num, montecarlo_num])
         # print relative precision
         print("Relative precision is")
         print(fisher_object.param_names)
-        print(np.sqrt(np.diag(cov_here[0])) / np.delete(params_file[source_num, montecarlo_num], [5, 12]))
-
+        print(np.sqrt(np.diag(cov_here)) / np.delete(params_file[source_num, montecarlo_num], [5, 12]))
+        # save plot
+        CovEllipsePlot(fisher_object.param_names, fisher_object.wave_params, cov_here, filename=args.outdir + current + f"/covariance_ellipses.png")
         cov_out[source_num, montecarlo_num] = cov_here
 
         if deltas is None:
             deltas_cache[source_num, montecarlo_num] = [fisher_object.deltas[nm] for nm in fisher_object.param_names]
 
 print("Fisher matrices all computed")
-
-# # Save covariance matrices and deltas
-# np.save("EMRI_cov_montecarlo", cov_out)
-# if deltas is None:
-#     np.save("EMRI_deltas", deltas_cache)
-
-# print("Averaging covariance matrix diagonals to produce FoMs")
-# breakpoint()
-# # Compute and save average precisions
-# diagonals = np.array([cov_out[:,:,i,i] for i in range(cov_out.shape[2])])
-
-# # Normalize to get relative precisions
-# diagonals /= params_file
-
-# diagonals_avg = np.mean(diagonals, axis=1)
-
-# np.save(args.outdir + "/EMRI_precisions", diagonals_avg)
-
-# TODO: do we want to report a variance as well?
