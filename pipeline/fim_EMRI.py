@@ -157,11 +157,12 @@ cov_out = np.zeros((Nsources, N_montecarlo, cov.shape[0], cov.shape[0]))
 deltas_cache = np.zeros((Nsources, N_montecarlo, cov.shape[0]))
 
 # Compute covariance matrices for all sources and Monte Carlo draws
+print(f"(Source num, random draw num) = ({Nsources, N_montecarlo})")
 for source_num in range(Nsources):
     print("------------------------------------------------------------")
     for montecarlo_num in range(N_montecarlo):
         print("^^^^^^^^^^^^^^^^^^")
-        print(f"(Source num, random draw num) = ({Nsources, N_montecarlo})")
+        print(f"working on (Source num, random draw num) = ({source_num, montecarlo_num})")
         if deltas_file is not None:
             deltas = deltas_file[source_num, montecarlo_num]
         else:
