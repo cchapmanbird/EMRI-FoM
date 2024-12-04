@@ -10,8 +10,8 @@ import numpy as np
 #from scipy.interpolate import InterpolatedUnivariateSpline as spline
 
 from few.trajectory.inspiral import EMRIInspiral
-from few.trajectory.ode.flux import SchwarzEccFlux
-from few.waveform.waveform import GenerateEMRIWaveform, FastSchwarzschildEccentricFlux, FastSchwarzschildEccentricFluxBicubic
+from few.trajectory.ode.flux import SchwarzEccFlux, KerrEccEqFlux
+from few.waveform.waveform import GenerateEMRIWaveform, FastSchwarzschildEccentricFlux, FastSchwarzschildEccentricFluxBicubic, FastKerrEccentricEquatorialFlux
 
 from few.utils.constants import *
 from few.utils.utility import get_p_at_t, get_separatrix
@@ -34,16 +34,16 @@ import GPUtil
 
 SEED = 26011996
 
-WAVEFORM_ARGS = [FastSchwarzschildEccentricFluxBicubic]#[SchwarzschildEccentricWaveformBase, EMRIInspiral, RomanAmplitude, InterpolatedModeSum]
-TRAJECTORY = SchwarzEccFlux
+WAVEFORM_ARGS = [FastKerrEccentricEquatorialFlux] #[FastSchwarzschildEccentricFluxBicubic]#[SchwarzschildEccentricWaveformBase, EMRIInspiral, RomanAmplitude, InterpolatedModeSum]
+TRAJECTORY = KerrEccEqFlux
 DEF_TOBS = 3.5
 DEF_DT = 10.0
 DEF_Z = 1
 DEF_SNR_THR = 20
 
-M_POINTS = 10.0**np.linspace(5.0,7.0,num=10)
+M_POINTS = 10.0**np.linspace(4.0, 8.0, num=20)
 MU_POINTS = [10.0, 30.0]   
-Q_POINTS = [1e-5, 1e-4]
+Q_POINTS = [1e-6, 1e-5, 1e-4, 1e-3]
 
 GRID_POINTS_Q = [[M, q * M]  for q in Q_POINTS for M in M_POINTS] #+ \
               #[[30., M] for M in np.logspace(5, np.log10(3e6), num=18)] + \
@@ -51,11 +51,11 @@ GRID_POINTS_Q = [[M, q * M]  for q in Q_POINTS for M in M_POINTS] #+ \
 
 GRID_POINTS_MU = [[M, mu] for mu in MU_POINTS for M in M_POINTS] #+ \
 
-MU_MIN, MU_MAX = 1.0, 1e4
+MU_MIN, MU_MAX = 0.0, 1e5
 
 DEF_PARS = {
     'a': 0.0,
-    'e0': 0.5,
+    'e0': 0.3,
     'x0': 1.0,
     'dist': 1,
     'qS': 1.141428995078945,
@@ -114,11 +114,9 @@ except (ImportError, ModuleNotFoundError) as e:
 import warnings
 warnings.filterwarnings("ignore")
 
-# whether you are using 
-use_gpu = False
-
-if use_gpu and not gpu_available:
-    raise ValueError("Requesting gpu with no GPU available or cupy issue.")
+if not gpu_available:
+    print("No GPU available. Using CPU.")
+    xp = np
 
 np.random.seed(SEED)
 xp.random.seed(SEED)
@@ -147,13 +145,13 @@ def compute_snr2(freqs, tdiA, tdiE, lisa_psd):
     
     return to_cpu(4.0 * df * xp.sum((xp.abs(tdiA)**2 + xp.abs(tdiE)**2)/lisa_psd(freqs)))
 
-
 def get_p0(traj, pars, Tobs):
     try:    
         p0 = get_p_at_t(traj,Tobs * 0.999,[pars['M'], pars['mu'], pars['a'], pars['e0'], pars['x0']],bounds=[get_separatrix(pars['a'],pars['e0'],pars['x0'])+0.1, 40.0])
+        logger.info("New p0 found")
     except Exception as e:
-        print(e)
-        p0 = 21.0
+        logger.error(e)
+        p0 = None
     
     return p0
 
@@ -216,12 +214,13 @@ class wave_gen_windowed:
 def get_tdi_generator(
         args,
         wave_gen,
+        use_gpu=False,
 ):
 
     N_obs = int(args.tobs * YRSID_SI / args.dt)
     args.tobs = N_obs * args.dt / YRSID_SI
 
-    orbit_file_esa = "esa-trailing-orbits.h5" 
+    orbit_file_esa = "../lisa-on-gpu/orbit_files/esa-trailing-orbits.h5"
     orbit_kwargs_esa = dict(orbit_file=orbit_file_esa)
 
     tdi_gen = "2nd generation" if args.tdi2 else "1st generation"
@@ -234,7 +233,6 @@ def get_tdi_generator(
     index_lambda = 8
     index_beta = 7
 
-    # with longer signals we care less about this
     t0 = 10000.0  # throw away on both ends when our orbital information is weird
 
     resp_gen = ResponseWrapper(
@@ -415,6 +413,7 @@ if __name__ == "__main__":
 
     logger = init_logger(args.log)
     outdir = os.path.join(os.path.dirname(args.report), args.outdir)
+    os.makedirs(outdir, exist_ok=True)
     logger.info("Running on the following (M, mu) grid points: %s", mass_grid)
 
     outfile = os.path.join(outdir, f'so3-horizon-data.{args.start}_{args.end}.pkl')
@@ -460,7 +459,7 @@ if __name__ == "__main__":
         frame='detector'
     )
 
-    response_gen = get_tdi_generator(args, wave_gen)
+    response_gen = get_tdi_generator(args, wave_gen, use_gpu=use_gpu)
 
     snr_vec = []
     horizon_vec = []
@@ -477,9 +476,11 @@ if __name__ == "__main__":
 
     start_seed = args.start
 
-    #todo copied and pasted from here, still need to understand what is happening
-
     for ind, (M, mu) in enumerate(mass_grid):
+
+        if mu < MU_MIN or mu > MU_MAX:
+            logger.warning("Skipping (M, mu)=(%s, %s) due to mass limits", M, mu)
+            continue
 
         # pylint: disable=invalid-name
         point_vec = None
@@ -550,5 +551,4 @@ if __name__ == "__main__":
         with open(flagfile, 'w') as _:
             pass
 
-    
 close_logger(logger)
