@@ -105,7 +105,7 @@ M = source_args_plunge[:, 0] * (1 + z) #detector frame conversion
 mu = source_args_plunge[:, 1] * (1 + z) #detector frame conversion
 a = source_args_plunge[:, 2]
 e_f = source_args_plunge[:, 3]
-Y_f = np.cos(source_args_plunge[:, 4])
+Y_f = source_args_plunge[:, 4]
 p_f = np.array([])
 dist = np.array([])
 for i in range(len(source_args_plunge)):
