@@ -26,7 +26,7 @@ Note: for 'circular orbits' it is better to use e_f = 1e-5 - 5e-5 to guarantee t
 
 Run: 
 
-python fim_EMRI.py example_detector_frame.npy example_outdir --psd_file TDI2_AE_psd.npy -dt 10 --use_gpu --seed 
+python fim_EMRI.py example_detector_frame.npy example_outdir --psd_file TDI2_AE_psd.npy --dt 10 --use_gpu --seed 
 
 This runs the fisher matrix for all the sources provided in example_detector_frame.npy and saves them in the example_outdir directory. You can also specify --Tobs, if you do not it automatically uses the Tobs saved in example_detector_frame.npy file
 
