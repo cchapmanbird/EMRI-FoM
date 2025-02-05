@@ -28,7 +28,7 @@ except:
 
 class StableEMRIFisher:
     
-    def __init__(self, M, mu, a, p0, e0, Y0, dist, qS, phiS, qK, phiK,
+    def __init__(self, M, mu, a, p0, e0, xI0, dist, qS, phiS, qK, phiK,
                  Phi_phi0, Phi_theta0, Phi_r0, *args, dt = 10., T = 1.0, param_args = None, EMRI_waveform_gen = None, window = None, noise_model = noise_PSD_AE, noise_kwargs={}, channels=["A","E"],
                  param_names=None, deltas=None, der_order=2, Ndelta=8, CovEllipse=False, stability_plot=False,
                  live_dangerously = False, filename=None, suffix=None, stats_for_nerds=False, use_gpu=False, waveform_kwargs=None, log_e = False,  **kwargs):
@@ -41,7 +41,7 @@ class StableEMRIFisher:
                 a (float): Spin of the MBH.
                 p0 (float): Initial semi-latus rectum of the EMRI.
                 e0 (float): Initial eccentricity of the EMRI.
-                Y0 (float): Initial cosine of the inclination of the CO orbit with respect to the EMRI equatorial plane.
+                xI0 (float): Initial cosine of the inclination of the CO orbit with respect to the EMRI equatorial plane.
                 dist (float): Distance from the detector in gigaparsecs (Gpc).
                 qS, phiS (float): Sky location parameters from the detector.
                 qK, phiK (float): Source spin vector orientation with respect to the detector equatorial plane.
@@ -145,9 +145,9 @@ class StableEMRIFisher:
             self.waveform_model_choice = "Pn5AAKWaveform" 
 
         for i in range(len(self.param_names)):
-            if self.waveform_model_choice == "SchwarzEccFlux" and self.param_names[i] in ['a', 'Y0', 'Phi_theta0']: 
+            if self.waveform_model_choice == "SchwarzEccFlux" and self.param_names[i] in ['a', 'xI0', 'Phi_theta0']: 
                 logger.warning(f"{self.param_names[i]} unmeasurable in {self.waveform_model_choice} EMRI model.")
-            elif self.waveform_model_choice == "KerrEccentricEquatorial" and self.param_names[i] in ['Y0', 'Phi_theta0']: 
+            elif self.waveform_model_choice == "KerrEccentricEquatorial" and self.param_names[i] in ['xI0', 'Phi_theta0']: 
                 logger.warning(f"{self.param_names[i]} unmeasurable in {self.waveform_model_choice} EMRI model.")
         
         #initializing param dictionary
@@ -159,7 +159,7 @@ class StableEMRIFisher:
                       'a':a,
                       'p0':p0,
                       'e0':np.log(e0),
-                      'Y0':Y0,
+                      'xI0':xI0,
                       'dist':dist,
                       'qS':qS,
                       'phiS':phiS,
@@ -175,7 +175,7 @@ class StableEMRIFisher:
                       'a':a,
                       'p0':p0,
                       'e0':e0,
-                      'Y0':Y0,
+                      'xI0':xI0,
                       'dist':dist,
                       'qS':qS,
                       'phiS':phiS,
@@ -366,7 +366,7 @@ class StableEMRIFisher:
             # Compute Ndelta number of delta values to compute derivative. Testing stability.
             elif self.param_names[i] == 'M' or self.param_names[i] == 'mu': 
                 delta_init = np.geomspace(1e-4*self.wave_params[self.param_names[i]],1e-9*self.wave_params[self.param_names[i]],Ndelta)
-            elif self.param_names[i] == 'a' or self.param_names[i] == 'p0' or self.param_names[i] == 'e0' or self.param_names[i] == 'Y0':
+            elif self.param_names[i] == 'a' or self.param_names[i] == 'p0' or self.param_names[i] == 'e0' or self.param_names[i] == 'xI0':
                 delta_init = np.geomspace(1e-4*self.wave_params[self.param_names[i]],1e-9*self.wave_params[self.param_names[i]],Ndelta)
             elif self.param_names[i] == 'e0':
                 if self.log_e:
