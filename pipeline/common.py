@@ -142,6 +142,7 @@ def get_covariance_matrix(
         outdir=None, 
         params=None,
         deltas=None,
+        log_e=False,
         **kwargs,
     ):
 
@@ -170,7 +171,7 @@ def get_covariance_matrix(
             popinds.append(12)
         if model.waveform_generator.background == "Schwarzschild":
             popinds.append(2)
-    
+
     param_names = np.delete(param_names, popinds).tolist()
 
     if outdir is not None:
@@ -178,13 +179,19 @@ def get_covariance_matrix(
 
     #initialization
     fish = StableEMRIFisher(*parameters, dt=dt, T=T, EMRI_waveform_gen=model, noise_model=psd, noise_kwargs=dict(TDI="TDI2"),
-                param_names=param_names, stats_for_nerds=False, use_gpu=use_gpu, deltas=deltas, der_order=4.,
+                param_names=param_names, stats_for_nerds=False, use_gpu=use_gpu, deltas=deltas, der_order=4., Ndelta=20, log_e=log_e, 
                 filename=outdir, **kwargs)
 
     #execution
+    SNR = fish.SNRcalc_SEF()
     fim = fish()
+
+    if log_e:
+        jac = np.diag([1, 1, 1, 1, 1/parameters[4], 1, 1, 1, 1, 1, 1, 1]) #if working in log_e space apply jacobian to the fisher matrix
+        fim = jac.T @ fim @ jac
+        
     cov = np.linalg.inv(fim)
-    return cov, fish
+    return cov, fish, SNR
 
 def draw_sources(fix_params, N_per_source, seed=0):
     np.random.seed(seed)
