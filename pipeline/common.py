@@ -160,13 +160,13 @@ def get_covariance_matrix(
 
     popinds = []
     try:
-        if model.waveform_gen.waveform_generator.descriptor == "eccentric":
+        if model.waveform_gen.waveform_generator.descriptor == "eccentric equatorial":
             popinds.append(5)
             popinds.append(12)
         if model.waveform_gen.waveform_generator.background == "Schwarzschild":
             popinds.append(2)
     except:
-        if model.waveform_generator.descriptor == "eccentric":
+        if model.waveform_generator.descriptor == "eccentric equatorial":
             popinds.append(5)
             popinds.append(12)
         if model.waveform_generator.background == "Schwarzschild":
