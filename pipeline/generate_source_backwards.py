@@ -34,21 +34,20 @@ parser.add_argument("--psd_file", help="Path to a file containing PSD frequency-
 parser.add_argument("--dt", help="Sampling cadence in seconds", type=float, default=10.0)
 parser.add_argument("--use_gpu", help="Whether to use GPU for FIM computation", action="store_true")
 parser.add_argument("--N_montecarlo", help="How many random sky localizations to generate", type=int, default=10)
-parser.add_argument("--seed", help="numpy seed for random operations.",  action="store_const", const=42)
 parser.add_argument("--device", help="GPU device", type=int, default=7)
-
 args = parser.parse_args()
+seed = 2601
 
 if args.use_gpu:
     import cupy as xp
     print("Using GPU", args.device)
     xp.cuda.Device(args.device).use()
-    xp.random.seed(args.seed)
+    xp.random.seed(seed)
 else:
     xp = np
 
 
-np.random.seed(args.seed)
+np.random.seed(seed)
 
 # Set type of inspiral trajectory
 trajectory_class = KerrEccEqFlux
@@ -105,11 +104,11 @@ M = source_args_plunge[:, 0] * (1 + z) #detector frame conversion
 mu = source_args_plunge[:, 1] * (1 + z) #detector frame conversion
 a = source_args_plunge[:, 2]
 e_f = source_args_plunge[:, 3]
-Y_f = source_args_plunge[:, 4]
+x0_f = np.cos(source_args_plunge[:, 4])
 p_f = np.array([])
 dist = np.array([])
 for i in range(len(source_args_plunge)):
-    p_f = np.append(p_f, get_separatrix(a[i], e_f[i], Y_f[i])) + 0.1 # add a small number to separatrix to integrate backwards
+    p_f = np.append(p_f, get_separatrix(a[i], e_f[i], x0_f[i])) + 0.1 # add a small number to separatrix to integrate backwards
     dist = np.append(dist, standard_cosmology(H0=67.).dl_zH0(z[i]) / 1000.)
 
 T = source_args_plunge[:, 6]
@@ -150,11 +149,6 @@ for i in np.arange(len(source_args_plunge)):
     print("Source Frame Parameters at Plunge:\n")
     print(df.to_string(index=False, float_format="%.2e"))
     print("\n")
-
-    # Generate random initial phases for the trajectory
-    Phi_phi_f = np.random.uniform(0, 2 * np.pi, args.N_montecarlo)
-    Phi_theta_f = np.random.uniform(0, 2 * np.pi, args.N_montecarlo)
-    Phi_r_f = np.random.uniform(0, 2 * np.pi, args.N_montecarlo)
     
     # Initialize ResponseWrapper model
     model = ResponseWrapper(
@@ -182,10 +176,10 @@ for i in np.arange(len(source_args_plunge)):
             a[i],
             p_f[i],
             e_f[i], 
-            Y_f[i],
-            Phi_phi0=Phi_phi_f[j],
-            Phi_theta0=Phi_theta_f[j],
-            Phi_r0=Phi_r_f[j],
+            x0_f[i],
+            Phi_phi0=0.0,
+            Phi_theta0=0.0,
+            Phi_r0=0.0,
             dt=args.dt,
             T=T[i],
             **inspiral_kwargs_back
@@ -194,13 +188,14 @@ for i in np.arange(len(source_args_plunge)):
 
         p0 = p_back[-1]
         e0 = e_back[-1]
-        Y0 = Y_back[-1]
-        Phi_phi0 = Phi_phi_back[-1]
-        Phi_r0 = Phi_r_back[-1]
-        Phi_theta0 = Phi_theta_back[-1]
+        x0 = Y_back[-1]
+        # Generate random initial phases for the trajectory
+        Phi_phi0 = np.random.uniform(0, 2 * np.pi)
+        Phi_r0 = np.random.uniform(0, 2 * np.pi)
+        Phi_theta0 = np.random.uniform(0, 2 * np.pi)
 
         # SNR threshold for the Fisher Matrix calculation
-        SNR_threshold = 25.0  
+        SNR_threshold = 7.0  
 
         # Define the maximum number of iterations for sky localization generation to avoid infinite loops 
         max_iterations = 100
@@ -217,7 +212,7 @@ for i in np.arange(len(source_args_plunge)):
 
             # Create parameter list
             parameters = [
-                M[i], mu[i], a[i], p0, e0, Y0, dist[i], qS, phiS, qK, phiK, 
+                M[i], mu[i], a[i], p0, e0, x0, dist[i], qS, phiS, qK, phiK, 
                 Phi_phi0, Phi_theta0, Phi_r0
             ]
     
@@ -227,6 +222,7 @@ for i in np.arange(len(source_args_plunge)):
                               use_gpu=args.use_gpu, der_order=4)
             SNR = sef.SNRcalc_SEF()  # Calculate the SNR
             print(f"Iteration {iterations + 1}: SNR = {SNR}")
+            print(f"Parameters = {parameters}")
     
             iterations += 1
 
@@ -242,7 +238,7 @@ for i in np.arange(len(source_args_plunge)):
 
 # Convert source_args_initial to a DataFrame for better readability in the print
 columns = [
-    "M", "mu", "a", "p0", "e0", "Y0", "dist", "qS", "phiS", 
+    "M", "mu", "a", "p0", "e0", "x0", "dist", "qS", "phiS", 
     "qK", "phiK", "Phi_phi0", "Phi_theta0", "Phi_r0", "z", "T_coalescence", "SNR"
 ] #Add Tobs and SNR at the end of the columns
 
