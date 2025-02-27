@@ -62,3 +62,8 @@ Verify `lisa-on-gpu` Installation by opening a Python shell and run:
 ```python
 from fastlisaresponse import ResponseWrapper
 ```
+
+## Test waveform and response
+```
+python -m unittest test_waveform_and_response.py 
+```

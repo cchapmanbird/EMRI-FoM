@@ -182,7 +182,11 @@ if __name__ == "__main__":
     plt.legend()
     plt.savefig(os.path.join(args.repo, "waveform.png"))
 
-    log_e = False
+    if args.e_f < 1e-3:
+        log_e = True
+    else:
+        log_e = False
+    
     if log_e:
         EMRI_waveform_gen = transf_log_e_wave(model)
     else:
@@ -193,7 +197,7 @@ if __name__ == "__main__":
     for j in range(args.N_montecarlo):
         print("--------------------------------------")
         print(f"Generating source {j} realization")
-        name_realization = f"source_{j}"
+        name_realization = f"realization_{j}"
         # generate random parameters
         Phi_phi0, Phi_r0, Phi_theta0 = generate_random_phases()
         qS, phiS, qK, phiK = generate_random_sky_localization()
@@ -242,7 +246,7 @@ if __name__ == "__main__":
         errors_df = pd.DataFrame(errors_df)
         errors_df.to_markdown(os.path.join(current_folder, "summary.md"), floatfmt=".10e")
         # save the covariance matrix and the SNR to npz file
-        np.savez(os.path.join(current_folder, "results.npz"), cov=cov, snr=SNR, fisher_params=fisher_params, errors=errors, relative_errors=errors/fisher_params)
+        np.savez(os.path.join(current_folder, "results.npz"), cov=cov, snr=SNR, fisher_params=fisher_params, errors=errors, relative_errors=errors/fisher_params, names=param_names)
         print("Saved results to", current_folder)
         print("*************************************")
 

@@ -20,12 +20,13 @@ sources = [
     # Add more sources here if needed
 ]
 
-run_pipeline = False
+run_pipeline = True
 assess_science_objectives = True
 
 if run_pipeline:
     print("Running the pipeline...")
     total_start_time = time.time()
+    source_runtimes = {}
 
     # Run the pipeline for each source
     for source in sources:
@@ -39,15 +40,18 @@ if run_pipeline:
         os.system(command)
         end_time = time.time()
         elapsed_time = end_time - start_time
+        source_runtimes[source['repo']] = elapsed_time
         print(f"Runtime for source {source['repo']}: {elapsed_time:.2f} seconds")
 
     total_end_time = time.time()
     total_elapsed_time = total_end_time - total_start_time
     print(f"Total runtime: {total_elapsed_time:.2f} seconds")
 
-    # Save total runtime to a file
+    # Save total runtime and individual source runtimes to a file
     with open("total_runtime_pipeline.txt", "w") as f:
-        f.write(f"Total runtime: {total_elapsed_time:.2f} seconds")
+        f.write(f"Total runtime: {total_elapsed_time:.2f} seconds\n")
+        for repo, runtime in source_runtimes.items():
+            f.write(f"Runtime for source {repo}: {runtime:.2f} seconds\n")
 
 names = ['cov', 'snr', 'fisher_params', 'errors', 'relative_errors']
 total_results = {source['repo']: {nn: [] for nn in names} for source in sources}
