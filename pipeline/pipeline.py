@@ -1,4 +1,4 @@
-# python pipeline.py --M 1e6 --mu 1e1 --a 0.5 --e_f 0.1 --p_f 6.0 --T 1.0 --z 0.1 --repo test --psd_file TDI2_AE_psd.npy --dt 10.0 --use_gpu --N_montecarlo 1 --device 3 --repo test
+# python pipeline.py --M 1e6 --mu 1e1 --a 0.5 --e_f 0.1 --T 1.0 --z 0.1 --repo test --psd_file TDI2_AE_psd.npy --dt 10.0 --use_gpu --N_montecarlo 1 --device 3 --repo test
 import os
 import logging
 import argparse
@@ -16,6 +16,8 @@ from lisatools.detector import EqualArmlengthOrbits
 from fastlisaresponse import ResponseWrapper
 from common import standard_cosmology
 import time
+import matplotlib.pyplot as plt
+from stableemrifisher.plot import CovEllipsePlot, StabilityPlot
 
 # Initialize logger
 logger = logging.getLogger()
@@ -26,7 +28,6 @@ def parse_arguments():
     parser.add_argument("--mu", help="Mass of the compact object", type=float)
     parser.add_argument("--a", help="Spin of the central black hole", type=float)
     parser.add_argument("--e_f", help="Final eccentricity", type=float)
-    parser.add_argument("--p_f", help="Final semi-latus rectum", type=float)
     parser.add_argument("--T", help="Time to coalescence", type=float)
     parser.add_argument("--z", help="Redshift", type=float)
     parser.add_argument("--repo", help="Name of the folder where results are stored", type=str)
@@ -78,6 +79,19 @@ def generate_random_sky_localization():
     phiK = np.random.uniform(0, 2 * np.pi)
     return qS, phiS, qK, phiK
 
+class transf_log_e_wave():
+    def __init__(self, base_wave):
+        self.base_wave = base_wave
+
+    def __call__(self, *args, **kwargs):
+        args = list(args)
+        args[4] = np.exp(args[4]) #index of eccentricity on the FEW waveform call
+        return self.base_wave(*args, **kwargs)
+    
+    def __getattr__(self, name):
+        # Forward attribute access to base_wave
+        return getattr(self.base_wave, name)
+
 inspiral_kwargs_back = {"err": 1e-10,"integrate_backwards": True}
 inspiral_kwargs_forward = {"err": 1e-10,"integrate_backwards": False}
 
@@ -122,7 +136,7 @@ if __name__ == "__main__":
         "M central black hole mass": args.M,
         "mu secondary black hole mass": args.mu,
         "a dimensionless central object spin": args.a,
-        "p_f final semi-latus rectum": args.p_f,
+        "p_f final semi-latus rectum": p_f,
         "e_f final eccentricity": args.e_f,
         "z redshift": args.z,
         "dist luminosity distance in Gpc": dist,
@@ -148,7 +162,7 @@ if __name__ == "__main__":
     model(*parameters)
 
     tic = time.time()
-    model(*parameters)
+    waveform_out = model(*parameters)
     toc = time.time()
     timing = toc - tic
     print("Time taken for one waveform generation: ", timing)
@@ -156,14 +170,34 @@ if __name__ == "__main__":
     # save the waveform generation time
     with open(os.path.join(args.repo, "waveform_generation_time.txt"), "w") as f:
         f.write(str(timing))
+    # plot the waveform in the frequency domain
+    fft_waveform = xp.fft.rfft(waveform_out[0]).get() *args.dt
+    freqs = np.fft.rfftfreq(len(waveform_out[0]), d=args.dt)
+    mask = (freqs>1e-4)
+    plt.figure()
+    plt.loglog(freqs[mask], np.abs(fft_waveform)[mask]**2)
+    plt.loglog(freqs[mask], psd_wrap(freqs[mask]).get() * T * YRSID_SI / 4, label="PSD")
+    plt.xlabel("Frequency [Hz]")
+    plt.ylabel(r"Amplitude $|\tilde h(f)|$")
+    plt.legend()
+    plt.savefig(os.path.join(args.repo, "waveform.png"))
+
+    log_e = False
+    if log_e:
+        EMRI_waveform_gen = transf_log_e_wave(model)
+    else:
+        EMRI_waveform_gen = model
     
     deltas = None
     # start loop over multiple realizations
     for j in range(args.N_montecarlo):
-        name_realization = f"source_{j}"
+        print("--------------------------------------")
         print(f"Generating source {j} realization")
+        name_realization = f"source_{j}"
+        # generate random parameters
         Phi_phi0, Phi_r0, Phi_theta0 = generate_random_phases()
         qS, phiS, qK, phiK = generate_random_sky_localization()
+        # define the initial parameters
         parameters = np.asarray([M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0])
         # create folder for the realization
         current_folder = os.path.join(args.repo, name_realization)
@@ -171,33 +205,35 @@ if __name__ == "__main__":
         # save the parameters to txt file
         np.savetxt(os.path.join(current_folder, "all_parameters.txt"), parameters.T, header=" ".join(param_names))
 
-        log_e = False
-
         fish = StableEMRIFisher(*parameters, 
-                                dt=args.dt, T=T, EMRI_waveform_gen=model, noise_model=psd_wrap, noise_kwargs=dict(TDI="TDI2"), param_names=param_names, stats_for_nerds=False, use_gpu=args.use_gpu, 
+                                dt=args.dt, T=T, EMRI_waveform_gen=EMRI_waveform_gen, noise_model=psd_wrap, noise_kwargs=dict(TDI="TDI2"), param_names=param_names, stats_for_nerds=False, use_gpu=args.use_gpu, 
                                 der_order=4., Ndelta=10, filename=current_folder,
                                 deltas = deltas,
                                 log_e = log_e, # useful for sources close to zero eccentricity
-                                CovEllipse=True, # will return the covariance and plot it
+                                CovEllipse=False, # will return the covariance and plot it
                                 stability_plot=False, # activate if unsure about the stability of the deltas
                                 )
         #execution
         SNR = fish.SNRcalc_SEF()
-        fim, cov = fish()
+        fim = fish()
+        cov = np.linalg.inv(fim)
         fish.save_deltas()
         # check the inversion
         print("if correct matrix inversion, then",np.diag(fim @ cov).sum() - fim.shape[0], "should be approximately zero")
         # check dimensions
         print("Fisher matrix shape", fim.shape[0]==len(param_names))
-
         if log_e:
             jac = np.diag([1, 1, 1, 1, 1/parameters[4], 1, 1, 1, 1, 1, 1, 1]) #if working in log_e space apply jacobian to the fisher matrix
             fim = jac.T @ fim @ jac
 
         if deltas is None:
-            deltas = [fish.deltas[nm] for nm in fish.param_names]
+            deltas = fish.deltas
         
+        # create ellipse plot only the first montecarlo realization
         cov = np.linalg.inv(fim)
+        if j == 0:
+            CovEllipsePlot(fish.param_names, fish.wave_params, cov, filename=current_folder + f"/covariance_ellipse_plot.png")
+        
         # get errors
         errors = np.sqrt(np.diag(cov))
         # save the errors with pandas to markdown
@@ -207,6 +243,8 @@ if __name__ == "__main__":
         errors_df.to_markdown(os.path.join(current_folder, "summary.md"), floatfmt=".10e")
         # save the covariance matrix and the SNR to npz file
         np.savez(os.path.join(current_folder, "results.npz"), cov=cov, snr=SNR, fisher_params=fisher_params, errors=errors, relative_errors=errors/fisher_params)
+        print("Saved results to", current_folder)
+        print("*************************************")
 
 
 
