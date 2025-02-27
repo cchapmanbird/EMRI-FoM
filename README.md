@@ -16,7 +16,7 @@ Below is a quick set of instructions to install the Fast EMRI Waveform (FEW) pac
 
 Create an environment for the figures of merit
 ```sh
-conda create -n fom -c conda-forge gcc_linux-64 gxx_linux-64 wget gsl lapack=3.6.1 hdf5 numpy Cython scipy tqdm jupyter ipython h5py requests matplotlib python=3.12
+conda create -n fom -c conda-forge gcc_linux-64 gxx_linux-64 wget gsl lapack=3.6.1 hdf5 numpy Cython scipy tqdm jupyter ipython h5py requests matplotlib python=3.12 pandas
 conda activate fom
 ```
 
@@ -38,17 +38,21 @@ few.get_backend("cuda12x")
 
 ## Fisher Information package
 
+Install the Fisher information package
 ```sh
 cd StableEMRIFisher-package/
 pip install .
 cd ..
 ```
 
-**Install `lisa-on-gpu` for LISA Response** cloned from https://github.com/mikekatz04/lisa-on-gpu.git
+## Install `lisa-on-gpu` for LISA Response
+Install the response
 ```sh
-cd local_response
+git clone https://github.com/mikekatz04/lisa-on-gpu.git
+cd lisa-on-gpu
+pip install lisaanalysistools
 python scripts/prebuild.py
-python -m pip install .
+pip install .
 cd ..
 ```
 
