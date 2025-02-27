@@ -6,6 +6,7 @@ import subprocess
 import matplotlib.pyplot as plt
 import pandas as pd
 import io
+import healpy as hp
 
 # decide whether to run the full pipeline and generate the results
 run_pipeline = False
@@ -22,7 +23,7 @@ thr_err = [1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-1, 10., 10., 10., 10., 10.,     10.]
 # p0, phi0, theta0 are not used in the threshold
 
 # device: device to use on GPUs
-dev = 4
+dev = 0
 # defines the number of montecarlo runs over phases and sky locations
 # N_montecarlo: number of montecarlo runs over phases and sky locations
 Nmonte = 100
@@ -40,7 +41,9 @@ Nmonte = 100
 
 sources = [
     {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.2, "T": 1.0, "z": 1.0, "repo": "Eccentric", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
-    # {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.0001, "T": 1.0, "z": 1.0, "repo": "Circular", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+    {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.01, "T": 1.0, "z": 1.0, "repo": "Circular", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+    # {"M": 1e7, "mu": 1e1, "a": 0.9, "e_f": 0.2, "T": 1.0, "z": 0.5, "repo": "HighMass", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+    # {"M": 1e5, "mu": 1e1, "a": 0.9, "e_f": 0.2, "T": 1.0, "z": 0.5, "repo": "LowMass", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
     # {"M": 0.5e6, "mu": 1e1, "a": 0.9, "e_f": 0.1, "T": 1.0, "z": 1.0, "repo": "IMRI", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
     # Add more sources here if needed
 ]
@@ -170,7 +173,34 @@ if assess_science_objectives:
         
         mean_snr = np.mean(total_results['snr'])
         # mean_relative_errors = np.diag(np.mean(total_results['cov'], axis=0)) / total_results['fisher_params'][0]
+        par_vals = np.array(total_results['fisher_params'])
         mean_relative_errors = np.mean(np.asarray(total_results['relative_errors']),axis=0)
+        # plot a mollview of the angles theta=par_vals[:,6] phi=par_vals[:,7] with colormap from the error
+        # nside = 16
+        # npix = hp.nside2npix(nside)
+        # sky_map = np.zeros(npix)
+        # theta = par_vals[:,6]
+        # phi = par_vals[:,7]
+        # pixels = hp.ang2pix(nside, theta, phi)
+        # for pix, err in zip(pixels, np.asarray(total_results['snr'])):
+        #     sky_map[pix] += err
+        # sky_map /= np.bincount(pixels, minlength=npix)
+        # hp.mollview(sky_map, title=f'Mollview of SNR', unit='Relative Error')
+        # plt.savefig(f"{source_name}/mollview_snr_sky.png")
+        # plt.close()
+
+        # npix = hp.nside2npix(nside)
+        # sky_map = np.zeros(npix)
+        # theta = par_vals[:,8]
+        # phi = par_vals[:,9]
+        # pixels = hp.ang2pix(nside, theta, phi)
+        # for pix, err in zip(pixels, np.asarray(total_results['snr'])):
+        #     sky_map[pix] += err
+        # sky_map /= np.bincount(pixels, minlength=npix)
+        # hp.mollview(sky_map, title=f'Mollview of SNR', unit='Relative Error')
+        # plt.savefig(f"{source_name}/mollview_snr_orientation.png")
+        # plt.close()
+        
         # create a histogram of the relative errors
         rel_err = np.asarray(total_results['relative_errors'])
 

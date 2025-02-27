@@ -213,7 +213,7 @@ if __name__ == "__main__":
 
         fish = StableEMRIFisher(*parameters, 
                                 dt=args.dt, T=T, EMRI_waveform_gen=EMRI_waveform_gen, noise_model=psd_wrap, noise_kwargs=dict(TDI="TDI2"), param_names=param_names, stats_for_nerds=False, use_gpu=args.use_gpu, 
-                                der_order=4., Ndelta=10, filename=current_folder,
+                                der_order=4., Ndelta=20, filename=current_folder,
                                 deltas = deltas,
                                 log_e = log_e, # useful for sources close to zero eccentricity
                                 CovEllipse=False, # will return the covariance and plot it
