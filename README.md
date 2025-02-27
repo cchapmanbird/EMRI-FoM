@@ -29,6 +29,7 @@ Check the version of your compiler by running `nvcc --version` and install the c
 ```
 pip install --pre fastemriwaveforms-cuda12x
 pip install tabulate
+pip install markdown pypandoc
 ```
 
 Test the installation device by running python
@@ -76,4 +77,6 @@ cd pipeline
 python run_pipeline.py
 ```
 
-Inside the `run_pipeline.py` you can modify the thresholds for the science objectives, the sources and the number of randomization over sky and phase, 
+Inside the `run_pipeline.py` you can modify the thresholds for the science objectives, the sources and the number of randomization over sky and phase.
+
+You can also run the pipeline in the background with `nohup python run_pipeline.py > logpipeline.log &`

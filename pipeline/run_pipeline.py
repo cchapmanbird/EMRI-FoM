@@ -3,10 +3,14 @@ import time
 import glob
 import numpy as np
 import subprocess
+import matplotlib.pyplot as plt
+import pandas as pd
+import io
+
 # decide whether to run the full pipeline and generate the results
-run_pipeline = False
+run_pipeline = True
 # decide whether to assess the science objectives
-assess_science_objectives = True
+assess_science_objectives = False
 
 # the following two lines define the thresholds for the science objectives
 # threshold_SNR: threshold on SNR for the science objectives
@@ -18,10 +22,10 @@ thr_err = [1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-1, 10., 10., 10., 10., 10.,     10.]
 # p0, phi0, theta0 are not used in the threshold
 
 # device: device to use on GPUs
-dev = 3
+dev = 4
 # defines the number of montecarlo runs over phases and sky locations
 # N_montecarlo: number of montecarlo runs over phases and sky locations
-Nmonte = 10
+Nmonte = 100
 
 # source frame parameters
 # M: central mass of the binary in solar masses
@@ -35,8 +39,8 @@ Nmonte = 10
 # dt: time step in seconds
 
 sources = [
-    {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.2, "T": 1.0, "z": 1.0, "repo": "Eccentric", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
-    {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.0001, "T": 1.0, "z": 1.0, "repo": "Circular", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+    # {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.2, "T": 1.0, "z": 1.0, "repo": "Eccentric", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+    {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.01, "T": 1.0, "z": 1.0, "repo": "Circular", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
     {"M": 0.5e6, "mu": 1e1, "a": 0.9, "e_f": 0.1, "T": 1.0, "z": 1.0, "repo": "IMRI", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
     # Add more sources here if needed
 ]
@@ -84,10 +88,12 @@ total_results = {source['repo']: {nn: [] for nn in names} for source in sources}
 
 
 # Function to generate LaTeX report and compile to PDF
-def generate_latex_report(source_name, snr_status, snr_value, error_statuses):
+def generate_latex_report(source_name, snr_status, snr_value, error_statuses, injected_params):
+
     latex_content = rf"""
     \documentclass{{article}}
     \usepackage{{graphicx}}
+    \usepackage{{booktabs}}
     \begin{{document}}
     \title{{Science Objectives Assessment for {source_name}}}
     \author{{Automated Report}}
@@ -96,12 +102,45 @@ def generate_latex_report(source_name, snr_status, snr_value, error_statuses):
     \section{{Summary}}
     \textbf{{Source:}} {source_name}\\
     \textbf{{SNR Status:}} {snr_status} (Mean SNR = {snr_value:.2f})\\
-    \section{{Parameter Relative Errors}}
     """
+
+    # add table of injected parameters
+    latex_content += rf"""
+    \begin{{table}}[h]
+    \centering
+    \begin{{tabular}}{{|c|c|}}
+    \hline
+    \textbf{{Parameter}} & \textbf{{Detector Frame Value}}\\
+    \hline
+    """
+    for i, param in enumerate(param_names):
+        latex_content += rf"{param} & {injected_params[i]}\\"
+    latex_content += r"\hline\end{tabular}\end{table}"
+    latex_content += "\section{{Parameter Relative Errors}}"
+
     for param, status, value, threshold in error_statuses:
         latex_content += rf"\textbf{{{param}:}} {status} (Mean Error = {value:.2e}, Threshold = {threshold:.2e})\\\n"
+
+    # add plots of all the relative errors in relative_errors_histogram_{param}.png
+    for param in ['M','mu','a','e0','dist','skyloc']:
+        latex_content += rf"""
+        \begin{{figure}}
+        \centering
+        \includegraphics[width=\textwidth]{{{source_name}/relative_errors_histogram_{param}.png}}
+        \end{{figure}}
+        """
+    # create a section with the covariance ellipes plot and the waveform
+    latex_content += rf"""
+    \begin{{figure}}
+    \centering
+    \includegraphics[width=\textwidth]{{{source_name}/realization_0/covariance_ellipse_plot.png}}
+    \includegraphics[width=\textwidth]{{{source_name}/waveform.png}}
+    \end{{figure}}
+    """
+
+    # end of the document
     latex_content += "\\end{document}"
-    
+
     report_filename = f"{source_name}_assessment.tex"
     with open(report_filename, "w") as f:
         f.write(latex_content)
@@ -130,8 +169,11 @@ if assess_science_objectives:
                 total_results[el].append(results[el])
         
         mean_snr = np.mean(total_results['snr'])
-        mean_relative_errors = np.diag(np.mean(total_results['cov'], axis=0)) / total_results['fisher_params'][0]
-        
+        # mean_relative_errors = np.diag(np.mean(total_results['cov'], axis=0)) / total_results['fisher_params'][0]
+        mean_relative_errors = np.mean(np.asarray(total_results['relative_errors']),axis=0)
+        # create a histogram of the relative errors
+        rel_err = np.asarray(total_results['relative_errors'])
+
         Sigma = np.mean(total_results['cov'], axis=0)[6:8, 6:8]
         thetaS, phiS = total_results['fisher_params'][0][6:8]
         err_sky_loc = 2 * np.pi * np.sin(thetaS) * np.sqrt(np.linalg.det(Sigma)) * (180.0 / np.pi) ** 2
@@ -155,9 +197,27 @@ if assess_science_objectives:
             if param in ['M', 'mu', 'a', 'e0', 'dist']:
                 status = "PASS" if err_value < threshold else "FAIL"
                 error_statuses.append((param, status, err_value, threshold))
+                plt.figure()
+                plt.hist(np.log10(rel_err[:,i]), bins=30, label='Montecarlo Runs')
+                plt.axvline(np.log10(threshold), color='r', linestyle='--', label='Threshold')
+                plt.xlabel(f'Log10 Relative Error {param}')
+                plt.ylabel('Counts')
+                plt.legend()
+                plt.savefig(f"{source_name}/relative_errors_histogram_{param}.png")
+                plt.close()
+                
             if param == 'qS':
                 status = "PASS" if err_sky_loc < threshold else "FAIL"
                 error_statuses.append(("Sky Localization", status, err_sky_loc, threshold))
+                plt.figure()
+                plt.hist(err_sky_loc, bins=30, label='Montecarlo Runs')
+                plt.axvline(threshold, color='r', linestyle='--', label='Threshold')
+                plt.xlabel(f'Relative Error Sky Localization')
+                plt.ylabel('Counts')
+                plt.savefig(f"{source_name}/relative_errors_histogram_skyloc.png")
+                plt.close()
+            
+            
         
         # Generate LaTeX report and compile to PDF
-        generate_latex_report(source_name, snr_status, mean_snr, error_statuses)
+        generate_latex_report(source_name, snr_status, mean_snr, error_statuses, total_results['fisher_params'][0])

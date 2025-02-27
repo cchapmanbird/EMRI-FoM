@@ -147,6 +147,8 @@ if __name__ == "__main__":
         df = pd.DataFrame(el, index=[0])
         # save df using pandas
         df.to_markdown(os.path.join(args.repo, f"{name}.md"), floatfmt=".10e")
+        # save df using npz
+        np.savez(os.path.join(args.repo, f"{name}.npz"), **el)
 
     # initialize the trajectory
     traj = EMRIInspiral(func=KerrEccEqFlux)
@@ -176,7 +178,7 @@ if __name__ == "__main__":
     mask = (freqs>1e-4)
     plt.figure()
     plt.loglog(freqs[mask], np.abs(fft_waveform)[mask]**2)
-    plt.loglog(freqs[mask], psd_wrap(freqs[mask]).get() * T * YRSID_SI / 4, label="PSD")
+    plt.loglog(freqs[mask], psd_wrap(freqs[mask]).get(), label="PSD")
     plt.xlabel("Frequency [Hz]")
     plt.ylabel(r"Amplitude $|\tilde h(f)|$")
     plt.legend()
