@@ -8,9 +8,9 @@ import pandas as pd
 import io
 
 # decide whether to run the full pipeline and generate the results
-run_pipeline = True
+run_pipeline = False
 # decide whether to assess the science objectives
-assess_science_objectives = False
+assess_science_objectives = True
 
 # the following two lines define the thresholds for the science objectives
 # threshold_SNR: threshold on SNR for the science objectives
@@ -39,9 +39,9 @@ Nmonte = 100
 # dt: time step in seconds
 
 sources = [
-    # {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.2, "T": 1.0, "z": 1.0, "repo": "Eccentric", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
-    {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.01, "T": 1.0, "z": 1.0, "repo": "Circular", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
-    {"M": 0.5e6, "mu": 1e1, "a": 0.9, "e_f": 0.1, "T": 1.0, "z": 1.0, "repo": "IMRI", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+    {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.2, "T": 1.0, "z": 1.0, "repo": "Eccentric", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+    # {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.0001, "T": 1.0, "z": 1.0, "repo": "Circular", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+    # {"M": 0.5e6, "mu": 1e1, "a": 0.9, "e_f": 0.1, "T": 1.0, "z": 1.0, "repo": "IMRI", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
     # Add more sources here if needed
 ]
 
@@ -116,7 +116,7 @@ def generate_latex_report(source_name, snr_status, snr_value, error_statuses, in
     for i, param in enumerate(param_names):
         latex_content += rf"{param} & {injected_params[i]}\\"
     latex_content += r"\hline\end{tabular}\end{table}"
-    latex_content += "\section{{Parameter Relative Errors}}"
+    latex_content += r"\section{{Parameter Relative Errors}}"
 
     for param, status, value, threshold in error_statuses:
         latex_content += rf"\textbf{{{param}:}} {status} (Mean Error = {value:.2e}, Threshold = {threshold:.2e})\\\n"
