@@ -10,7 +10,7 @@ Follow these steps to set up the environment and install the necessary packages.
 
 1) Create a virtual environment. **Note**: There is no available `conda` compiler for Windows. If you want to install for Windows, you will probably need to add libraries and include paths to the `setup.py` file.
 
-## Fast EMRI Waveforms
+### Fast EMRI Waveforms
 
 Below is a quick set of instructions to install the Fast EMRI Waveform (FEW) package.
 
@@ -37,7 +37,7 @@ import few
 few.get_backend("cuda12x")
 ```
 
-## Fisher Information package
+### Fisher Information package
 
 Install the Fisher information package
 ```sh
@@ -46,7 +46,7 @@ pip install .
 cd ..
 ```
 
-## Install `lisa-on-gpu` for LISA Response
+### Install `lisa-on-gpu` for LISA Response
 Install the response
 ```sh
 git clone https://github.com/mikekatz04/lisa-on-gpu.git
@@ -63,7 +63,17 @@ Verify `lisa-on-gpu` Installation by opening a Python shell and run:
 from fastlisaresponse import ResponseWrapper
 ```
 
-## Test waveform and response
+### Test waveform and response
 ```
 python -m unittest test_waveform_and_response.py 
 ```
+
+## Running the pipeline
+
+Place yourself in the folder pipeline and run the pipeline on GPUs
+```
+cd pipeline
+python run_pipeline.py
+```
+
+Inside the `run_pipeline.py` you can modify the thresholds for the science objectives, the sources and the number of randomization over sky and phase, 
