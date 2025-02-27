@@ -16,7 +16,7 @@ Below is a quick set of instructions to install the Fast EMRI Waveform (FEW) pac
 
 Create an environment for the figures of merit
 ```sh
-conda create -n fom -c conda-forge gcc_linux-64 gxx_linux-64 wget gsl lapack=3.6.1 hdf5 numpy Cython scipy tqdm jupyter ipython h5py requests matplotlib python=3.12 pandas
+conda create -n fom -c conda-forge gcc_linux-64 gxx_linux-64 wget gsl lapack=3.6.1 hdf5 numpy Cython scipy tqdm jupyter ipython h5py requests matplotlib python=3.12 pandas fortran-compiler
 conda activate fom
 ```
 
@@ -28,6 +28,7 @@ export PATH=$PATH:/usr/local/cuda-12.5/bin/
 Check the version of your compiler by running `nvcc --version` and install the corresponding FEW cuda version for running on GPUs:
 ```
 pip install --pre fastemriwaveforms-cuda12x
+pip install tabulate
 ```
 
 Test the installation device by running python

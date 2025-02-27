@@ -437,6 +437,8 @@ class StableEMRIFisher:
                 
                 
                 if self.stability_plot:
+                    if self.use_gpu:
+                        Gamma = Gamma.get()
                     if self.filename != None:
                         if self.suffix != None:
                             StabilityPlot(delta_init,Gamma,param_name=self.param_names[i],filename=os.path.join(self.filename,f'stability_{self.suffix}_{self.param_names[i]}.png'))
