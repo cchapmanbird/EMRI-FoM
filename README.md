@@ -1,38 +1,46 @@
 # EMRI Figures of Merit (FoMs) Computation
 
-This repository contains codes for computing Figures of Merit (FoMs) related to Extreme Mass Ratio Inspirals (EMRIs).
-## TODO
-
-List of tasks:
-- obtain Fisher for Red Book sources
-- horizon redshift for sources
-- define what good is
+This repository contains codes for computing Figures of Merit (FoMs) related to Extreme Mass Ratio Inspirals (EMRIs) and Intermedia Mass Ratio Inspirals (IMRIs).
 
 ## Installation Instructions
 
-Follow these steps to set up the environment and install the necessary packages:
+Follow these steps to set up the environment and install the necessary packages. The installation is meant to be run on GPUs with CUDA compiler `nvcc`.
 
-**Install Python Packages and Fast EMRI Waveforms**
+0) [Install Anaconda](https://docs.anaconda.com/anaconda/install/) if you do not have it.
 
+1) Create a virtual environment. **Note**: There is no available `conda` compiler for Windows. If you want to install for Windows, you will probably need to add libraries and include paths to the `setup.py` file.
+
+## Fast EMRI Waveforms
+
+Below is a quick set of instructions to install the Fast EMRI Waveform (FEW) package.
+
+Create an environment for the figures of merit
 ```sh
-conda create -n fom_env python=3.12
-conda activate fom_env
-pip install multispline pygments matplotlib jupyter lisaanalysistools pandas Cython
+conda create -n fom -c conda-forge gcc_linux-64 gxx_linux-64 wget gsl lapack=3.6.1 hdf5 numpy Cython scipy tqdm jupyter ipython h5py requests matplotlib python=3.12
+conda activate fom
+```
+
+Locate where the `nvcc` compile is located and add it to the path, in my case it is located in `/usr/local/cuda-12.5/bin/`
+```
 export PATH=$PATH:/usr/local/cuda-12.5/bin/
-pip install fastemriwaveforms-cuda12x --extra-index-url https://test.pypi.org/simple/
+```
+
+Check the version of your compiler by running `nvcc --version` and install the corresponding FEW cuda version for running on GPUs:
+```
+pip install --pre fastemriwaveforms-cuda12x
 ```
 
 Test the installation device by running python
 ```python
 import few
-print(few.cutils.fast.__backend__)
+few.get_backend("cuda12x")
 ```
 
-**Install Stable EMRI Fisher Package**
+## Fisher Information package
 
 ```sh
 cd StableEMRIFisher-package/
-python -m pip install .
+pip install .
 cd ..
 ```
 
