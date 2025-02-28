@@ -26,7 +26,7 @@ thr_err = [1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-1, 10., 10., 10., 10., 10.,     10.]
 dev = 0
 # defines the number of montecarlo runs over phases and sky locations
 # N_montecarlo: number of montecarlo runs over phases and sky locations
-Nmonte = 100
+Nmonte = 1000
 
 # source frame parameters
 # M: central mass of the binary in solar masses
@@ -38,13 +38,19 @@ Nmonte = 100
 # repo: name of the repository where the results will be saved
 # psd_file: name of the file with the power spectral density
 # dt: time step in seconds
-
+dt = 5.0
 sources = [
-    {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.2, "T": 1.0, "z": 1.0, "repo": "Eccentric", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
-    {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.01, "T": 1.0, "z": 1.0, "repo": "Circular", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+    # {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.2, "T": 1.0, "z": 1.0, "repo": "Eccentric", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+    # {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.01, "T": 1.0, "z": 1.0, "repo": "Circular", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
     # {"M": 1e7, "mu": 1e1, "a": 0.9, "e_f": 0.2, "T": 1.0, "z": 0.5, "repo": "HighMass", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
     # {"M": 1e5, "mu": 1e1, "a": 0.9, "e_f": 0.2, "T": 1.0, "z": 0.5, "repo": "LowMass", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
-    # {"M": 0.5e6, "mu": 1e1, "a": 0.9, "e_f": 0.1, "T": 1.0, "z": 1.0, "repo": "IMRI", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+    # {"M": 5e5, "mu": 5e1, "a": 0.9, "e_f": 0.1, "T": 1.0, "z": 1.0, "repo": "IMRI", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+
+    {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "EMRI", "psd_file": "TDI2_AE_psd.npy", "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+    {"M": 5e4, "mu": 1e1, "a": 0.0, "e_f": 0.01, "T": 0.1, "z": 0.5, "repo": "LightIMRI", "psd_file": "TDI2_AE_psd.npy", "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+    {"M": 1e6, "mu": 1e3, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "HeavyIMRI1", "psd_file": "TDI2_AE_psd.npy", "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+    {"M": 1e7, "mu": 1e3, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "HeavyIMRI2", "psd_file": "TDI2_AE_psd.npy", "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+    {"M": 1e6, "mu": 5e2, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "HeavyIMRI3", "psd_file": "TDI2_AE_psd.npy", "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
     # Add more sources here if needed
 ]
 
@@ -118,7 +124,17 @@ def generate_latex_report(source_name, snr_status, snr_value, error_statuses, in
     """
     for i, param in enumerate(param_names):
         latex_content += rf"{param} & {injected_params[i]}\\"
-    latex_content += r"\hline\end{tabular}\end{table}"
+    latex_content += r"\hline\end{tabular}\end{table}"\
+    
+    # include SNR plot
+    latex_content += rf"""
+    \begin{{figure}}
+    \centering
+    \includegraphics[width=\textwidth]{{{source_name}/snr_histogram.png}}
+    \end{{figure}}
+    """
+
+    # new section
     latex_content += r"\section{{Parameter Relative Errors}}"
 
     for param, status, value, threshold in error_statuses:
@@ -172,9 +188,27 @@ if assess_science_objectives:
                 total_results[el].append(results[el])
         
         mean_snr = np.mean(total_results['snr'])
-        # mean_relative_errors = np.diag(np.mean(total_results['cov'], axis=0)) / total_results['fisher_params'][0]
+        # plot SNR histogram
+        plt.figure()
+        plt.hist(np.log10(total_results['snr']), bins=30)
+        plt.axvline(np.log10(source['threshold_SNR'][0]), color='r', linestyle='--', label=f'Threshold {source["threshold_SNR"][0]}')
+        plt.axvline(np.log10(source['threshold_SNR'][1]), color='orange', linestyle='--', label=f'Threshold {source["threshold_SNR"][1]}')
+        plt.axvline(np.log10(source['threshold_SNR'][2]), color='green', linestyle='--', label=f'Threshold {source["threshold_SNR"][2]}')
+        plt.xlabel('Log10 SNR')
+        plt.ylabel('Counts')
+        plt.legend()
+        plt.savefig(f"{source_name}/snr_histogram.png")
+        plt.close()
+
         par_vals = np.array(total_results['fisher_params'])
         mean_relative_errors = np.mean(np.asarray(total_results['relative_errors']),axis=0)
+        errors = np.asarray([np.diag(el) for el in total_results['cov']])**0.5 # / total_results['fisher_params'][0]
+        # mask parameter values with zeros
+        mask_zeros = (par_vals[0] == 0)
+        # create a histogram of the relative errors
+        rel_err = np.asarray(total_results['relative_errors'])
+        rel_err[:,mask_zeros] = errors[:,mask_zeros]
+
         # plot a mollview of the angles theta=par_vals[:,6] phi=par_vals[:,7] with colormap from the error
         # nside = 16
         # npix = hp.nside2npix(nside)
@@ -201,9 +235,7 @@ if assess_science_objectives:
         # plt.savefig(f"{source_name}/mollview_snr_orientation.png")
         # plt.close()
         
-        # create a histogram of the relative errors
-        rel_err = np.asarray(total_results['relative_errors'])
-
+        
         Sigma = np.mean(total_results['cov'], axis=0)[6:8, 6:8]
         thetaS, phiS = total_results['fisher_params'][0][6:8]
         err_sky_loc = 2 * np.pi * np.sin(thetaS) * np.sqrt(np.linalg.det(Sigma)) * (180.0 / np.pi) ** 2
@@ -227,6 +259,7 @@ if assess_science_objectives:
             if param in ['M', 'mu', 'a', 'e0', 'dist']:
                 status = "PASS" if err_value < threshold else "FAIL"
                 error_statuses.append((param, status, err_value, threshold))
+                # if par_vals[0][i] != 0:
                 plt.figure()
                 plt.hist(np.log10(rel_err[:,i]), bins=30, label='Montecarlo Runs')
                 plt.axvline(np.log10(threshold), color='r', linestyle='--', label='Threshold')

@@ -51,8 +51,15 @@ def initialize_gpu(args):
 
 def load_psd(psd_file):
     psdf, psdv = np.load(psd_file).T
+    min_psd = np.min(psdv)
+    max_psd = np.max(psdv)
+    print("PSD range", min_psd, max_psd)
     psd_interp = CubicSplineInterpolant(psdf, psdv)
-    return lambda f, **kwargs: psd_interp(f)
+    def psd_clipped(f, **kwargs):
+        f = np.clip(f, 0.00001, 1.0)
+        return np.clip(psd_interp(f), min_psd, max_psd)
+
+    return psd_clipped
 
 def initialize_waveform_generator(T, args, inspiral_kwargs_forward):
     base_wave = GenerateEMRIWaveform("FastKerrEccentricEquatorialFlux", inspiral_kwargs=inspiral_kwargs_forward, use_gpu=args.use_gpu, sum_kwargs=dict(pad_output=True))
@@ -152,12 +159,15 @@ if __name__ == "__main__":
 
     # initialize the trajectory
     traj = EMRIInspiral(func=KerrEccEqFlux)
-    t_back, p_back, e_back, x_back, Phi_phi_back, Phi_r_back, Phi_theta_back = traj(M, mu, a, p_f, e_f, x0_f, Phi_phi0=0.0, Phi_theta0=0.0, Phi_r0=0.0, dt=args.dt, T=T, integrate_backwards=True)
+    print("Generating backward trajectory")
+    t_back, p_back, e_back, x_back, Phi_phi_back, Phi_r_back, Phi_theta_back = traj(M, mu, a, p_f, e_f, x0_f, dt=1e-4, T=T, integrate_backwards=True)
+    print("Done with the trajectory")
     # initialiaze the waveform generator
     model = initialize_waveform_generator(T, args, inspiral_kwargs_forward)
     # save in the repository the source and detector frame parameters
     # define the initial parameters
     p0, e0, x0 = p_back[-1], e_back[-1], x_back[-1]
+    print("p0, e0, x0", p0, e0, x0)
     Phi_phi0, Phi_r0, Phi_theta0 = generate_random_phases()
     qS, phiS, qK, phiK = generate_random_sky_localization()
     parameters = np.asarray([M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0])
@@ -172,6 +182,9 @@ if __name__ == "__main__":
     # save the waveform generation time
     with open(os.path.join(args.repo, "waveform_generation_time.txt"), "w") as f:
         f.write(str(timing))
+    # check if there are nans in the waveform_out[0]
+    if xp.isnan(xp.asarray(waveform_out)).any():
+        print("There are nans in the waveform")
     # plot the waveform in the frequency domain
     fft_waveform = xp.fft.rfft(waveform_out[0]).get() *args.dt
     freqs = np.fft.rfftfreq(len(waveform_out[0]), d=args.dt)
