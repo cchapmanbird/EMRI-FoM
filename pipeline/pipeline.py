@@ -186,7 +186,10 @@ if __name__ == "__main__":
     if xp.isnan(xp.asarray(waveform_out)).any():
         print("There are nans in the waveform")
     # plot the waveform in the frequency domain
-    fft_waveform = xp.fft.rfft(waveform_out[0]).get() *args.dt
+    # window the signal using scipy.signal.windows.tukey
+    from scipy.signal.windows import tukey
+    window = xp.asarray(tukey(len(waveform_out[0]), alpha=0.05))
+    fft_waveform = xp.fft.rfft(waveform_out[0]*window).get() *args.dt
     freqs = np.fft.rfftfreq(len(waveform_out[0]), d=args.dt)
     mask = (freqs>1e-4)
     plt.figure()
@@ -231,6 +234,7 @@ if __name__ == "__main__":
                                 log_e = log_e, # useful for sources close to zero eccentricity
                                 CovEllipse=False, # will return the covariance and plot it
                                 stability_plot=False, # activate if unsure about the stability of the deltas
+                                window=window # addition of the window to avoid leakage
                                 )
         #execution
         SNR = fish.SNRcalc_SEF()

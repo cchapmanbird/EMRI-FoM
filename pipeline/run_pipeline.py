@@ -23,10 +23,10 @@ thr_err = [1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-1, 10., 10., 10., 10., 10.,     10.]
 # p0, phi0, theta0 are not used in the threshold
 
 # device: device to use on GPUs
-dev = 0
+dev = 4
 # defines the number of montecarlo runs over phases and sky locations
 # N_montecarlo: number of montecarlo runs over phases and sky locations
-Nmonte = 1000
+Nmonte = 500
 
 # source frame parameters
 # M: central mass of the binary in solar masses
@@ -51,11 +51,25 @@ sources = [
     {"M": 1e6, "mu": 1e3, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "HeavyIMRI1", "psd_file": "TDI2_AE_psd.npy", "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
     {"M": 1e7, "mu": 1e3, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "HeavyIMRI2", "psd_file": "TDI2_AE_psd.npy", "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
     {"M": 1e6, "mu": 5e2, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "HeavyIMRI3", "psd_file": "TDI2_AE_psd.npy", "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+
+    # {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.01, "T": 1.0, "z": 0.001534, "repo": "WhirlpoolGalaxyM51", "psd_file": "TDI2_AE_psd.npy", "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
     # Add more sources here if needed
 ]
+# for M in [1e4, 1e5, 1e6, 1e7]:
+#     for mu in [1e1, 1e2, 1e3]: # 12
+#         for a in [0.1, 0.9]: # 24
+#             for e_f in [0.01, 0.1, 0.2]: # 72
+#                 for T in [0.1, 1.0]: # 144
+#                     for z in [0.5, 1.0, 2.0]: # 432
+#                         repo = f"Grid_{M}_{mu}_{a}_{e_f}_{T}_{z}"
+#                         sources.append({"M": M, "mu": mu, "a": a, "e_f": e_f, "T": T, "z": z, "repo": repo, "psd_file": "TDI2_AE_psd.npy", "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err})
 
 # names of parameters
 param_names = np.array(['M','mu','a','p0','e0','xI0','dist','qS','phiS','qK','phiK','Phi_phi0','Phi_theta0','Phi_r0'])
+# jacobian to obtain source frame Fisher matrix from detector frame Fisher matrix
+from common import standard_cosmology
+cosmo = standard_cosmology(zmax=10.0, zmin=1.e-5, zbin=100000)
+
 popinds = []
 popinds.append(5)
 popinds.append(12)
@@ -113,13 +127,34 @@ def generate_latex_report(source_name, snr_status, snr_value, error_statuses, in
     \textbf{{SNR Status:}} {snr_status} (Mean SNR = {snr_value:.2f})\\
     """
 
-    # add table of injected parameters
+    # load the injected parameters in the source frame
+    data_source = np.load(f"{source_name}/source_frame_data.npz")
+    data_detector = np.load(f"{source_name}/detector_frame_data.npz")
+    # for each of the data_source.files = ['M central black hole mass', 'mu secondary black hole mass', 'a dimensionless central object spin', 'p_f final semi-latus rectum', 'e_f final eccentricity', 'z redshift', 'dist luminosity distance in Gpc', 'T inspiral duration in years']
+    # write  in the table the values
+    latex_content += rf"""
+    \begin{{table}}[h]
+    \centering
+    \begin{{tabular}}{{|c|c|c|}}
+    \hline
+    \textbf{{Parameter}} & \textbf{{Source Frame Value}} & \textbf{{Detector Frame Value}}\\
+    \hline
+    """
+    # loop over data_source.files and data_detector.files
+    for i, param in enumerate(data_source.files):
+        latex_content += rf"{param} & {data_source[param]} & {data_detector[param]}\\"
+    latex_content += r"\hline\end{tabular}\end{table}"
+    # for i, param in enumerate(param_names):
+    #     latex_content += rf"{param} & {injected_params[i]}\\"
+    # latex_content += r"\hline\end{tabular}\end{table}"\
+    
+    # breakpoint()
     latex_content += rf"""
     \begin{{table}}[h]
     \centering
     \begin{{tabular}}{{|c|c|}}
     \hline
-    \textbf{{Parameter}} & \textbf{{Detector Frame Value}}\\
+    \textbf{{Parameter}} & \textbf{{Detector Frame Value Realization}}\\
     \hline
     """
     for i, param in enumerate(param_names):
@@ -181,11 +216,25 @@ if assess_science_objectives:
         print(f"Assessing science objectives for {source_name}...")
         filelist = glob.glob(f"{source_name}/*/*.npz")
         total_results = {nn: [] for nn in ['cov', 'snr', 'fisher_params', 'errors', 'relative_errors']}
-        
         for file in filelist:
             results = np.load(file)
+            source_frame_data = np.load(f"{source_name}/source_frame_data.npz")
+            redshift = source_frame_data['z redshift']
+            M_source = source_frame_data['M central black hole mass']
+            mu_source = source_frame_data['mu secondary black hole mass']
+            J = cosmo.jacobian(M_source, mu_source, redshift)
             for el in total_results.keys():
-                total_results[el].append(results[el])
+                if el == 'cov':
+                    Gamma = np.linalg.inv(results[el])
+                    total_results[el].append(np.linalg.inv(J.T @ Gamma @ J))
+                    # total_results[el].append(results[el])
+                if el == 'fisher_params':
+                    source_frame_par = results[el]
+                    source_frame_par[0] = source_frame_par[0] / (1+redshift)
+                    source_frame_par[1] = source_frame_par[1] / (1+redshift)
+                    total_results[el].append(source_frame_par)
+                else:
+                    total_results[el].append(results[el])
         
         mean_snr = np.mean(total_results['snr'])
         # plot SNR histogram
@@ -201,12 +250,16 @@ if assess_science_objectives:
         plt.close()
 
         par_vals = np.array(total_results['fisher_params'])
-        mean_relative_errors = np.mean(np.asarray(total_results['relative_errors']),axis=0)
+        errors = np.asarray([np.diag(el) for el in total_results['cov']])**0.5 # / total_results['fisher_params'][0]
+        # update relative errors
+        source_frame_rel_errors = np.asarray([np.diag(el) for el in total_results['cov']])**0.5 / total_results['fisher_params'][0]
+        det_frame_rel_err = np.asarray(total_results['relative_errors'])
+        mean_relative_errors = np.mean(np.asarray(source_frame_rel_errors),axis=0)
         errors = np.asarray([np.diag(el) for el in total_results['cov']])**0.5 # / total_results['fisher_params'][0]
         # mask parameter values with zeros
         mask_zeros = (par_vals[0] == 0)
         # create a histogram of the relative errors
-        rel_err = np.asarray(total_results['relative_errors'])
+        rel_err = np.asarray(source_frame_rel_errors)
         rel_err[:,mask_zeros] = errors[:,mask_zeros]
 
         # plot a mollview of the angles theta=par_vals[:,6] phi=par_vals[:,7] with colormap from the error
@@ -261,10 +314,13 @@ if assess_science_objectives:
                 error_statuses.append((param, status, err_value, threshold))
                 # if par_vals[0][i] != 0:
                 plt.figure()
-                plt.hist(np.log10(rel_err[:,i]), bins=30, label='Montecarlo Runs')
+                plt.hist(np.log10(rel_err[:,i]), bins=30, label='Source Frame', alpha=0.7, density=True)
+                # check if nans are present
+                if np.sum(np.isinf(det_frame_rel_err[:,i]))==0:
+                    plt.hist(np.log10(det_frame_rel_err[:,i]), bins=30, label='Detector Frame', alpha=0.7, density=True)
                 plt.axvline(np.log10(threshold), color='r', linestyle='--', label='Threshold')
                 plt.xlabel(f'Log10 Relative Error {param}')
-                plt.ylabel('Counts')
+                # plt.ylabel('Counts')
                 plt.legend()
                 plt.savefig(f"{source_name}/relative_errors_histogram_{param}.png")
                 plt.close()
@@ -273,10 +329,10 @@ if assess_science_objectives:
                 status = "PASS" if err_sky_loc < threshold else "FAIL"
                 error_statuses.append(("Sky Localization", status, err_sky_loc, threshold))
                 plt.figure()
-                plt.hist(err_sky_loc, bins=30, label='Montecarlo Runs')
+                plt.hist(err_sky_loc, bins=30, label='Source Frame')
                 plt.axvline(threshold, color='r', linestyle='--', label='Threshold')
                 plt.xlabel(f'Relative Error Sky Localization')
-                plt.ylabel('Counts')
+                # plt.ylabel('Counts')
                 plt.savefig(f"{source_name}/relative_errors_histogram_skyloc.png")
                 plt.close()
             
