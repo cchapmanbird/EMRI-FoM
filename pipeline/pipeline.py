@@ -19,11 +19,16 @@ import time
 import matplotlib.pyplot as plt
 from stableemrifisher.plot import CovEllipsePlot, StabilityPlot
 
+#fom stuff
+from LISAfom.lisatools import lisa_parser, process_args
+from make_psd import build_psd_interp
+
 # Initialize logger
 logger = logging.getLogger()
 
 def parse_arguments():
-    parser = argparse.ArgumentParser()
+    #parser = argparse.ArgumentParser()
+    parser = lisa_parser()
     parser.add_argument("--M", help="Mass of the central black hole", type=float)
     parser.add_argument("--mu", help="Mass of the compact object", type=float)
     parser.add_argument("--a", help="Spin of the central black hole", type=float)
@@ -36,6 +41,8 @@ def parse_arguments():
     parser.add_argument("--use_gpu", help="Whether to use GPU for FIM computation", action="store_true")
     parser.add_argument("--N_montecarlo", help="How many random sky localizations to generate", type=int, default=10)
     parser.add_argument("--device", help="GPU device", type=int, default=0)
+    parser.add_argument('--foreground', action='store_true', default=False,
+                        help="Include the WD confusion foreground")
     return parser.parse_args()
 
 def initialize_gpu(args):
@@ -111,13 +118,16 @@ param_names = np.delete(param_names, popinds).tolist()
 if __name__ == "__main__":
 
     args = parse_arguments()
+    args = process_args(args)
     xp = initialize_gpu(args)
     
     # create repository
     os.makedirs(args.repo, exist_ok=True)
 
     # load psd
-    psd_wrap = load_psd(args.psd_file)
+    #psd_wrap = load_psd(args.psd_file)
+    psd_wrap = build_psd_interp(args, logger, xp=xp)
+    breakpoint()
     
     # get the detector frame parameters
     M = args.M * (1 + args.z)
