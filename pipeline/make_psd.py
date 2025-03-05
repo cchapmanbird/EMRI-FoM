@@ -3,12 +3,12 @@ from stableemrifisher.noise import noise_PSD_AE
 from LISAfom.lisatools import build_lisa_noise
 from few.summation.interpolatedmodesum import CubicSplineInterpolant
 
+def make_psd_file(filename="example_psd.npy"):
+    freqs = np.linspace(0, 1, 100001)[1:]
 
-freqs = np.linspace(0, 1, 100001)[1:]
+    psd = noise_PSD_AE(freqs, TDI = 'TDI2')
 
-psd = noise_PSD_AE(freqs, TDI = 'TDI2')
-
-np.save("example_psd.npy",np.vstack((freqs, psd)).T)
+    np.save(filename,np.vstack((freqs, psd)).T)
 
 
 def build_psd_interp(args, logger, xp=np):
