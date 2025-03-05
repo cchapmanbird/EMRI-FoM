@@ -16,7 +16,7 @@ Below is a quick set of instructions to install the Fast EMRI Waveform (FEW) pac
 
 Create an environment for the figures of merit
 ```sh
-conda create -n fom -c conda-forge gcc_linux-64 gxx_linux-64 wget gsl lapack=3.6.1 hdf5 numpy Cython scipy tqdm jupyter ipython h5py requests matplotlib python=3.12 pandas fortran-compiler
+conda create -n fom -c conda-forge gcc_linux-64 gxx_linux-64 wget gsl lapack=3.6.1 hdf5 numpy Cython scipy tqdm jupyter ipython h5py requests matplotlib python=3.9 pandas fortran-compiler
 conda activate fom
 ```
 
@@ -36,6 +36,21 @@ Test the installation device by running python
 ```python
 import few
 few.get_backend("cuda12x")
+```
+
+### LISA Data Challenge and FoM packages
+
+Install the `ldc` and the `fom` packages
+```sh
+git clone -b develop https://gitlab.in2p3.fr/LISA/LDC.git
+cd LDC
+pip install .
+
+git clone -b develop https://gitlab.in2p3.fr/lisa/lisa-fom.git
+cd lisa-fom
+pip install -r requirements.txt
+pip install pandas==2.2.3
+python setup.py install
 ```
 
 ### Fisher Information package

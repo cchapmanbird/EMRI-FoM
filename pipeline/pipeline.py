@@ -41,8 +41,7 @@ def parse_arguments():
     parser.add_argument("--use_gpu", help="Whether to use GPU for FIM computation", action="store_true")
     parser.add_argument("--N_montecarlo", help="How many random sky localizations to generate", type=int, default=10)
     parser.add_argument("--device", help="GPU device", type=int, default=0)
-    parser.add_argument('--foreground', action='store_true', default=False,
-                        help="Include the WD confusion foreground")
+    parser.add_argument('--foreground', action='store_true', default=False, help="Include the WD confusion foreground")
     return parser.parse_args()
 
 def initialize_gpu(args):
@@ -127,7 +126,6 @@ if __name__ == "__main__":
     # load psd
     #psd_wrap = load_psd(args.psd_file)
     psd_wrap = build_psd_interp(args, logger, xp=xp)
-    breakpoint()
     
     # get the detector frame parameters
     M = args.M * (1 + args.z)

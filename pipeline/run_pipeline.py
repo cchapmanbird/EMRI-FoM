@@ -9,7 +9,7 @@ import io
 import healpy as hp
 
 # decide whether to run the full pipeline and generate the results
-run_pipeline = False
+run_pipeline = True
 # decide whether to assess the science objectives
 assess_science_objectives = True
 
@@ -23,10 +23,13 @@ thr_err = [1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-1, 10., 10., 10., 10., 10.,     10.]
 # p0, phi0, theta0 are not used in the threshold
 
 # device: device to use on GPUs
-dev = 4
+dev = 3
 # defines the number of montecarlo runs over phases and sky locations
 # N_montecarlo: number of montecarlo runs over phases and sky locations
 Nmonte = 500
+
+# include_foreground: defines whether to include the confusion noise foreground
+include_foreground = True
 
 # source frame parameters
 # M: central mass of the binary in solar masses
@@ -90,6 +93,9 @@ if run_pipeline:
             f"--repo {source['repo']} --psd_file {source['psd_file']} --dt {source['dt']} "
             f"--use_gpu --N_montecarlo {source['N_montecarlo']} --device {source['device']}"
         )
+        if include_foreground:
+            command += " --foreground"
+        
         os.system(command)
         end_time = time.time()
         elapsed_time = end_time - start_time
