@@ -45,12 +45,14 @@ Install the `ldc` and the `fom` packages
 git clone -b develop https://gitlab.in2p3.fr/LISA/LDC.git
 cd LDC
 pip install .
+cd ..
 
 git clone -b develop https://gitlab.in2p3.fr/lisa/lisa-fom.git
 cd lisa-fom
 pip install -r requirements.txt
 pip install pandas==2.2.3
 python setup.py install
+cd ..
 ```
 
 ### Fisher Information package
