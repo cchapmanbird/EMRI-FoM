@@ -19,16 +19,15 @@ import time
 import matplotlib.pyplot as plt
 from stableemrifisher.plot import CovEllipsePlot, StabilityPlot
 
-#fom stuff
-from LISAfom.lisatools import lisa_parser, process_args
-from make_psd import build_psd_interp
+#psd stuff
+from psd_utils import load_psd, get_psd_kwargs
 
 # Initialize logger
 logger = logging.getLogger()
 
 def parse_arguments():
-    #parser = argparse.ArgumentParser()
-    parser = lisa_parser()
+    parser = argparse.ArgumentParser()
+
     parser.add_argument("--M", help="Mass of the central black hole", type=float)
     parser.add_argument("--mu", help="Mass of the compact object", type=float)
     parser.add_argument("--a", help="Spin of the central black hole", type=float)
@@ -42,6 +41,8 @@ def parse_arguments():
     parser.add_argument("--N_montecarlo", help="How many random sky localizations to generate", type=int, default=10)
     parser.add_argument("--device", help="GPU device", type=int, default=0)
     parser.add_argument('--foreground', action='store_true', default=False, help="Include the WD confusion foreground")
+    parser.add_argument('--esaorbits', action='store_true', default=False, help="Use ESA trailing orbits. Default is equal arm length orbits.")
+
     return parser.parse_args()
 
 def initialize_gpu(args):
@@ -55,17 +56,18 @@ def initialize_gpu(args):
     np.random.seed(2601)
     return xp
 
-def load_psd(psd_file):
-    psdf, psdv = np.load(psd_file).T
-    min_psd = np.min(psdv)
-    max_psd = np.max(psdv)
-    print("PSD range", min_psd, max_psd)
-    psd_interp = CubicSplineInterpolant(psdf, psdv)
-    def psd_clipped(f, **kwargs):
-        f = np.clip(f, 0.00001, 1.0)
-        return np.clip(psd_interp(f), min_psd, max_psd)
+# def load_psd(psd_file):
+#     psdf, psdv = np.load(psd_file).T
+#     min_psd = np.min(psdv)
+#     max_psd = np.max(psdv)
+#     print("PSD range", min_psd, max_psd)
+#     psd_interp = CubicSplineInterpolant(psdf, psdv)
+#     def psd_clipped(f, **kwargs):
+#         f = np.clip(f, 0.00001, 1.0)
+#         return np.clip(psd_interp(f), min_psd, max_psd)
 
-    return psd_clipped
+#     return psd_clipped
+
 
 def initialize_waveform_generator(T, args, inspiral_kwargs_forward):
     base_wave = GenerateEMRIWaveform("FastKerrEccentricEquatorialFlux", inspiral_kwargs=inspiral_kwargs_forward, use_gpu=args.use_gpu, sum_kwargs=dict(pad_output=True))
@@ -77,10 +79,11 @@ def initialize_waveform_generator(T, args, inspiral_kwargs_forward):
     return model
 
 def initialize_tdi_generator(args):
-    orbits = EqualArmlengthOrbits(use_gpu=args.use_gpu)
-    orbits.configure(linear_interp_setup=True)
-    tdi_kwargs_esa = dict(orbits=orbits, order=25, tdi="2nd generation", tdi_chan="AET")
-    return tdi_kwargs_esa
+    orbits = "esa-trailing-orbits.h5" if args.esaorbits else "equalarmlength-orbits.h5"
+    orbit_file = os.path.join(os.path.dirname(__file__), '..', 'lisa-on-gpu', 'orbit_files', orbits)
+    orbit_kwargs = dict(orbit_file=orbit_file)
+    tdi_kwargs = dict(orbit_kwargs=orbit_kwargs, order=25, tdi="2nd generation", tdi_chan="AET")
+    return tdi_kwargs
 
 def generate_random_phases():
     return np.random.uniform(0, 2 * np.pi), np.random.uniform(0, 2 * np.pi), np.random.uniform(0, 2 * np.pi)
@@ -117,7 +120,7 @@ param_names = np.delete(param_names, popinds).tolist()
 if __name__ == "__main__":
 
     args = parse_arguments()
-    args = process_args(args)
+    #args = process_args(args)
     xp = initialize_gpu(args)
     
     # create repository
@@ -125,7 +128,12 @@ if __name__ == "__main__":
 
     # load psd
     #psd_wrap = load_psd(args.psd_file)
-    psd_wrap = build_psd_interp(args, logger, xp=xp)
+    custom_psd_kwargs = dict() #! put here custom settings for the psd
+    if args.foreground:
+        custom_psd_kwargs["stochastic_params"] = (args.T * YRSID_SI,)
+    psd_kwargs = get_psd_kwargs(custom_psd_kwargs)
+
+    psd_wrap = load_psd(logger=logger, filename=args.psd_file, xp=xp, **psd_kwargs)
     
     # get the detector frame parameters
     M = args.M * (1 + args.z)
