@@ -16,7 +16,7 @@ Below is a quick set of instructions to install the Fast EMRI Waveform (FEW) pac
 
 Create an environment for the figures of merit
 ```sh
-conda create -n fom -c conda-forge gcc_linux-64 gxx_linux-64 wget gsl lapack=3.6.1 hdf5 numpy Cython scipy tqdm jupyter ipython h5py requests matplotlib python=3.9 pandas fortran-compiler
+conda create -n fom -c conda-forge gcc_linux-64 gxx_linux-64 wget gsl lapack=3.6.1 hdf5 numpy Cython scipy tqdm jupyter ipython h5py requests matplotlib python=3.12 pandas fortran-compiler
 conda activate fom
 ```
 
@@ -25,9 +25,13 @@ Locate where the `nvcc` compile is located and add it to the path, in my case it
 export PATH=$PATH:/usr/local/cuda-12.5/bin/
 ```
 
-Check the version of your compiler by running `nvcc --version` and install the corresponding FEW cuda version for running on GPUs:
-```
-pip install --pre fastemriwaveforms-cuda12x
+Check the version of your compiler by running `nvcc --version` and install the corresponding FEW cuda version for running on GPUs [temporary workaround until the repo is merged back into the toolkit]:
+```sh
+git clone git@github.com:znasipak/FastEMRIWaveforms-Soton-Hackathon-2025.git
+git checkout Kerr_Equatorial_Eccentric
+git chekout c04eb6313362db5e75dfc7b531644ac26f67bdf2
+pip install .
+cd ..
 pip install tabulate
 pip install markdown pypandoc
 ```
@@ -36,23 +40,6 @@ Test the installation device by running python
 ```python
 import few
 few.get_backend("cuda12x")
-```
-
-### LISA Data Challenge and FoM packages
-
-Install the `ldc` and the `fom` packages
-```sh
-git clone -b develop https://gitlab.in2p3.fr/LISA/LDC.git
-cd LDC
-pip install .
-cd ..
-
-git clone -b develop https://gitlab.in2p3.fr/lisa/lisa-fom.git
-cd lisa-fom
-pip install -r requirements.txt
-pip install pandas==2.2.3
-python setup.py install
-cd ..
 ```
 
 ### Fisher Information package
@@ -66,12 +53,17 @@ cd ..
 
 ### Install `lisa-on-gpu` for LISA Response
 Install the response
-```sh
-git clone https://github.com/mikekatz04/lisa-on-gpu.git
+<!-- ```sh
 cd lisa-on-gpu
 pip install lisaanalysistools
 python scripts/prebuild.py
 pip install .
+cd ..
+``` -->
+```sh
+cd lisa-on-gpu
+pip install lisaanalysistools
+python setup.py install
 cd ..
 ```
 

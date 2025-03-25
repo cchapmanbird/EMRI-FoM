@@ -42,7 +42,10 @@ def parse_arguments():
     parser.add_argument("--device", help="GPU device", type=int, default=0)
     parser.add_argument('--foreground', action='store_true', default=False, help="Include the WD confusion foreground")
     parser.add_argument('--esaorbits', action='store_true', default=False, help="Use ESA trailing orbits. Default is equal arm length orbits.")
-
+    parser.add_argument('--tdi2', action='store_true', default=False, help="Use 2nd generation TDI channels")
+    parser.add_argument('--channels', type=str, default="AE", help="TDI channels to use")
+    parser.add_argument('--model', type=str, default="scirdv1", help="Noise model to use")
+    
     return parser.parse_args()
 
 def initialize_gpu(args):
@@ -128,9 +131,14 @@ if __name__ == "__main__":
 
     # load psd
     #psd_wrap = load_psd(args.psd_file)
-    custom_psd_kwargs = dict() #! put here custom settings for the psd
+    custom_psd_kwargs = {
+            'tdi2': args.tdi2,
+            'channels': args.channels,
+        }
+    
     if args.foreground:
         custom_psd_kwargs["stochastic_params"] = (args.T * YRSID_SI,)
+        custom_psd_kwargs["include_foreground"] = True
     psd_kwargs = get_psd_kwargs(custom_psd_kwargs)
 
     psd_wrap = load_psd(logger=logger, filename=args.psd_file, xp=xp, **psd_kwargs)
@@ -210,7 +218,7 @@ if __name__ == "__main__":
     mask = (freqs>1e-4)
     plt.figure()
     plt.loglog(freqs[mask], np.abs(fft_waveform)[mask]**2)
-    plt.loglog(freqs[mask], psd_wrap(freqs[mask]).get(), label="PSD")
+    plt.loglog(freqs[mask], np.atleast_2d(psd_wrap(freqs[mask]).get())[0], label="PSD")
     plt.xlabel("Frequency [Hz]")
     plt.ylabel(r"Amplitude $|\tilde h(f)|$")
     plt.legend()

@@ -6,7 +6,7 @@ import os
 
 path_to_file = os.path.dirname(__file__)
 
-from lisatools.detector import EqualArmlengthOrbits
+#from lisatools.detector import EqualArmlengthOrbits
 from fastlisaresponse import ResponseWrapper
 from fastlisaresponse.utils import get_overlap
 
@@ -82,14 +82,34 @@ class ResponseTest(unittest.TestCase):
         index_lambda = 6
         index_beta = 7
 
-        orbits = EqualArmlengthOrbits(use_gpu=use_gpu)
-        orbits.configure(linear_interp_setup=True)
-        tdi_kwargs_esa = dict(
-            orbits=orbits,
-            order=order,
-            tdi=tdi_gen,
-            tdi_chan="AET",
-        )
+        # orbits = EqualArmlengthOrbits(use_gpu=use_gpu)
+        # orbits.configure(linear_interp_setup=True)
+        # tdi_kwargs_esa = dict(
+        #     orbits=orbits,
+        #     order=order,
+        #     tdi=tdi_gen,
+        #     tdi_chan="AET",
+        # )
+
+        # gb_lisa_esa = ResponseWrapper(
+        #     gb,
+        #     T,
+        #     dt,
+        #     index_lambda,
+        #     index_beta,
+        #     t0=t0,
+        #     flip_hx=False,  # set to True if waveform is h+ - ihx
+        #     use_gpu=use_gpu,
+        #     remove_sky_coords=True,  # True if the waveform generator does not take sky coordinates
+        #     is_ecliptic_latitude=True,  # False if using polar angle (theta)
+        #     remove_garbage=True,  # removes the beginning of the signal that has bad information
+        #     **tdi_kwargs_esa,
+        # )
+
+        orbits = "equalarmlength-orbits.h5"
+        orbit_file = os.path.join(os.path.dirname(__file__), 'lisa-on-gpu', 'orbit_files', orbits)
+        orbit_kwargs = dict(orbit_file=orbit_file)
+        tdi_kwargs = dict(orbit_kwargs=orbit_kwargs, order=order, tdi=tdi_gen, tdi_chan="AET")
 
         gb_lisa_esa = ResponseWrapper(
             gb,
@@ -103,7 +123,7 @@ class ResponseTest(unittest.TestCase):
             remove_sky_coords=True,  # True if the waveform generator does not take sky coordinates
             is_ecliptic_latitude=True,  # False if using polar angle (theta)
             remove_garbage=True,  # removes the beginning of the signal that has bad information
-            **tdi_kwargs_esa,
+            **tdi_kwargs,
         )
 
         # define GB parameters
@@ -128,7 +148,7 @@ class ResponseTest(unittest.TestCase):
 
         if gpu_available:
             waveform_gpu = self.run_test("1st generation", True)
-            mm = 1.0 - get_overlap(
+            mm = len(waveform_cpu) - get_overlap(
                 cp.asarray(waveform_cpu),
                 cp.asarray(waveform_gpu),
                 use_gpu=gpu_available,
@@ -142,7 +162,7 @@ class ResponseTest(unittest.TestCase):
 
         if gpu_available:
             waveform_gpu = self.run_test("2nd generation", True)
-            mm = 1.0 - get_overlap(
+            mm = len(waveform_cpu) - get_overlap(
                 cp.asarray(waveform_cpu), waveform_gpu, use_gpu=gpu_available
             )
             self.assertLess(np.abs(mm), 1e-10)
@@ -312,3 +332,4 @@ class KerrWaveformTest(unittest.TestCase):
             Kerr_wave_retrograde, Kerr_wave_prograde, use_gpu=best_backend.uses_gpu
         )
         self.assertGreater(mm, 1e-3)
+

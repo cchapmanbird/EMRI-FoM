@@ -1,20 +1,16 @@
 # plot horizon data for the Kerr eccentric equatorial case
-# python plot_horizon_data.py -Tobs 2.0 -q 1.0e-5 -spin 0.99 -zaxis e0 -base horizon
 
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import matplotlib.lines as mlines
-from seaborn import color_palette
+# from seaborn import color_palette
 
 from scipy.interpolate import interp1d
 import argparse
 
 import pickle as pkl
 
-from LISAfom.lisatools import lisa_parser, process_args, \
-                              build_lisa_noise, build_lisa_orbits
-from ldc.utils.logging import init_logger, close_logger
 
 default_rcParams = {
         'text.usetex': True,
@@ -63,16 +59,13 @@ plt.rcParams.update(default_rcParams)
 
 
 parser = argparse.ArgumentParser(description="Plot horizon data")
-parser.add_argument("-Tobs", "--Tobs", type=float, default=3.5, help="Observation time in years")
-parser.add_argument("-e0", "--e0", type=float, default=5.0e-1, help="initial eccentricity")
-parser.add_argument("-spin", "--spin", type=float, default=9.9e-5, help="spin")
 parser.add_argument("-base", "--base_name", type=str, default='horizon', help="base name of the data file")
+parser.add_argument("-datadir", "--datadir", type=str, default='horizon_data/', help="directory where the data is stored")
 parser.add_argument("-interp", "--interp", default=False, help="interpolate data", action='store_true')
 parser.add_argument("-fill", "--fill", default=False, help="fill between data", action='store_true')
 
 args = vars(parser.parse_args())
 
-datadir = './newfew_dense/'#so3-horizon-unmerged/'
 plotdir = './figures/'
 
 def add_plot(M_axis, data, ls='solid', frame='detector', colors='k', fill=False, interp=None, interp_kwargs={}, plot_kwargs={}, fig=None, axs=None):
@@ -171,6 +164,9 @@ if __name__ == '__main__':
     e0 = args['e0']
     spin = args['spin']
     base_name = args['base_name']
+    datadir = args['datadir']
+    if datadir[-1] != '/':
+        datadir += '/'
 
     datastring = 'so3-horizon-z.0_-1.pkl'
 

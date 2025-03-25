@@ -1,3 +1,5 @@
+# python produce_data.py --gpu --dev 3 --fixed_q --channels AET --foreground --tdi2 --start 0 --end 10
+
 import sys, os
 import pickle as pkl
 from time import time
@@ -7,7 +9,6 @@ import pickle as pkl
 import tracemalloc
 
 import numpy as np
-#from scipy.interpolate import InterpolatedUnivariateSpline as spline
 
 from few.trajectory.inspiral import EMRIInspiral
 from few.trajectory.ode.flux import SchwarzEccFlux, KerrEccEqFlux
@@ -23,12 +24,8 @@ from fastlisaresponse import ResponseWrapper
 import astropy.units as u
 from astropy.cosmology import Planck18, z_at_value
 
-# from LISAfom.lisatools import lisa_parser, process_args, \
-#                               build_lisa_noise, build_lisa_orbits
-# from ldc.utils.logging import init_logger, close_logger
 import logging
 import argparse
-import lisaconstants as constants
 
 import h5py
 
@@ -41,24 +38,23 @@ from psd_utils import load_psd, get_psd_kwargs, compute_snr2
 
 SEED = 26011996
 
-WAVEFORM_ARGS = [FastKerrEccentricEquatorialFlux] #[FastSchwarzschildEccentricFluxBicubic]#[SchwarzschildEccentricWaveformBase, EMRIInspiral, RomanAmplitude, InterpolatedModeSum]
+WAVEFORM_ARGS = [FastKerrEccentricEquatorialFlux]
 TRAJECTORY = KerrEccEqFlux
 DEF_TOBS = 3.5
 DEF_DT = 10.0
 DEF_Z = 1
 DEF_SNR_THR = 20
 
-M_POINTS = 10.0**np.linspace(4.0, 8.0, num=20)
+NUM_POINTS = 10
+
+M_POINTS = 10.0**np.linspace(4.0, 8.0, num=NUM_POINTS)
 MU_POINTS = [10.0, 30.0]
-Q_POINTS = [1e-6, 1e-5, 1e-4, 1e-3]
+Q_POINTS = [1e-4] #[1e-6, 1e-5, 1e-4, 1e-3]
 
-GRID_POINTS_Q = [[M, q * M]  for q in Q_POINTS for M in M_POINTS] #+ \
-              #[[30., M] for M in np.logspace(5, np.log10(3e6), num=18)] + \
-              #[[30., M] for M in np.logspace(np.log10(2e4), 5, num=18)]
+GRID_POINTS_Q = [[M, q * M]  for q in Q_POINTS for M in M_POINTS]
+GRID_POINTS_MU = [[M, mu] for mu in MU_POINTS for M in M_POINTS]
 
-GRID_POINTS_MU = [[M, mu] for mu in MU_POINTS for M in M_POINTS] #+ \
-
-MU_MIN, MU_MAX = 0.1, 1e5
+MU_MIN, MU_MAX = 1, 1e5
 
 DEF_PARS = {
     'a': 0.5,
@@ -298,7 +294,6 @@ def get_snr2_single(pars, args, wf_gen, emri_kwargs, noise_psd):
     mask = fft_freq > args.freqs[0]
     tdi_freqs = xp.array([xp.fft.rfft(channel)[mask] * args.dt for channel in data_channels])
 
-
     snr2 = compute_snr2(fft_freq[mask], tdi_freqs, noise_psd, xp=xp)
 
     return snr2
@@ -325,7 +320,11 @@ def get_snr2(pars, args, seed, traj, emri_kwargs, wf_gen, noise_psd):
             randomize(pars_here, args)
 
         try:
-            snr2 = get_snr2_single(pars_here, args, wf_gen, emri_kwargs, noise_psd) #already numpy
+            snr2 = get_snr2_single(pars_here, args, wf_gen, emri_kwargs, noise_psd)
+            try:
+                snr2 = snr2.get()
+            except AttributeError:
+                pass # already on CPU
             snr = np.sqrt(snr2)
             point = [snr]
         except Exception as e:
@@ -338,7 +337,7 @@ def get_snr2(pars, args, seed, traj, emri_kwargs, wf_gen, noise_psd):
 
     return output
 
-def get_horizon_z(M, mu, snr, args, noise_psd):
+def get_horizon_z(M, mu, snr, args):
     """
     Get the horizon redshift for a given (M, mu) point
     """
@@ -354,7 +353,7 @@ def get_from_outfile_z(_mu0, _M0, _file, _args):
 
     with open(_file, 'rb') as _fhand:
         data = pkl.load(_fhand)
-
+    breakpoint()
     data = [item for item in data if item[0] == _M0 and item[1] == _mu0][0]
 
     if data[-1] is None:
@@ -383,7 +382,7 @@ if __name__ == "__main__":
 
     parser.add_argument('--report',  default="outputReport.md",
                         help="Path to markdown report")
-    parser.add_argument('--outdir',  default="so3-horizon-unmerged",
+    parser.add_argument('--outdir',  default="horizon_data",
                         help="Output subdirectory")
     parser.add_argument('--duty_cycle', type=float, default=1.0,
                         help="Duty cycle of the observation")
@@ -401,8 +400,8 @@ if __name__ == "__main__":
                         help="Use 2nd generation TDI channels")
     parser.add_argument('--channels', type=str, default="AE",
                         help="TDI channels to use")
-    parser.add_argument('--maxit', type=int, default=75,
-                        help="Maximum number of iterations.")
+    parser.add_argument('--freqs', type=float, metavar='N', nargs=2,
+                        default=[2e-5,1], help= "Frequency range: [fmin,fmax]")
     parser.add_argument('--ntrials', type=int, default=100,
                         help="Number of generated sources")
     parser.add_argument('--start', type=int, default=0,
@@ -413,18 +412,10 @@ if __name__ == "__main__":
                         help="Suppress generation of random parameters")
     parser.add_argument('--randomize-e', action='store_true', default=False,
                         help="Randomize the eccentricity")
-    parser.add_argument('--no-horizon', dest='horizon', action='store_false',
-                        help="Suppress the search for the horizon z")
-    parser.add_argument('--no-outdata', dest='outdata', action='store_false',
-                        help="DO not output the data file.")
     parser.add_argument('--fixed-pars', type=str, default=None,
                         help="Pickle file with fixed sky parameters per mu.")
     parser.add_argument('--fom-title', type=str, default="Horizon of EMRI",
                         help= "Title of the report")
-    parser.add_argument('--fom-config', type=str, default="",
-                        help= "Config file gathering FoM parameters")
-    parser.add_argument('--nproc', type=int, default=-1,
-                        help="Number of process")
     parser.add_argument('--gpu', action='store_true',
                         help="Use GPU (def: False)")
     parser.add_argument('--dev', type=int, default=None,
@@ -433,10 +424,12 @@ if __name__ == "__main__":
                         help="Include the WD confusion foreground")
     parser.add_argument('--fixed_q', action='store_true', default=False,
                         help="Fixed mass ratio")
-    parser.add_argument('--psd-file', type=str, default="example_psd.npy",
+    parser.add_argument('--psd_file', type=str, default=None,
                         help="PSD file")
     parser.add_argument('--esaorbits', action='store_true', default=False, 
                         help="Use ESA trailing orbits. Default is equal arm length orbits.")
+    parser.add_argument('--model', type=str, default="scirdv1",
+                        help="Noise model")
 
     args = parser.parse_args()
     #args = process_args(args)
@@ -453,7 +446,20 @@ if __name__ == "__main__":
 
     lisa_arm_km = args.armlength.to("km").value
 
-    logger = logging.getLogger()
+    logger = logging.getLogger(name='horizon')
+    level = logging.DEBUG
+    logger.setLevel(level)
+    if (len(logger.handlers) < 2):
+        formatter = logging.Formatter("%(asctime)s - %(name)s - "
+                                      "%(levelname)s - %(message)s")
+        
+        shandler = logging.StreamHandler(sys.stdout)
+        shandler.setLevel(level)
+        shandler.setFormatter(formatter)
+        logger.addHandler(shandler)
+
+
+
     outdir = os.path.join(os.path.dirname(args.report), args.outdir)
     os.makedirs(outdir, exist_ok=True)
     logger.info("Running on the following (M, mu) grid points: %s", mass_grid)
@@ -469,6 +475,7 @@ if __name__ == "__main__":
 
     if args.foreground:
         custom_psd_kwargs['stochastic_params'] = (args.T * YRSID_SI,)
+        custom_psd_kwargs['include_foreground'] = True  
 
     psd_kwargs = get_psd_kwargs(custom_psd_kwargs)
 
@@ -556,10 +563,6 @@ if __name__ == "__main__":
                         M, mu, time() - itime, tracemalloc.get_traced_memory())
             tracemalloc.stop()
 
-        if not args.horizon:
-            continue
-
-
         logger.info("Getting the horizon z for (M, mu)=(%s, %s)", M, mu)
         try:
             average_snr = np.mean(point_vec[point_vec != None])
@@ -568,7 +571,7 @@ if __name__ == "__main__":
 
             continue
         try:
-            point_z = get_horizon_z(M, mu, average_snr, args, noise_psd)
+            point_z = get_horizon_z(M, mu, average_snr, args)
             horizon_vec.append(point_z)
             logger.info("Finished finding horizon z for (M, mu)=(%s, %s)", M, mu)
 
@@ -579,19 +582,24 @@ if __name__ == "__main__":
             horizon_vec.append([M, mu, None])
 
     # outputs
-    if args.outdata and not ONLY_HORIZON:
-        logger.info("Saving data. Output file: %s", outfile)
-        os.makedirs(outdir, exist_ok=True)
-        with open(outfile, 'wb') as fhand:
-            pkl.dump(snr_vec, fhand)
+    
+    logger.info("Saving data. Output file: %s", outfile)
+    os.makedirs(outdir, exist_ok=True)
+    with open(outfile, 'wb') as fhand:
+        pkl.dump(snr_vec, fhand)
 
-    if args.horizon:
-        logger.info("Saving horizon_z. Output file: %s", outfile_z)
-        with open(outfile_z, 'wb') as fhand:
-            pkl.dump(horizon_vec, fhand)
+    logger.info("Saving horizon_z. Output file: %s", outfile_z)
+    with open(outfile_z, 'wb') as fhand:
+        pkl.dump(horizon_vec, fhand)
 
         # Dealing with a flag file instead of the input, in Snakefile
         # allows for restaring horizon search to the last saved iteration
         logger.info("Creating the flag file %s", flagfile)
         with open(flagfile, 'w') as _:
             pass
+    
+    logger.info("Done.")
+    for h in logger.handlers:
+        logger.removeHandler(h)
+        h.flush()
+        h.close()

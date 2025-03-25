@@ -150,7 +150,10 @@ def load_psd(
     psd_clipped : function
         A function that takes a frequency and returns the PSD at that frequency
     """
-
+    if filename is None or filename == "None":
+        tdi_gen = 'tdi2' if tdi2 else 'tdi1'
+        foreground = 'wd' if include_foreground else 'no_wd'    
+        filename = f"noise_psd_{model}_{channels}_{tdi_gen}_{foreground}.npy"
     if not os.path.exists(filename):
         logger.warning(f"PSD file {filename} does not exist. Creating it now.")
         write_psd_file(model=model, channels=channels, tdi2=tdi2, include_foreground=include_foreground, filename=filename, **kwargs)

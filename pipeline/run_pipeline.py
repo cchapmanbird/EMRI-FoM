@@ -12,6 +12,10 @@ import healpy as hp
 run_pipeline = True
 # decide whether to assess the science objectives
 assess_science_objectives = True
+#decide whether to generate the data for the redshift horizon plot
+generate_redshift_horizon = False
+# decide whether to plot the redshift horizon plot
+plot_redshift_horizon = False
 
 # the following two lines define the thresholds for the science objectives
 # threshold_SNR: threshold on SNR for the science objectives
@@ -28,8 +32,19 @@ dev = 3
 # N_montecarlo: number of montecarlo runs over phases and sky locations
 Nmonte = 500
 
+#define the psd and response properties
+channels = 'AET'
+tdi2 = True
+model = 'scirdv1'
+esaorbits = True
+psd_file = "TDI2_AE_psd.npy"
 # include_foreground: defines whether to include the confusion noise foreground
 include_foreground = True
+
+# horizon settings
+T_obs = 2.0 # observation time in years
+ntrials = 100 # number of samples over the extrinsic parameters
+horizon_outdir = "horizon/data" # output directory for the horizon data
 
 # source frame parameters
 # M: central mass of the binary in solar masses
@@ -42,6 +57,13 @@ include_foreground = True
 # psd_file: name of the file with the power spectral density
 # dt: time step in seconds
 dt = 5.0
+
+##testing##
+Nmonte = 1
+ntrials = 1
+psd_file = None
+dt = 20.0
+
 sources = [
     # {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.2, "T": 1.0, "z": 1.0, "repo": "Eccentric", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
     # {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.01, "T": 1.0, "z": 1.0, "repo": "Circular", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
@@ -49,11 +71,11 @@ sources = [
     # {"M": 1e5, "mu": 1e1, "a": 0.9, "e_f": 0.2, "T": 1.0, "z": 0.5, "repo": "LowMass", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
     # {"M": 5e5, "mu": 5e1, "a": 0.9, "e_f": 0.1, "T": 1.0, "z": 1.0, "repo": "IMRI", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
 
-    {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "EMRI", "psd_file": "TDI2_AE_psd.npy", "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
-    {"M": 5e4, "mu": 1e1, "a": 0.0, "e_f": 0.01, "T": 0.1, "z": 0.5, "repo": "LightIMRI", "psd_file": "TDI2_AE_psd.npy", "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
-    {"M": 1e6, "mu": 1e3, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "HeavyIMRI1", "psd_file": "TDI2_AE_psd.npy", "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
-    {"M": 1e7, "mu": 1e3, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "HeavyIMRI2", "psd_file": "TDI2_AE_psd.npy", "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
-    {"M": 1e6, "mu": 5e2, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "HeavyIMRI3", "psd_file": "TDI2_AE_psd.npy", "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+    {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "EMRI", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+    {"M": 5e4, "mu": 1e1, "a": 0.0, "e_f": 0.01, "T": 0.1, "z": 0.5, "repo": "LightIMRI", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+    {"M": 1e6, "mu": 1e3, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "HeavyIMRI1", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+    {"M": 1e7, "mu": 1e3, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "HeavyIMRI2", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+    {"M": 1e6, "mu": 5e2, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "HeavyIMRI3", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
 
     # {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.01, "T": 1.0, "z": 0.001534, "repo": "WhirlpoolGalaxyM51", "psd_file": "TDI2_AE_psd.npy", "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
     # Add more sources here if needed
@@ -90,11 +112,15 @@ if run_pipeline:
         command = (
             f"python pipeline.py --M {source['M']} --mu {source['mu']} --a {source['a']} "
             f"--e_f {source['e_f']} --T {source['T']} --z {source['z']} "
-            f"--repo {source['repo']} --psd_file {source['psd_file']} --dt {source['dt']} "
-            f"--use_gpu --N_montecarlo {source['N_montecarlo']} --device {source['device']}"
+            f"--repo {source['repo']} --psd_file {source['psd_file']} --model {source['model']} --channels {source['channels']} "
+            f"--dt {source['dt']}  --use_gpu --N_montecarlo {source['N_montecarlo']} --device {source['device']}"
         )
         if include_foreground:
             command += " --foreground"
+        if esaorbits:
+            command += " --esaorbits"
+        if tdi2:
+            command += " --tdi2"
         
         os.system(command)
         end_time = time.time()
@@ -346,3 +372,32 @@ if assess_science_objectives:
         
         # Generate LaTeX report and compile to PDF
         generate_latex_report(source_name, snr_status, mean_snr, error_statuses, total_results['fisher_params'][0])
+
+if generate_redshift_horizon:
+    print("Generating data for redshift horizon plot")
+    start_time = time.time()
+    command = (
+        f"python horizon/produce_data.py --gpu --dev {dev} --fixed_q "
+        f"--psd_file {psd_file} --model {model} --channels {channels} --esaorbits "
+        f"--dt {dt} --T_obs {T_obs} --outdir {horizon_outdir} --ntrials {ntrials}"
+    )
+    if include_foreground:
+        command += " --foreground"
+    if esaorbits:
+        command += " --esaorbits"
+    if tdi2:
+        command += " --tdi2"
+    
+    os.system(command)
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    source_runtimes[source['repo']] = elapsed_time
+    print(f"Runtime for the horizon data production: {elapsed_time:.2f} seconds")
+
+if plot_redshift_horizon:
+    command = (
+        f"python horizon/plot_data.py --interp --fill --outdir {horizon_outdir} "
+    )
+    os.system(command)
+    print(f"Plotted the redshift horizon plot")
+
