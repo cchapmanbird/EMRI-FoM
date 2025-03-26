@@ -34,6 +34,7 @@ pip install .
 cd ..
 pip install tabulate
 pip install markdown pypandoc
+pip install scikit-learn
 ```
 
 Test the installation device by running python

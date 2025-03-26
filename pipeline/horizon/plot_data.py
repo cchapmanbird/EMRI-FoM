@@ -6,6 +6,10 @@ import matplotlib as mpl
 import matplotlib.lines as mlines
 # from seaborn import color_palette
 
+from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import RBF, WhiteKernel, ConstantKernel
+from sklearn.model_selection import cross_val_predict
+
 from scipy.interpolate import interp1d
 import argparse
 
@@ -68,7 +72,7 @@ parser.add_argument("-fill", "--fill", default=False, help="fill between data", 
 args = vars(parser.parse_args())
 
 
-def add_plot(M_axis, data, ls='solid', frame='detector', colors='k', fill=False, interp=None, interp_kwargs={}, plot_kwargs={}, fig=None, axs=None):
+def add_plot(M_axis, data, ls='solid', frame='detector', colors='k', fill=False, interp=None, interp_kwargs={}, plot_kwargs={}, fig=None, axs=None, use_gpr=True):
     if fig is None or axs is None:
         fig, axs = plt.subplots(ncols=1, nrows=1, sharex=True)
 
@@ -99,18 +103,31 @@ def add_plot(M_axis, data, ls='solid', frame='detector', colors='k', fill=False,
             raise ValueError('frame must be either detector or source')
         
         if interp:
-            interpolant = interp(M_source, z_here, **interp_kwargs) 
-            
+
             if 'fill_value' in interp_kwargs.keys() and interp_kwargs['fill_value'] == 'extrapolate':
-                xlow, xhigh = 4, 8
+                    xlow, xhigh = 4, 8
             else:
                 xlow, xhigh = np.log10(M_source[0]), np.log10(M_source[-1]*0.99)
-            x = np.logspace(xlow, xhigh, 1000)
-            y = interpolant(x)
+
+            if use_gpr:
+                kernel = 1.0 * RBF(length_scale=1e-1, length_scale_bounds=(1e-2, 1e3)) + WhiteKernel(noise_level=1e-2, noise_level_bounds=(1e-10, 1e1))
+
+                gp = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=30)
+
+                gp.fit(np.log10(M_source.reshape(-1, 1)), z_here)
+
+                x = np.linspace(xlow, xhigh, 1000)
+                y, sigma = gp.predict(x.reshape(-1, 1), return_std=True)
+                x = 10**x
+            else:
+                interpolant = interp(M_source, z_here, **interp_kwargs) 
+                
+                x = np.logspace(xlow, xhigh, 1000)
+                y, sigma = interpolant(x), None
 
         else:
             x = M_source
-            y = z_here
+            y, sigma = z_here, None
 
         #breakpoint()
 
@@ -123,14 +140,9 @@ def add_plot(M_axis, data, ls='solid', frame='detector', colors='k', fill=False,
             x_prev = x
         else:
             axs.semilogx(x, y, ls=ls, color=color, label=key, **plot_kwargs)
-        
-        #* commented out as long as the redshift at low masses diverges
-            # M_edge.append(M_source[np.argmin(np.abs(x*float(key) - 1.0))])
-            # z_edge.append(y[np.argmin(np.abs(x - 1.0))])
-        # axs.semilogx(M_edge, z_edge, color='k', ls='--', marker='x', markersize=5, zorder=2)
-        # if fill:
-        #     axs.fill_between(M_edge, 0, z_edge, alpha=0.3, zorder=2, hatch='', color='k', rasterized=True)
 
+            if sigma is not None:   
+                axs.fill_between(x, y-sigma, y+sigma, alpha=0.3, zorder=1, hatch='', color=color, rasterized=True)
         
     
     axs.set_xlabel(r'$M_{\rm source} \, [M_\odot]$')
@@ -217,7 +229,7 @@ if __name__ == '__main__':
     cpal = pastel_map('Blues', c=0.2, n=nlines+1)[1:]#[::-1]
 
     #fig, axs = plt.subplots(ncols=1, nrows=1, sharex=True)
-    fig, axs = add_plot(M_data, z_data, frame='source', colors=cpal, fill=fill, interp=interp, interp_kwargs=interp_kwargs)#, plot_kwargs=plot_kwargs, fig=fig, axs=axs)
+    fig, axs = add_plot(M_data, z_data, frame='source', colors=cpal, fill=fill, interp=interp, interp_kwargs=interp_kwargs, use_gpr=True)#, plot_kwargs=plot_kwargs, fig=fig, axs=axs)
 
     boundaries = list(q_unique) + [q_unique[-1] * 1.15]
     boundaries_shift = [boundaries[i] - 0.05 for i in range(len(boundaries))]
