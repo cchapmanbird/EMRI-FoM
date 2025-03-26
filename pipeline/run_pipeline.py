@@ -9,13 +9,13 @@ import io
 import healpy as hp
 
 # decide whether to run the full pipeline and generate the results
-run_pipeline = True
+run_pipeline = False
 # decide whether to assess the science objectives
-assess_science_objectives = True
+assess_science_objectives = False
 #decide whether to generate the data for the redshift horizon plot
 generate_redshift_horizon = False
 # decide whether to plot the redshift horizon plot
-plot_redshift_horizon = False
+plot_redshift_horizon = True
 
 # the following two lines define the thresholds for the science objectives
 # threshold_SNR: threshold on SNR for the science objectives
@@ -45,6 +45,7 @@ include_foreground = True
 T_obs = 2.0 # observation time in years
 ntrials = 100 # number of samples over the extrinsic parameters
 horizon_outdir = "horizon/data" # output directory for the horizon data
+horizon_plotdir = "horizon/figures" # output directory for the horizon plot
 
 # source frame parameters
 # M: central mass of the binary in solar masses
@@ -57,12 +58,6 @@ horizon_outdir = "horizon/data" # output directory for the horizon data
 # psd_file: name of the file with the power spectral density
 # dt: time step in seconds
 dt = 5.0
-
-##testing##
-Nmonte = 1
-ntrials = 1
-psd_file = None
-dt = 20.0
 
 sources = [
     # {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.2, "T": 1.0, "z": 1.0, "repo": "Eccentric", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
@@ -379,7 +374,7 @@ if generate_redshift_horizon:
     command = (
         f"python horizon/produce_data.py --gpu --dev {dev} --fixed_q "
         f"--psd_file {psd_file} --model {model} --channels {channels} --esaorbits "
-        f"--dt {dt} --T_obs {T_obs} --outdir {horizon_outdir} --ntrials {ntrials}"
+        f"--dt {dt} --T {T_obs} --outdir {horizon_outdir} --ntrials {ntrials}"
     )
     if include_foreground:
         command += " --foreground"
@@ -391,12 +386,11 @@ if generate_redshift_horizon:
     os.system(command)
     end_time = time.time()
     elapsed_time = end_time - start_time
-    source_runtimes[source['repo']] = elapsed_time
     print(f"Runtime for the horizon data production: {elapsed_time:.2f} seconds")
 
 if plot_redshift_horizon:
     command = (
-        f"python horizon/plot_data.py --interp --fill --outdir {horizon_outdir} "
+        f"python horizon/plot_data.py --interp --fill --datadir {horizon_outdir} --plotdir {horizon_plotdir}"
     )
     os.system(command)
     print(f"Plotted the redshift horizon plot")

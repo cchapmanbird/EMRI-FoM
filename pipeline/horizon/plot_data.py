@@ -60,13 +60,13 @@ plt.rcParams.update(default_rcParams)
 
 parser = argparse.ArgumentParser(description="Plot horizon data")
 parser.add_argument("-base", "--base_name", type=str, default='horizon', help="base name of the data file")
-parser.add_argument("-datadir", "--datadir", type=str, default='horizon_data/', help="directory where the data is stored")
+parser.add_argument("-datadir", "--datadir", type=str, default='data/', help="directory where the data is stored")
+parser.add_argument("-plotdir", "--plotdir", type=str, default='figures/', help="directory where the plots are stored")
 parser.add_argument("-interp", "--interp", default=False, help="interpolate data", action='store_true')
 parser.add_argument("-fill", "--fill", default=False, help="fill between data", action='store_true')
 
 args = vars(parser.parse_args())
 
-plotdir = './figures/'
 
 def add_plot(M_axis, data, ls='solid', frame='detector', colors='k', fill=False, interp=None, interp_kwargs={}, plot_kwargs={}, fig=None, axs=None):
     if fig is None or axs is None:
@@ -160,13 +160,15 @@ def pastel_map(cmap, c=0.2, n=6):
     
 
 if __name__ == '__main__':
-    Tobs = args['Tobs']
-    e0 = args['e0']
-    spin = args['spin']
     base_name = args['base_name']
+    
     datadir = args['datadir']
     if datadir[-1] != '/':
         datadir += '/'
+    
+    plotdir = args['plotdir']
+    if plotdir[-1] != '/':
+        plotdir += '/'
 
     datastring = 'so3-horizon-z.0_-1.pkl'
 
