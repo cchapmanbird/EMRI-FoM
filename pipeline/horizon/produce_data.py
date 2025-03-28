@@ -341,12 +341,16 @@ def get_horizon_z(M, mu, snr, args):
     """
     Get the horizon redshift for a given (M, mu) point
     """
-    if args.fixed_q:
-        d_L = snr / args.snr_thr
-        z = get_redshift(d_L)
-        point_z = [M / (1+z), mu / (1+z), z]
-    else:
-        raise NotImplementedError("Horizon search for fixed secondary mass not implemented yet.")
+    # if args.fixed_q:
+    #     d_L = snr / args.snr_thr
+    #     z = get_redshift(d_L)
+    #     point_z = [M / (1+z), mu / (1+z), z]
+    # else:
+    #     raise NotImplementedError("Horizon search for fixed secondary mass not implemented yet.")
+
+    d_L = snr / args.snr_thr
+    z = get_redshift(d_L)
+    point_z = [M / (1+z), mu / (1+z), z]
     return point_z
 
 def get_from_outfile_z(_mu0, _M0, _file, _args):
@@ -384,6 +388,8 @@ if __name__ == "__main__":
                         help="Path to markdown report")
     parser.add_argument('--outdir',  default="horizon_data",
                         help="Output subdirectory")
+    parser.add_argument('--basename',  default="so3-horizon",
+                        help="Base name for output files")
     parser.add_argument('--duty_cycle', type=float, default=1.0,
                         help="Duty cycle of the observation")
     parser.add_argument('--armlength', type=float, default=2.5e9,
@@ -422,8 +428,6 @@ if __name__ == "__main__":
                         help="GPU device to use")
     parser.add_argument('--foreground', action='store_true', default=False,
                         help="Include the WD confusion foreground")
-    parser.add_argument('--fixed_q', action='store_true', default=False,
-                        help="Fixed mass ratio")
     parser.add_argument('--psd_file', type=str, default=None,
                         help="PSD file")
     parser.add_argument('--esaorbits', action='store_true', default=False, 
@@ -442,7 +446,7 @@ if __name__ == "__main__":
     # Apply duty cycle to the SNR threshold (increasing it)
     args.snr_thr /= np.sqrt(args.duty_cycle)
 
-    mass_grid = GRID_POINTS_Q[args.start: args.end] if args.fixed_q else GRID_POINTS_MU[args.start: args.end]
+    mass_grid = GRID_POINTS_Q[args.start: args.end]# if args.fixed_q else GRID_POINTS_MU[args.start: args.end]
 
     lisa_arm_km = args.armlength.to("km").value
 
@@ -464,8 +468,8 @@ if __name__ == "__main__":
     os.makedirs(outdir, exist_ok=True)
     logger.info("Running on the following (M, mu) grid points: %s", mass_grid)
 
-    outfile = os.path.join(outdir, f'so3-horizon-data.{args.start}_{args.end}.pkl')
-    outfile_z = os.path.join(outdir, f'so3-horizon-z.{args.start}_{args.end}.pkl')
+    outfile = os.path.join(outdir, f'{args.basename}-data.{args.start}_{args.end}.pkl')
+    outfile_z = os.path.join(outdir, f'{args.basename}-z.{args.start}_{args.end}.pkl')
     flagfile = os.path.join(outdir, f'done.{args.start}_{args.end}.flag')
 
     custom_psd_kwargs = {
@@ -499,7 +503,8 @@ if __name__ == "__main__":
     waveform_kwargs = {
             "T": args.T,
             "dt": args.dt,
-        }
+            "eps": 1e-4
+    }
 
     traj = EMRIInspiral(func=TRAJECTORY)
     wave_gen = GenerateEMRIWaveform(

@@ -8,7 +8,6 @@ import matplotlib.lines as mlines
 
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, WhiteKernel, ConstantKernel
-from sklearn.model_selection import cross_val_predict
 
 from scipy.interpolate import interp1d
 import argparse

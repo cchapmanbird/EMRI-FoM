@@ -96,7 +96,9 @@ def load_psd_from_file(psd_file, xp=np):
 
     backend = 'cpu' if xp is np else 'gpu'
     print(f"Using {backend} backend for PSD interpolation")
-    min_psd = values[:,0]#np.min(values, axis=1)
+    #min_psd = values[:,0]#np.min(values, axis=1)
+
+    min_psd = np.min(values[:, freqs < 1e-2], axis=1) # compatible with both tdi 1 and tdi 2
     max_psd = np.max(values, axis=1)
     print("PSD range", min_psd, max_psd)
     psd_interp = CubicSplineInterpolant(freqs, values, force_backend=backend)
@@ -170,7 +172,7 @@ def get_psd_kwargs(kwargs):
     }
     return default_settings | kwargs
 
-def compute_snr2(freqs, tdi_channels, psd_fn, xp=np):
+def compute_snr2(freqs, tdi_channels, psd_fn, dt, xp=np):
     """
     """
     df = freqs[2] - freqs[1]
