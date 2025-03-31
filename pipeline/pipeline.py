@@ -73,7 +73,8 @@ def initialize_gpu(args):
 
 
 def initialize_waveform_generator(T, args, inspiral_kwargs_forward):
-    base_wave = GenerateEMRIWaveform("FastKerrEccentricEquatorialFlux", inspiral_kwargs=inspiral_kwargs_forward, use_gpu=args.use_gpu, sum_kwargs=dict(pad_output=True))
+    backend = 'gpu' if args.use_gpu else 'cpu'
+    base_wave = GenerateEMRIWaveform("FastKerrEccentricEquatorialFlux", inspiral_kwargs=inspiral_kwargs_forward, force_backend=backend, sum_kwargs=dict(pad_output=True))
     tdi_kwargs_esa = initialize_tdi_generator(args)
     model = ResponseWrapper(
             base_wave, T, args.dt, 8, 7, t0=100000., flip_hx=True, use_gpu=args.use_gpu,
