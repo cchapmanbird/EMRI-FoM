@@ -16,7 +16,7 @@ Below is a quick set of instructions to install the Fast EMRI Waveform (FEW) pac
 
 Create an environment for the figures of merit
 ```sh
-conda create -n fom -c conda-forge gcc_linux-64 gxx_linux-64 wget gsl lapack=3.6.1 hdf5 numpy Cython scipy tqdm jupyter ipython h5py requests matplotlib python=3.12 pandas fortran-compiler
+conda create -n fom -c conda-forge -y gcc_linux-64 gxx_linux-64 wget gsl lapack=3.6.1 hdf5 numpy Cython scipy tqdm jupyter ipython h5py requests matplotlib python=3.12 pandas fortran-compiler
 conda activate fom
 ```
 
@@ -28,13 +28,13 @@ export PATH=$PATH:/usr/local/cuda-12.5/bin/
 Check the version of your compiler by running `nvcc --version` and install the corresponding FEW cuda version for running on GPUs [temporary workaround until the repo is merged back into the toolkit]:
 ```sh
 git clone git@github.com:znasipak/FastEMRIWaveforms-Soton-Hackathon-2025.git
+cd FastEMRIWaveforms-Soton-Hackathon-2025/
 git checkout Kerr_Equatorial_Eccentric
-git chekout c04eb6313362db5e75dfc7b531644ac26f67bdf2
-pip install .
+git checkout c04eb6313362db5e75dfc7b531644ac26f67bdf2
+pip install -e .
 cd ..
-pip install tabulate
-pip install markdown pypandoc
-pip install scikit-learn
+pip install tabulate markdown pypandoc scikit-learn healpy lisaanalysistools
+pip install cupy-cuda12x
 ```
 
 Test the installation device by running python
@@ -63,7 +63,6 @@ cd ..
 ``` -->
 ```sh
 cd lisa-on-gpu
-pip install lisaanalysistools
 python setup.py install
 cd ..
 ```

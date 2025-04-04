@@ -9,11 +9,11 @@ import io
 import healpy as hp
 
 # decide whether to run the full pipeline and generate the results
-run_pipeline = False
+run_pipeline = True
 # decide whether to assess the science objectives
 assess_science_objectives = False
-#decide whether to generate the data for the redshift horizon plot
-generate_redshift_horizon = False
+# decide whether to generate the data for the redshift horizon plot
+generate_redshift_horizon = True
 # decide whether to plot the redshift horizon plot
 plot_redshift_horizon = True
 
@@ -30,10 +30,10 @@ thr_err = [1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-1, 10., 10., 10., 10., 10.,     10.]
 dev = 3
 # defines the number of montecarlo runs over phases and sky locations
 # N_montecarlo: number of montecarlo runs over phases and sky locations
-Nmonte = 500
+Nmonte = 10
 
 #define the psd and response properties
-channels = 'AET'
+channels = 'AE'
 tdi2 = True
 model = 'scirdv1'
 esaorbits = True
