@@ -31,10 +31,10 @@ git clone git@github.com:znasipak/FastEMRIWaveforms-Soton-Hackathon-2025.git
 cd FastEMRIWaveforms-Soton-Hackathon-2025/
 git checkout Kerr_Equatorial_Eccentric
 git checkout c04eb6313362db5e75dfc7b531644ac26f67bdf2
-pip install -e .
+pip install .
 cd ..
 pip install tabulate markdown pypandoc scikit-learn healpy lisaanalysistools
-pip install cupy-cuda12x
+pip install cupy-cuda12x GPUtil
 ```
 
 Test the installation device by running python

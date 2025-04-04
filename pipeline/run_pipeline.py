@@ -9,7 +9,7 @@ import io
 import healpy as hp
 
 # decide whether to run the full pipeline and generate the results
-run_pipeline = True
+run_pipeline = False
 # decide whether to assess the science objectives
 assess_science_objectives = False
 # decide whether to generate the data for the redshift horizon plot
@@ -27,7 +27,7 @@ thr_err = [1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-1, 10., 10., 10., 10., 10.,     10.]
 # p0, phi0, theta0 are not used in the threshold
 
 # device: device to use on GPUs
-dev = 3
+dev = 1
 # defines the number of montecarlo runs over phases and sky locations
 # N_montecarlo: number of montecarlo runs over phases and sky locations
 Nmonte = 10
@@ -372,8 +372,8 @@ if generate_redshift_horizon:
     print("Generating data for redshift horizon plot")
     start_time = time.time()
     command = (
-        f"python horizon/produce_data.py --gpu --dev {dev} --fixed_q "
-        f"--psd_file {psd_file} --model {model} --channels {channels} --esaorbits "
+        f"python horizon/produce_data.py --gpu --dev {dev} "
+        f"--psd_file {psd_file} --model {model} --channels {channels} "
         f"--dt {dt} --T {T_obs} --outdir {horizon_outdir} --ntrials {ntrials}"
     )
     if include_foreground:
