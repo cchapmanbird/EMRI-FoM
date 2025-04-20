@@ -15,19 +15,22 @@ assess_science_objectives = True
 # decide whether to generate the data for the redshift horizon plot
 generate_redshift_horizon = False
 # decide whether to plot the redshift horizon plot
-plot_redshift_horizon = True
+plot_redshift_horizon = False
 
 # the following two lines define the thresholds for the science objectives
 # threshold_SNR: threshold on SNR for the science objectives
 thr_snr = [10.0, 15., 20.]
 # threshold_relative_errors: threshold on relative errors for the science objectives    
 #           M    mu    a     p0    e0   dist   qS   phiS qK   phiK Phi_phi0 Phi_r0
-thr_err = [1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-1, 10., 10., 10., 10., 10.,     10.]
+#thr_err = [1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-1, 10., 10., 10., 10., 10., 10.]
+
+#           M    mu    a     p0    dist   qS   phiS qK   phiK Phi_phi0  A
+thr_err = [1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-1, 10., 10., 10., 10., 1e-5]
 # qs is used as sky localization threshold
 # p0, phi0, theta0 are not used in the threshold
 
 # device: device to use on GPUs
-dev = 2
+dev = 1
 # defines the number of montecarlo runs over phases and sky locations
 # N_montecarlo: number of montecarlo runs over phases and sky locations
 Nmonte = 10
@@ -40,12 +43,16 @@ esaorbits = True
 psd_file = "TDI2_AE_psd.npy"
 # include_foreground: defines whether to include the confusion noise foreground
 include_foreground = True
+# include power-law BGR model
+power_law = True
+#nr = 8.0
 
 # horizon settings
-T_obs = 2.0 # observation time in years
+T_obs = 3.0 # observation time in years
 ntrials = 10 # number of samples over the extrinsic parameters
 horizon_outdir = "horizon/data" # output directory for the horizon data
 horizon_plotdir = "horizon/figures" # output directory for the horizon plot
+
 
 # source frame parameters
 # M: central mass of the binary in solar masses
@@ -57,7 +64,7 @@ horizon_plotdir = "horizon/figures" # output directory for the horizon plot
 # repo: name of the repository where the results will be saved
 # psd_file: name of the file with the power spectral density
 # dt: time step in seconds
-dt = 5.0
+dt = 10.0
 
 sources = [
     # {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.2, "T": 1.0, "z": 1.0, "repo": "Eccentric", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
@@ -66,11 +73,13 @@ sources = [
     # {"M": 1e5, "mu": 1e1, "a": 0.9, "e_f": 0.2, "T": 1.0, "z": 0.5, "repo": "LowMass", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
     # {"M": 5e5, "mu": 5e1, "a": 0.9, "e_f": 0.1, "T": 1.0, "z": 1.0, "repo": "IMRI", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
 
-    {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "EMRI", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
-    {"M": 5e4, "mu": 1e1, "a": 0.0, "e_f": 0.01, "T": 0.1, "z": 0.5, "repo": "LightIMRI", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
-    {"M": 1e6, "mu": 1e3, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "HeavyIMRI1", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
-    {"M": 1e7, "mu": 1e3, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "HeavyIMRI2", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
-    {"M": 1e6, "mu": 5e2, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "HeavyIMRI3", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+    {"M": 5e5, "mu": 1e1, "a": 0.95, "e_f": 0.0, "nr": 8.0, "T": 4.0, "z": 0.25, "repo": "EMRInr8", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+    {"M": 5e5, "mu": 1e1, "a": 0.95, "e_f": 0.0, "nr": 6.0, "T": 4.0, "z": 0.25, "repo": "EMRInr6", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+    {"M": 5e5, "mu": 1e1, "a": 0.95, "e_f": 0.0, "nr": 4.0, "T": 4.0, "z": 0.25, "repo": "EMRInr4", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+    # {"M": 5e4, "mu": 1e1, "a": 0.0, "e_f": 0.01, "T": 2, "z": 0.5, "repo": "LightIMRI", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+    # {"M": 1e6, "mu": 1e3, "a": 0.9, "e_f": 0.01, "T": 2, "z": 1.0, "repo": "HeavyIMRI1", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+    # {"M": 1e7, "mu": 1e3, "a": 0.9, "e_f": 0.01, "T": 2, "z": 1.0, "repo": "HeavyIMRI2", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+    # {"M": 1e6, "mu": 5e2, "a": 0.9, "e_f": 0.01, "T": 2, "z": 1.0, "repo": "HeavyIMRI3", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
 
     # {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.01, "T": 1.0, "z": 0.001534, "repo": "WhirlpoolGalaxyM51", "psd_file": "TDI2_AE_psd.npy", "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
     # Add more sources here if needed
@@ -86,6 +95,9 @@ sources = [
 
 # names of parameters
 param_names = np.array(['M','mu','a','p0','e0','xI0','dist','qS','phiS','qK','phiK','Phi_phi0','Phi_theta0','Phi_r0'])
+if power_law:
+    param_names = np.append(param_names, ['A', 'nr'])
+    
 # jacobian to obtain source frame Fisher matrix from detector frame Fisher matrix
 from common import standard_cosmology
 cosmo = standard_cosmology(zmax=10.0, zmin=1.e-5, zbin=100000)
@@ -100,6 +112,11 @@ if channels == "None":
         popinds.append(9)
         popinds.append(10)
         popinds.append(11)
+        
+if power_law:
+    popinds.append(4)
+    popinds.append(13)
+    popinds.append(15)
 
 popinds.append(12)
 param_names = np.delete(param_names, popinds).tolist()
@@ -114,7 +131,7 @@ if run_pipeline:
     for source in sources:
         start_time = time.time()
         command = (
-            f"python pipeline.py --M {source['M']} --mu {source['mu']} --a {source['a']} "
+            f"python pipeline_powerlaw.py --M {source['M']} --mu {source['mu']} --a {source['a']} "
             f"--e_f {source['e_f']} --T {source['T']} --z {source['z']} "
             f"--repo {source['repo']} --psd_file {source['psd_file']} --model {source['model']} --channels {source['channels']} "
             f"--dt {source['dt']}  --use_gpu --N_montecarlo {source['N_montecarlo']} --device {source['device']}"
@@ -125,6 +142,9 @@ if run_pipeline:
             command += " --esaorbits"
         if tdi2:
             command += " --tdi2"
+        if power_law:
+            command += " --power_law"
+            command += f" --nr {source['nr']}"
         
         os.system(command)
         end_time = time.time()
@@ -259,6 +279,8 @@ if assess_science_objectives:
             M_source = source_frame_data['M central black hole mass']
             mu_source = source_frame_data['mu secondary black hole mass']
             J = cosmo.jacobian(M_source, mu_source, redshift)
+            if power_law:
+                J = J[:-1, :-1]
             for el in total_results.keys():
                 if el == 'cov':
                     Gamma = np.linalg.inv(results[el])

@@ -1,15 +1,8 @@
 import numpy as np
+import cupy as cp
 from scipy.interpolate import make_interp_spline
 from stableemrifisher.noise import noise_PSD_AE, sensitivity_LWA
 from few.utils.constants import YRSID_SI
-
-try:
-    import cupy as cp
-    cp.ones(5)
-    GPU_AVAILABLE = True
-except ImportError or ModuleNotFoundError:
-    xp = np
-    GPU_AVAILABLE = False
 
 def tukey(N, alpha=0.5, use_gpu=False):
     """
@@ -28,10 +21,10 @@ def tukey(N, alpha=0.5, use_gpu=False):
     with N points. The function computes the values of the Tukey window function at each point in t using GPU-accelerated 
     operations and returns the resulting window as a CuPy array.
     """
-    if not use_gpu:
-        xp = np
+    if use_gpu:
+        xp = cp
     else:
-        assert GPU_AVAILABLE
+        xp = np
 
     t = xp.linspace(0., 1., N)
     window = xp.ones(N)
@@ -42,7 +35,7 @@ def tukey(N, alpha=0.5, use_gpu=False):
     return window
     
 
-def generate_PSD(waveform, dt, noise_PSD=noise_PSD_AE, channels = ["A","E"], noise_kwargs={}, use_gpu=False):
+def generate_PSD(waveform, dt, noise_PSD=noise_PSD_AE, channels = ["A","E"], noise_kwargs={"TDI":"TDI1"}, use_gpu=False):
     """
     generate the power spectral density for a given waveform, noise_PSD function,
     requested number of response channels, and response generation
@@ -63,14 +56,6 @@ def generate_PSD(waveform, dt, noise_PSD=noise_PSD_AE, channels = ["A","E"], noi
     else:
         xp = np
         
-    try:
-        response = noise_kwargs["TDI"]
-        print(f"TDI detected. response = {response}") 
-    except:
-        print("TDI not found. Setting response as 'LWA'")
-        response = "LWA"
-        channels = ["I","II"]
-        
     # If we use LWA, extract real and imaginary components (channels 1 and 2)
     if waveform.ndim == 1:
         waveform = xp.asarray([waveform.real, waveform.imag])
@@ -83,17 +68,21 @@ def generate_PSD(waveform, dt, noise_PSD=noise_PSD_AE, channels = ["A","E"], noi
     # Compute evolution time of EMRI 
     T = (df * YRSID_SI)**-1
 
-    freq_np = xp.asarray(freq) # Compute frequencies
+    if use_gpu:
+        freq_np = xp.asnumpy(freq) # Compute frequencies
+    else:
+        freq_np = freq
 
     # Generate PSDs given LWA/TDI variables
-    if response == "TDI1" or response == "TDI2":
-        PSD = 2*[noise_PSD(freq_np[1:], **noise_kwargs)]
+    if isinstance(noise_kwargs, list):
+        PSD = [noise_PSD(freq_np[1:], **noise_kwargs_temp) for noise_kwargs_temp in noise_kwargs]
     else:
-        PSD = 2*[sensitivity_LWA(freq_np[1:])]  
+        PSD = len(channels) * [noise_PSD(freq_np[1:], **noise_kwargs)]
+        
     PSD_cp = [xp.asarray(item) for item in PSD] # Convert to cupy array
     
     #PSD_funcs = PSD_cp[0:len(PSD_cp)] # Choose which channels to include
-    return PSD_cp[0:len(channels)]    
+    return PSD_cp[0:len(channels)]      
 
 
 def inner_product(a, b, PSD, dt, window=None, use_gpu=False):
@@ -121,7 +110,7 @@ def inner_product(a, b, PSD, dt, window=None, use_gpu=False):
 
     a = xp.atleast_2d(a)
     b = xp.atleast_2d(b)
-    PSD = xp.atleast_2d(xp.asarray(PSD))[0][None,:]  # handle passing the same PSD for multiple channels
+    PSD = xp.atleast_2d(xp.asarray(PSD))  # handle passing the same PSD for multiple channels
 
     N = a.shape[1]
 
@@ -152,12 +141,12 @@ def SNRcalc(waveform, PSD, dt, window=None, use_gpu=False):
         float: SNR of the source.
     """
         
-    return np.sqrt(inner_product(waveform,waveform, PSD, dt , window=window, use_gpu=use_gpu))
+    return np.sqrt(inner_product(waveform, waveform, PSD, dt , window=window, use_gpu=use_gpu))
 
 def padding(a, b, use_gpu=False):
     """
     Make time series 'a' the same length as time series 'b'.
-    Both 'a' and 'b' must be cupy array.
+    Both 'a' and 'b' must be cupy array of the same shape.
 
     returns padded 'a'
     """
@@ -169,15 +158,30 @@ def padding(a, b, use_gpu=False):
     a = xp.asarray(a)
     b = xp.asarray(b)
 
-    if len(a) < len(b):
-        return xp.concatenate((a,xp.zeros(len(b)-len(a))))
-
-    elif len(a) > len(b):
-        return a[:len(b)]
+    assert a.ndim == b.ndim
+    
+    if a.ndim > 1:
+        a_temp = []
+        
+        for i in range(len(a)):
+            if len(a[i]) < len(b[i]):
+                a_temp.append(xp.concatenate((a,xp.zeros(len(b[i])-len(a[i])))))
+        
+            elif len(a[i]) > len(b[i]):
+                a_temp.append(a[i][:len(b[i])])
+                
+            else:
+                a_temp.append(a[i])
+        
+        a = xp.array(a_temp)
 
     else:
-        return a
-
+        if len(a) < len(b):
+            a = xp.concatenate((a,xp.zeros(len(b)-len(a))))
+        elif len(a) > len(b):
+            a = a[:len(b)]
+            
+    return a
 
 def get_inspiral_overwrite_fun(interpolation_factor, spline_order=7):
     def func(self, *args, **kwargs):

@@ -16,15 +16,27 @@ To use this package you will require the following dependences; follow their ins
 
 - FastEMRIWaveforms (https://github.com/BlackHolePerturbationToolkit/FastEMRIWaveforms)
 
-- LISAAnalysisTools (https://github.com/mikekatz04/LISAanalysistools)
+- (Optional) LISAAnalysisTools (https://github.com/mikekatz04/LISAanalysistools)
 
-- LISA-on-gpu (https://github.com/mikekatz04/lisa-on-gpu)
+- (Optional) LISA-on-gpu (https://github.com/mikekatz04/lisa-on-gpu)
 
 ### Example usage
 See the `examples` directory for examples of basic usage of this package, and `validation` for a comparison against some MCMC results.
 
 Documentation coming soon...
 
+### Citation
+```
+@software{kejriwal_2024_sef,
+  author       = {Shubham Kejriwal and
+                  Christian Chapman-Bird and
+                  Ollie Burke},
+  title        = {perturber/StableEMRIFisher.},
+  publisher    = {Github},
+  year         = "manuscript under preparation",
+  url          = {https://github.com/perturber/StableEMRIFisher}
+}
+```
 <!-- 
 ### Processing the data
 
