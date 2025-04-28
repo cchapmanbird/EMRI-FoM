@@ -172,7 +172,7 @@ def get_psd_kwargs(kwargs):
     }
     return default_settings | kwargs
 
-def compute_snr2(freqs, tdi_channels, psd_fn, dt, xp=np):
+def compute_snr2(freqs, tdi_channels, psd_fn, xp=np):
     """
     """
     df = freqs[2] - freqs[1]

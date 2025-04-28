@@ -9,9 +9,9 @@ import io
 import healpy as hp
 
 # decide whether to run the full pipeline and generate the results
-run_pipeline = False
+run_pipeline = True
 # decide whether to assess the science objectives
-assess_science_objectives = False
+assess_science_objectives = True
 # decide whether to generate the data for the redshift horizon plot
 generate_redshift_horizon = True
 # decide whether to plot the redshift horizon plot
@@ -27,10 +27,10 @@ thr_err = [1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-1, 10., 10., 10., 10., 10.,     10.]
 # p0, phi0, theta0 are not used in the threshold
 
 # device: device to use on GPUs
-dev = 1
+dev = 2
 # defines the number of montecarlo runs over phases and sky locations
 # N_montecarlo: number of montecarlo runs over phases and sky locations
-Nmonte = 10
+Nmonte = 100
 
 #define the psd and response properties
 channels = 'AE'
@@ -44,8 +44,11 @@ include_foreground = True
 # horizon settings
 T_obs = 2.0 # observation time in years
 ntrials = 100 # number of samples over the extrinsic parameters
-horizon_outdir = "horizon/data" # output directory for the horizon data
-horizon_plotdir = "horizon/figures" # output directory for the horizon plot
+horizon_outname = "test" # name of the output file
+#source frame parameters. In the current setup, the q stated here is ignored as it is not fixed.
+qs = 1.e-5
+e0s = 0.5
+spins = 0.99
 
 # source frame parameters
 # M: central mass of the binary in solar masses
@@ -57,7 +60,7 @@ horizon_plotdir = "horizon/figures" # output directory for the horizon plot
 # repo: name of the repository where the results will be saved
 # psd_file: name of the file with the power spectral density
 # dt: time step in seconds
-dt = 5.0
+dt = 2.0
 
 sources = [
     # {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.2, "T": 1.0, "z": 1.0, "repo": "Eccentric", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
@@ -372,10 +375,12 @@ if generate_redshift_horizon:
     print("Generating data for redshift horizon plot")
     start_time = time.time()
     command = (
-        f"python horizon/produce_data.py --gpu --dev {dev} "
-        f"--psd_file {psd_file} --model {model} --channels {channels} "
-        f"--dt {dt} --T {T_obs} --outdir {horizon_outdir} --ntrials {ntrials}"
+        f"python horizon/produce_data.py --dev {dev} "
+        f"--model {model} --channels {channels} "
+        f"--dt {dt} --Tobs {T_obs} --outname {horizon_outname} --avg_n {ntrials} "
+        f"--traj kerr --wf kerr --qs {qs} --e0s {e0s} --spins {spins} --grids q M"
     )
+
     if include_foreground:
         command += " --foreground"
     if esaorbits:
@@ -390,7 +395,7 @@ if generate_redshift_horizon:
 
 if plot_redshift_horizon:
     command = (
-        f"python horizon/plot_data.py --interp --fill --datadir {horizon_outdir} --plotdir {horizon_plotdir}"
+        f"python horizon/plot_data.py -Tobs {T_obs} -q {qs} -e0 {e0s} -spin {spins} -zaxis q -base {horizon_outname} -interp -cpal inferno_r"
     )
     os.system(command)
     print(f"Plotted the redshift horizon plot")
