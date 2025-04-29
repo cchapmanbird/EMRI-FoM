@@ -33,7 +33,7 @@ git checkout Kerr_Equatorial_Eccentric
 git checkout c04eb6313362db5e75dfc7b531644ac26f67bdf2
 pip install .
 cd ..
-pip install tabulate markdown pypandoc scikit-learn healpy lisaanalysistools
+pip install tabulate markdown pypandoc scikit-learn healpy lisaanalysistools seaborn
 pip install cupy-cuda12x GPUtil
 ```
 
