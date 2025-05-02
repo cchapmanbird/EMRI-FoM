@@ -8,7 +8,7 @@ from scipy.interpolate import CubicSpline
 from few.utils.constants import *
 from few.trajectory.inspiral import EMRIInspiral
 from few.waveform import GenerateEMRIWaveform
-from few.utils.utility import get_separatrix
+from few.utils.geodesic import get_separatrix
 from few.trajectory.ode import KerrEccEqFlux
 from few.summation.interpolatedmodesum import CubicSplineInterpolant
 from stableemrifisher.fisher import StableEMRIFisher

@@ -16,25 +16,24 @@ Below is a quick set of instructions to install the Fast EMRI Waveform (FEW) pac
 
 Create an environment for the figures of merit
 ```sh
-conda create -n fom -c conda-forge -y gcc_linux-64 gxx_linux-64 wget gsl lapack=3.6.1 hdf5 numpy Cython scipy tqdm jupyter ipython h5py requests matplotlib python=3.12 pandas fortran-compiler
+conda create -n fom -c conda-forge -y gcc_linux-64 gxx_linux-64 wget gsl lapack=3.6.1 hdf5 numpy Cython python=3.12 pandas fortran-compiler
 conda activate fom
+pip install tabulate markdown pypandoc scikit-learn healpy lisaanalysistools seaborn corner scipy tqdm jupyter ipython h5py requests matplotlib eryn
 ```
 
 Locate where the `nvcc` compile is located and add it to the path, in my case it is located in `/usr/local/cuda-12.5/bin/`
-```
+```sh
+pip install cupy-cuda12x GPUtil
 export PATH=$PATH:/usr/local/cuda-12.5/bin/
 ```
 
 Check the version of your compiler by running `nvcc --version` and install the corresponding FEW cuda version for running on GPUs [temporary workaround until the repo is merged back into the toolkit]:
 ```sh
-git clone git@github.com:znasipak/FastEMRIWaveforms-Soton-Hackathon-2025.git
+git clone https://github.com/znasipak/FastEMRIWaveforms-Soton-Hackathon-2025.git
 cd FastEMRIWaveforms-Soton-Hackathon-2025/
-git checkout Kerr_Equatorial_Eccentric
-git checkout c04eb6313362db5e75dfc7b531644ac26f67bdf2
+git checkout PaperProduction
 pip install .
 cd ..
-pip install tabulate markdown pypandoc scikit-learn healpy lisaanalysistools seaborn
-pip install cupy-cuda12x GPUtil
 ```
 
 Test the installation device by running python
@@ -55,11 +54,10 @@ cd ..
 ### Install `lisa-on-gpu` for LISA Response
 Install the response
 <!-- ```sh
+git clone https://github.com/mikekatz04/lisa-on-gpu.git
 cd lisa-on-gpu
-pip install lisaanalysistools
 python scripts/prebuild.py
 pip install .
-cd ..
 ``` -->
 ```sh
 cd lisa-on-gpu

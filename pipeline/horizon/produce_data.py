@@ -41,8 +41,6 @@ import matplotlib.lines as mlines
 import numpy as np
 from eryn.prior import ProbDistContainer, uniform_dist
 
-#sys.path.append('/data/asantini/emris/DirtyEMRI/DataAnalysis/LISAanalysistools/')
-
 from lisatools.diagnostic import *
 from lisatools.detector import EqualArmlengthOrbits, ESAOrbits
 
@@ -53,14 +51,14 @@ from few.trajectory.inspiral import EMRIInspiral
 from few.summation.aakwave import AAKSummation
 from few.utils.constants import *
 from few.utils.utility import get_p_at_t
-from few.utils.utility import get_fundamental_frequencies #! change to few.utils.geodesic if using the last version of few
+from few.utils.geodesic import get_fundamental_frequencies #! change to few.utils.geodesic if using the last version of few
 from few.utils.globals import get_first_backend
 
 from fastlisaresponse import ResponseWrapper
 
 import astropy.units as u
 from astropy.cosmology import Planck18, z_at_value
-
+sys.path.append("./")
 from psd_utils import load_psd, get_psd_kwargs, compute_snr2
 import logging
 

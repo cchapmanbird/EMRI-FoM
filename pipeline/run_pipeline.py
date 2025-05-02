@@ -9,13 +9,13 @@ import io
 import healpy as hp
 
 # decide whether to run the full pipeline and generate the results
-run_pipeline = True
+run_pipeline = False
 # decide whether to assess the science objectives
-assess_science_objectives = True
+assess_science_objectives = False
 # decide whether to generate the data for the redshift horizon plot
 generate_redshift_horizon = True
 # decide whether to plot the redshift horizon plot
-plot_redshift_horizon = True
+plot_redshift_horizon = False
 
 # the following two lines define the thresholds for the science objectives
 # threshold_SNR: threshold on SNR for the science objectives
@@ -30,7 +30,7 @@ thr_err = [1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-1, 10., 10., 10., 10., 10.,     10.]
 dev = 2
 # defines the number of montecarlo runs over phases and sky locations
 # N_montecarlo: number of montecarlo runs over phases and sky locations
-Nmonte = 100
+Nmonte = 3
 
 #define the psd and response properties
 channels = 'AE'
@@ -63,29 +63,13 @@ spins = 0.99
 dt = 2.0
 
 sources = [
-    # {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.2, "T": 1.0, "z": 1.0, "repo": "Eccentric", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
-    # {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.01, "T": 1.0, "z": 1.0, "repo": "Circular", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
-    # {"M": 1e7, "mu": 1e1, "a": 0.9, "e_f": 0.2, "T": 1.0, "z": 0.5, "repo": "HighMass", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
-    # {"M": 1e5, "mu": 1e1, "a": 0.9, "e_f": 0.2, "T": 1.0, "z": 0.5, "repo": "LowMass", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
-    # {"M": 5e5, "mu": 5e1, "a": 0.9, "e_f": 0.1, "T": 1.0, "z": 1.0, "repo": "IMRI", "psd_file": "TDI2_AE_psd.npy", "dt": 10.0,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
 
     {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "EMRI", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
     {"M": 5e4, "mu": 1e1, "a": 0.0, "e_f": 0.01, "T": 0.1, "z": 0.5, "repo": "LightIMRI", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
     {"M": 1e6, "mu": 1e3, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "HeavyIMRI1", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
     {"M": 1e7, "mu": 1e3, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "HeavyIMRI2", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
     {"M": 1e6, "mu": 5e2, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "HeavyIMRI3", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
-
-    # {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.01, "T": 1.0, "z": 0.001534, "repo": "WhirlpoolGalaxyM51", "psd_file": "TDI2_AE_psd.npy", "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
-    # Add more sources here if needed
 ]
-# for M in [1e4, 1e5, 1e6, 1e7]:
-#     for mu in [1e1, 1e2, 1e3]: # 12
-#         for a in [0.1, 0.9]: # 24
-#             for e_f in [0.01, 0.1, 0.2]: # 72
-#                 for T in [0.1, 1.0]: # 144
-#                     for z in [0.5, 1.0, 2.0]: # 432
-#                         repo = f"Grid_{M}_{mu}_{a}_{e_f}_{T}_{z}"
-#                         sources.append({"M": M, "mu": mu, "a": a, "e_f": e_f, "T": T, "z": z, "repo": repo, "psd_file": "TDI2_AE_psd.npy", "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err})
 
 # names of parameters
 param_names = np.array(['M','mu','a','p0','e0','xI0','dist','qS','phiS','qK','phiK','Phi_phi0','Phi_theta0','Phi_r0'])
