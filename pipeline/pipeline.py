@@ -12,7 +12,7 @@ from few.utils.geodesic import get_separatrix
 from few.trajectory.ode import KerrEccEqFlux
 from few.summation.interpolatedmodesum import CubicSplineInterpolant
 from stableemrifisher.fisher import StableEMRIFisher
-from lisatools.detector import EqualArmlengthOrbits
+from lisatools.detector import EqualArmlengthOrbits, ESAOrbits
 from fastlisaresponse import ResponseWrapper
 from common import standard_cosmology
 import time
@@ -75,19 +75,21 @@ def initialize_gpu(args):
 def initialize_waveform_generator(T, args, inspiral_kwargs_forward):
     backend = 'gpu' if args.use_gpu else 'cpu'
     base_wave = GenerateEMRIWaveform("FastKerrEccentricEquatorialFlux", inspiral_kwargs=inspiral_kwargs_forward, force_backend=backend, sum_kwargs=dict(pad_output=True))
-    tdi_kwargs_esa = initialize_tdi_generator(args)
+    tdi_kwargs_esa, orbits = initialize_tdi_generator(args)
     model = ResponseWrapper(
-            base_wave, T, args.dt, 8, 7, t0=100000., flip_hx=True, use_gpu=args.use_gpu,
+            base_wave, T, args.dt, 8, 7, t0=100000., flip_hx=True, use_gpu=args.use_gpu, orbit=orbits,
             remove_sky_coords=False, is_ecliptic_latitude=False, remove_garbage=True, **tdi_kwargs_esa
         )
     return model
 
 def initialize_tdi_generator(args):
-    orbits = "esa-trailing-orbits.h5" if args.esaorbits else "equalarmlength-orbits.h5"
-    orbit_file = os.path.join(os.path.dirname(__file__), '..', 'lisa-on-gpu', 'orbit_files', orbits)
-    orbit_kwargs = dict(orbit_file=orbit_file)
-    tdi_kwargs = dict(orbit_kwargs=orbit_kwargs, order=25, tdi="2nd generation", tdi_chan="AET")
-    return tdi_kwargs
+    # orbits = "esa-trailing-orbits.h5" if args.esaorbits else "equalarmlength-orbits.h5"
+    orbits = ESAOrbits(use_gpu=args.use_gpu) if args.esaorbits else EqualArmlengthOrbits(use_gpu=args.use_gpu)
+    # orbit_file = os.path.join(os.path.dirname(__file__), '..', 'lisa-on-gpu', 'orbit_files', orbits)
+    # orbit_kwargs = dict(orbit_file=orbit_file)
+    # tdi_kwargs = dict(orbit_kwargs=orbit_kwargs, order=25, tdi="2nd generation", tdi_chan="AET")
+    tdi_kwargs = dict(order=25, tdi="2nd generation", tdi_chan="AET")
+    return tdi_kwargs, orbits
 
 def generate_random_phases():
     return np.random.uniform(0, 2 * np.pi), np.random.uniform(0, 2 * np.pi), np.random.uniform(0, 2 * np.pi)

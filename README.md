@@ -53,16 +53,11 @@ cd ..
 
 ### Install `lisa-on-gpu` for LISA Response
 Install the response
-<!-- ```sh
+```sh
 git clone https://github.com/mikekatz04/lisa-on-gpu.git
 cd lisa-on-gpu
 python scripts/prebuild.py
 pip install .
-``` -->
-```sh
-cd lisa-on-gpu
-python setup.py install
-cd ..
 ```
 
 Verify `lisa-on-gpu` Installation by opening a Python shell and run:

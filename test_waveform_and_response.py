@@ -6,7 +6,7 @@ import os
 
 path_to_file = os.path.dirname(__file__)
 
-#from lisatools.detector import EqualArmlengthOrbits
+from lisatools.detector import EqualArmlengthOrbits
 from fastlisaresponse import ResponseWrapper
 from fastlisaresponse.utils import get_overlap
 
@@ -109,7 +109,8 @@ class ResponseTest(unittest.TestCase):
         orbits = "equalarmlength-orbits.h5"
         orbit_file = os.path.join(os.path.dirname(__file__), 'lisa-on-gpu', 'orbit_files', orbits)
         orbit_kwargs = dict(orbit_file=orbit_file)
-        tdi_kwargs = dict(orbit_kwargs=orbit_kwargs, order=order, tdi=tdi_gen, tdi_chan="AET")
+        # orbit_kwargs=orbit_kwargs, 
+        tdi_kwargs = dict(order=order, tdi=tdi_gen, tdi_chan="AET")
 
         gb_lisa_esa = ResponseWrapper(
             gb,
@@ -123,6 +124,7 @@ class ResponseTest(unittest.TestCase):
             remove_sky_coords=True,  # True if the waveform generator does not take sky coordinates
             is_ecliptic_latitude=True,  # False if using polar angle (theta)
             remove_garbage=True,  # removes the beginning of the signal that has bad information
+            orbits = EqualArmlengthOrbits(use_gpu=use_gpu),
             **tdi_kwargs,
         )
 
