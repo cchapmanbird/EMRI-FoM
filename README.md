@@ -1,11 +1,14 @@
 # EMRI Figures of Merit (FoMs) Computation
 
 This repository contains codes for computing Figures of Merit (FoMs) related to Extreme Mass Ratio Inspirals (EMRIs) and Intermedia Mass Ratio Inspirals (IMRIs).
+
 TODO:
 - Find justification for updating the current SO3 parameters to be https://gitlab.in2p3.fr/LISA/lisa-fom/-/tree/develop?ref_type=heads
+- Get pipeline for parameter estimation
 - Update the horizon redshift to be averaged
-- Everything with new Kerr Equatorial model
-- Need to think about Quadrupole moment
+- Everything with new Kerr Equatorial model so no inclination
+- Need to think about Quadrupole moment https://arxiv.org/abs/gr-qc/0612029
+- 
 
 ## Installation Instructions
 
