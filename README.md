@@ -23,7 +23,7 @@ pip install tabulate markdown pypandoc scikit-learn healpy lisaanalysistools sea
 
 Locate where the `nvcc` compile is located and add it to the path, in my case it is located in `/usr/local/cuda-12.5/bin/`
 ```sh
-pip install cupy-cuda12x GPUtil
+pip install cupy-cuda12x GPUtil jax[cuda]
 export PATH=$PATH:/usr/local/cuda-12.5/bin/
 ```
 

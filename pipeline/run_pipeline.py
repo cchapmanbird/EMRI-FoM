@@ -9,11 +9,11 @@ import io
 import healpy as hp
 
 # decide whether to run the full pipeline and generate the results
-run_pipeline = False
+run_pipeline = True
 # decide whether to assess the science objectives
-assess_science_objectives = False
+assess_science_objectives = True
 # decide whether to generate the data for the redshift horizon plot
-generate_redshift_horizon = True
+generate_redshift_horizon = False
 # decide whether to plot the redshift horizon plot
 plot_redshift_horizon = False
 
@@ -30,7 +30,7 @@ thr_err = [1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-1, 10., 10., 10., 10., 10.,     10.]
 dev = 2
 # defines the number of montecarlo runs over phases and sky locations
 # N_montecarlo: number of montecarlo runs over phases and sky locations
-Nmonte = 3
+Nmonte = 1
 
 #define the psd and response properties
 channels = 'AE'
@@ -60,7 +60,7 @@ spins = 0.99
 # repo: name of the repository where the results will be saved
 # psd_file: name of the file with the power spectral density
 # dt: time step in seconds
-dt = 2.0
+dt = 5.0
 
 sources = [
 
@@ -70,7 +70,11 @@ sources = [
     {"M": 1e7, "mu": 1e3, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "HeavyIMRI2", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
     {"M": 1e6, "mu": 5e2, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "HeavyIMRI3", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
 ]
-
+from mojito_sources import sources_intr
+sources = []
+for src in sources_intr:
+    src_temp = {"M": src["M"],"mu": src["mu"],"a": src["a"],"e_f": src["e_f"],"T": src["T"],"z": src["redshift"],"repo": src["repo"], "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err}
+    sources.append(src_temp)
 # names of parameters
 param_names = np.array(['M','mu','a','p0','e0','xI0','dist','qS','phiS','qK','phiK','Phi_phi0','Phi_theta0','Phi_r0'])
 # jacobian to obtain source frame Fisher matrix from detector frame Fisher matrix

@@ -7,13 +7,9 @@ import pandas as pd
 from scipy.interpolate import CubicSpline
 from few.utils.constants import *
 from few.trajectory.inspiral import EMRIInspiral
-from few.waveform import GenerateEMRIWaveform
 from few.utils.geodesic import get_separatrix
 from few.trajectory.ode import KerrEccEqFlux
-from few.summation.interpolatedmodesum import CubicSplineInterpolant
 from stableemrifisher.fisher import StableEMRIFisher
-from lisatools.detector import EqualArmlengthOrbits
-from fastlisaresponse import ResponseWrapper
 from common import standard_cosmology
 import time
 import matplotlib.pyplot as plt
@@ -32,7 +28,7 @@ def parse_arguments():
     parser.add_argument("--mu", help="Mass of the compact object", type=float)
     parser.add_argument("--a", help="Spin of the central black hole", type=float)
     parser.add_argument("--e_f", help="Final eccentricity", type=float)
-    parser.add_argument("--T", help="Time to coalescence", type=float)
+    parser.add_argument("--T", help="Time to plunge", type=float)
     parser.add_argument("--z", help="Redshift", type=float)
     parser.add_argument("--repo", help="Name of the folder where results are stored", type=str)
     parser.add_argument("--psd_file", help="Path to a file containing PSD frequency-value pairs", default="TDI2_AE_psd.npy")
@@ -44,7 +40,7 @@ def parse_arguments():
     parser.add_argument('--esaorbits', action='store_true', default=False, help="Use ESA trailing orbits. Default is equal arm length orbits.")
     parser.add_argument('--tdi2', action='store_true', default=False, help="Use 2nd generation TDI channels")
     parser.add_argument('--channels', type=str, default="AE", help="TDI channels to use")
-    parser.add_argument('--model', type=str, default="scirdv1", help="Noise model to use")
+    parser.add_argument('--model', type=str, default="scirdv1", help="Noise model to use") #TODO: is this used?
     
     return parser.parse_args()
 
@@ -59,58 +55,6 @@ def initialize_gpu(args):
     np.random.seed(2601)
     return xp
 
-# def load_psd(psd_file):
-#     psdf, psdv = np.load(psd_file).T
-#     min_psd = np.min(psdv)
-#     max_psd = np.max(psdv)
-#     print("PSD range", min_psd, max_psd)
-#     psd_interp = CubicSplineInterpolant(psdf, psdv)
-#     def psd_clipped(f, **kwargs):
-#         f = np.clip(f, 0.00001, 1.0)
-#         return np.clip(psd_interp(f), min_psd, max_psd)
-
-#     return psd_clipped
-
-
-def initialize_waveform_generator(T, args, inspiral_kwargs_forward):
-    backend = 'gpu' if args.use_gpu else 'cpu'
-    base_wave = GenerateEMRIWaveform("FastKerrEccentricEquatorialFlux", inspiral_kwargs=inspiral_kwargs_forward, force_backend=backend, sum_kwargs=dict(pad_output=True))
-    tdi_kwargs_esa = initialize_tdi_generator(args)
-    model = ResponseWrapper(
-            base_wave, T, args.dt, 8, 7, t0=100000., flip_hx=True, use_gpu=args.use_gpu,
-            remove_sky_coords=False, is_ecliptic_latitude=False, remove_garbage=True, **tdi_kwargs_esa
-        )
-    return model
-
-def initialize_tdi_generator(args):
-    orbits = "esa-trailing-orbits.h5" if args.esaorbits else "equalarmlength-orbits.h5"
-    orbit_file = os.path.join(os.path.dirname(__file__), '..', 'lisa-on-gpu', 'orbit_files', orbits)
-    orbit_kwargs = dict(orbit_file=orbit_file)
-    tdi_kwargs = dict(orbit_kwargs=orbit_kwargs, order=25, tdi="2nd generation", tdi_chan="AET")
-    return tdi_kwargs
-
-def generate_random_phases():
-    return np.random.uniform(0, 2 * np.pi), np.random.uniform(0, 2 * np.pi), np.random.uniform(0, 2 * np.pi)
-
-def generate_random_sky_localization():
-    qS = np.pi/2 - np.arcsin(np.random.uniform(-1, 1))
-    phiS = np.random.uniform(0, 2 * np.pi)
-    qK = np.pi/2 - np.arcsin(np.random.uniform(-1, 1))
-    phiK = np.random.uniform(0, 2 * np.pi)
-    return qS, phiS, qK, phiK
-
-class transf_log_e_wave():
-    def __init__(self, base_wave):
-        self.base_wave = base_wave
-
-    def __call__(self, *args, **kwargs):
-        args = list(args)
-        args[4] = np.exp(args[4]) #index of eccentricity on the FEW waveform call
-        return self.base_wave(*args, **kwargs)
-    
-    def __getattr__(self, name):
-        # Forward attribute access to base_wave
-        return getattr(self.base_wave, name)
 
 inspiral_kwargs_back = {"err": 1e-10,"integrate_backwards": True}
 inspiral_kwargs_forward = {"err": 1e-10,"integrate_backwards": False}
@@ -126,12 +70,13 @@ if __name__ == "__main__":
     args = parse_arguments()
     #args = process_args(args)
     xp = initialize_gpu(args)
+
+    from waveform_utils import initialize_waveform_generator, transf_log_e_wave, generate_random_phases, generate_random_sky_localization
     
     # create repository
     os.makedirs(args.repo, exist_ok=True)
 
-    # load psd
-    #psd_wrap = load_psd(args.psd_file)
+    # PSD
     custom_psd_kwargs = {
             'tdi2': args.tdi2,
             'channels': args.channels,

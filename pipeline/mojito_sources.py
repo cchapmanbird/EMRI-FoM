@@ -1,3 +1,4 @@
+import numpy as np
 sources = {
     "7400": {
         "m1": 4.4e5,
@@ -112,3 +113,56 @@ sources = {
         "eccentricity_class": "Highly Eccentric"
     }
 }
+from few.trajectory.inspiral import EMRIInspiral
+from few.trajectory.ode import KerrEccEqFlux
+
+traj = EMRIInspiral(func=KerrEccEqFlux)
+sources_intr = []
+
+for source, params in sources.items():
+    m1 = params["m1"]
+    m2 = params["m2"]
+    a = params["a"]
+    e0 = params["e0"]
+    p0 = params["p0"]
+    redshift = params["redshift"]
+    SNR_Kerr = params["SNR_Kerr"]
+    Plunging = params["Plunging"]
+    Prograde = params["Prograde"]
+    T_plunge_yr = params["T_plunge_yr"]
+    eccentricity_class = params["eccentricity_class"]
+
+    M = m1
+    mu = m2
+    x0 = 1.0
+    There = T_plunge_yr if isinstance(T_plunge_yr, float) else 2.0
+    t, p, e, x, Phi_phi, Phi_r, Phi_theta = traj(M, mu, a, p0, e0, x0, dt=10., T=There, integrate_backwards=False)
+
+    print("--------------------------------------")
+    print(f"Source: {source}")
+    print(f"t final: {t[-1]}")
+    print(f"p final: {p[-1]}")
+    print(f"e final: {e[-1]}")
+    print(f"x final: {x[-1]}")
+    print(f"Phi_phi final: {Phi_phi[-1]}")
+    print(f"Phi_r final: {Phi_r[-1]}")
+    print(f"Phi_theta final: {Phi_theta[-1]}")
+
+    psd_file = "psd_file_placeholder"
+    model = "model_placeholder"
+    channels = "channels_placeholder"
+    dt = 10.0
+    Nmonte = 3
+    dev = "cpu"
+    thr_snr = 10.0
+    thr_err = 0.1
+
+    sources_intr.append({
+        "M": M,
+        "mu": mu,
+        "a": a,
+        "e_f": e[-1],
+        "T": There,
+        "redshift": redshift,
+        "repo": source,
+    })

@@ -186,13 +186,3 @@ def compute_snr2(freqs, tdi_channels, psd_fn, xp=np):
     return snr2
 
 
-
-
-if __name__ == "__main__":
-    filename = 'test/psd.npy'
-    channels = 'A'
-    write_psd_file(filename=filename, channels=channels)
-    fn = load_psd(filename)
-
-    f = np.linspace(0.0001, 1, 1000)
-    breakpoint()
