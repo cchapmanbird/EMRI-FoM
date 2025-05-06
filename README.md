@@ -8,7 +8,7 @@ TODO:
 - Update the horizon redshift to be averaged
 - Everything with new Kerr Equatorial model so no inclination
 - Need to think about Quadrupole moment https://arxiv.org/abs/gr-qc/0612029
-- 
+- Talk with Andrea Sartirana and Maxime
 
 ## Installation Instructions
 
