@@ -11,7 +11,7 @@ import healpy as hp
 # decide whether to run the full pipeline and generate the results
 run_pipeline = True
 # decide whether to assess the science objectives
-assess_science_objectives = True
+assess_science_objectives = False
 # decide whether to generate the data for the redshift horizon plot
 generate_redshift_horizon = False
 # decide whether to plot the redshift horizon plot
@@ -61,20 +61,56 @@ spins = 0.99
 # psd_file: name of the file with the power spectral density
 # dt: time step in seconds
 dt = 5.0
-
-sources = [
-
-    {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "EMRI", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
-    {"M": 5e4, "mu": 1e1, "a": 0.0, "e_f": 0.01, "T": 0.1, "z": 0.5, "repo": "LightIMRI", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
-    {"M": 1e6, "mu": 1e3, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "HeavyIMRI1", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
-    {"M": 1e7, "mu": 1e3, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "HeavyIMRI2", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
-    {"M": 1e6, "mu": 5e2, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "HeavyIMRI3", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
-]
-from mojito_sources import sources_intr
+import json
+# open json file with the sources
+with open(f"fom_sources_1.99.json", "r") as json_file:
+    source_intr = json.load(json_file)
+# breakpoint()
 sources = []
-for src in sources_intr:
-    src_temp = {"M": src["M"],"mu": src["mu"],"a": src["a"],"e_f": src["e_f"],"T": src["T"],"z": src["redshift"],"repo": src["repo"], "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err}
-    sources.append(src_temp)
+
+# open dictionary with the sources
+for source, params in source_intr.items():
+    m1 = params["m1"]
+    m2 = params["m2"]
+    a = params["a"]
+    e_f = params["e_f"]
+    redshift = params["redshift"]
+    T_plunge_yr = params["T_plunge_yr"]
+    print("--------------------------------------")
+    print(f"Source: {source}")
+    print(f"m1: {m1}, m2: {m2}")
+    print(f"T_plunge_yr: {T_plunge_yr}")
+    sources.append({
+        "M": m1,
+        "mu": m2,
+        "a": a,
+        "e_f": e_f,
+        "T": 2.0,
+        "z": 0.1,
+        "repo": source,
+        "psd_file": psd_file,
+        "model": model,
+        "channels": channels,
+        "dt": dt,
+        "N_montecarlo": Nmonte,
+        "device": dev,
+        "threshold_SNR": thr_snr,
+        "threshold_relative_errors": thr_err
+    })
+
+# sources = [
+
+#     {"M": 1e6, "mu": 1e1, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "EMRI", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+#     {"M": 5e4, "mu": 1e1, "a": 0.0, "e_f": 0.01, "T": 0.1, "z": 0.5, "repo": "LightIMRI", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+#     {"M": 1e6, "mu": 1e3, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "HeavyIMRI1", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+#     {"M": 1e7, "mu": 1e3, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "HeavyIMRI2", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+#     {"M": 1e6, "mu": 5e2, "a": 0.9, "e_f": 0.01, "T": 0.1, "z": 1.0, "repo": "HeavyIMRI3", "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err},
+# ]
+# from mojito_sources import sources_intr
+# sources = []
+# for src in sources_intr:
+#     src_temp = {"M": src["M"],"mu": src["mu"],"a": src["a"],"e_f": src["e_f"],"T": src["T"],"z": src["redshift"],"repo": src["repo"], "psd_file": psd_file, "model": model, "channels": channels,  "dt": dt,  "N_montecarlo": Nmonte, "device": dev, "threshold_SNR": thr_snr, "threshold_relative_errors": thr_err}
+#     sources.append(src_temp)
 # names of parameters
 param_names = np.array(['M','mu','a','p0','e0','xI0','dist','qS','phiS','qK','phiK','Phi_phi0','Phi_theta0','Phi_r0'])
 # jacobian to obtain source frame Fisher matrix from detector frame Fisher matrix

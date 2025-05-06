@@ -14,7 +14,8 @@ from common import standard_cosmology
 import time
 import matplotlib.pyplot as plt
 from stableemrifisher.plot import CovEllipsePlot, StabilityPlot
-
+from waveform_utils import initialize_waveform_generator, transf_log_e_wave, generate_random_phases, generate_random_sky_localization
+    
 #psd stuff
 from psd_utils import load_psd, get_psd_kwargs
 
@@ -24,11 +25,12 @@ logger = logging.getLogger()
 def parse_arguments():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--M", help="Mass of the central black hole", type=float)
-    parser.add_argument("--mu", help="Mass of the compact object", type=float)
-    parser.add_argument("--a", help="Spin of the central black hole", type=float)
-    parser.add_argument("--e_f", help="Final eccentricity", type=float)
+    parser.add_argument("--M", help="Primary Mass of the central black hole", type=float)
+    parser.add_argument("--mu", help="Secondary Mass of the compact object", type=float)
+    parser.add_argument("--a", help="Dimensionless Spin of the central black hole", type=float)
+    parser.add_argument("--e_f", help="Final eccentricity at separatrix + 0.1", type=float)
     parser.add_argument("--T", help="Time to plunge", type=float)
+    # parser.add_argument("--Tobs", help="Observation time in years", type=float, default=2.0)
     parser.add_argument("--z", help="Redshift", type=float)
     parser.add_argument("--repo", help="Name of the folder where results are stored", type=str)
     parser.add_argument("--psd_file", help="Path to a file containing PSD frequency-value pairs", default="TDI2_AE_psd.npy")
@@ -71,8 +73,6 @@ if __name__ == "__main__":
     #args = process_args(args)
     xp = initialize_gpu(args)
 
-    from waveform_utils import initialize_waveform_generator, transf_log_e_wave, generate_random_phases, generate_random_sky_localization
-    
     # create repository
     os.makedirs(args.repo, exist_ok=True)
 
@@ -96,7 +96,9 @@ if __name__ == "__main__":
     e_f = args.e_f
     x0_f = 1.0
     p_f = get_separatrix(args.a, args.e_f, x0_f) + 0.1
+    
     dist = standard_cosmology(H0=67.).dl_zH0(args.z) / 1000.
+    
     T = args.T
     # `source_frame_data` is a dictionary that contains various parameters related to the source frame
     detector_frame_data = {
@@ -130,7 +132,13 @@ if __name__ == "__main__":
     # initialize the trajectory
     traj = EMRIInspiral(func=KerrEccEqFlux)
     print("Generating backward trajectory")
-    t_back, p_back, e_back, x_back, Phi_phi_back, Phi_r_back, Phi_theta_back = traj(M, mu, a, p_f, e_f, x0_f, dt=1e-4, T=T, integrate_backwards=True)
+    t_forward, p_forward, e_forward, x_forward, Phi_phi_forward, Phi_r_forward, Phi_theta_forward = traj(M, mu, a, p_f, e_f, x0_f, dt=10., T=2.0, integrate_backwards=False)
+    t_back, p_back, e_back, x_back, Phi_phi_back, Phi_r_back, Phi_theta_back = traj(M, mu, a, p_forward[-1], e_forward[-1], x_forward[-1], dt=1e-4, T=T, integrate_backwards=True)
+    # plt.figure(); plt.plot(p_back, e_back, label="p"); plt.savefig("p_back.png")
+    # plot forward trajectory
+    print("Generating forward trajectory")
+    t, p, e, x, Phi_phi, Phi_r, Phi_theta = traj(M, mu, a, p_back[-1], e_back[-1], x_back[-1], dt=10., T=2.0, integrate_backwards=False)
+    # plt.figure(); plt.plot(t/YRSID_SI, p, label="p"); plt.savefig("p_forward.png")
     print("Done with the trajectory")
     # initialiaze the waveform generator
     model = initialize_waveform_generator(T, args, inspiral_kwargs_forward)
@@ -141,6 +149,7 @@ if __name__ == "__main__":
     Phi_phi0, Phi_r0, Phi_theta0 = generate_random_phases()
     qS, phiS, qK, phiK = generate_random_sky_localization()
     parameters = np.asarray([M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0])
+    # evaluate waveform
     model(*parameters)
 
     tic = time.time()
@@ -161,7 +170,7 @@ if __name__ == "__main__":
     window = xp.asarray(tukey(len(waveform_out[0]), alpha=0.05))
     fft_waveform = xp.fft.rfft(waveform_out[0]*window).get() *args.dt
     freqs = np.fft.rfftfreq(len(waveform_out[0]), d=args.dt)
-    mask = (freqs>1e-4)
+    mask = (freqs>1e-5)
     plt.figure()
     plt.loglog(freqs[mask], np.abs(fft_waveform)[mask]**2)
     plt.loglog(freqs[mask], np.atleast_2d(psd_wrap(freqs[mask]).get())[0], label="PSD")
@@ -169,7 +178,8 @@ if __name__ == "__main__":
     plt.ylabel(r"Amplitude $|\tilde h(f)|$")
     plt.legend()
     plt.savefig(os.path.join(args.repo, "waveform.png"))
-
+    # plt.close("all")
+    # if low eccentricity, use the log_e transformation
     if args.e_f < 1e-3:
         log_e = True
     else:
@@ -191,12 +201,8 @@ if __name__ == "__main__":
         qS, phiS, qK, phiK = generate_random_sky_localization()
         # define the initial parameters
         parameters = np.asarray([M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0])
-        # create folder for the realization
-        current_folder = os.path.join(args.repo, name_realization)
-        os.makedirs(current_folder, exist_ok=True)
-        # save the parameters to txt file
-        np.savetxt(os.path.join(current_folder, "all_parameters.txt"), parameters.T, header=" ".join(param_names))
 
+        current_folder = os.path.join(args.repo, name_realization)
         fish = StableEMRIFisher(*parameters, 
                                 dt=args.dt, T=T, EMRI_waveform_gen=EMRI_waveform_gen, noise_model=psd_wrap, noise_kwargs=dict(TDI="TDI2"), param_names=param_names, stats_for_nerds=False, use_gpu=args.use_gpu, 
                                 der_order=4., Ndelta=20, filename=current_folder,
@@ -208,6 +214,25 @@ if __name__ == "__main__":
                                 )
         #execution
         SNR = fish.SNRcalc_SEF()
+        # obtain distance to get SNR=20
+        dist = SNR/20.
+        parameters[6] = dist
+        # update the parameters
+        parameters = np.asarray([M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0])
+        # create folder for the realization
+        os.makedirs(current_folder, exist_ok=True)
+        # save the parameters to txt file
+        np.savetxt(os.path.join(current_folder, "all_parameters.txt"), parameters.T, header=" ".join(param_names))
+        fish = StableEMRIFisher(*parameters, 
+                                dt=args.dt, T=T, EMRI_waveform_gen=EMRI_waveform_gen, noise_model=psd_wrap, noise_kwargs=dict(TDI="TDI2"), param_names=param_names, stats_for_nerds=False, use_gpu=args.use_gpu, 
+                                der_order=4., Ndelta=20, filename=current_folder,
+                                deltas = deltas,
+                                log_e = log_e, # useful for sources close to zero eccentricity
+                                CovEllipse=False, # will return the covariance and plot it
+                                stability_plot=False, # activate if unsure about the stability of the deltas
+                                window=window # addition of the window to avoid leakage
+                                )
+
         fim = fish()
         cov = np.linalg.inv(fim)
         fish.save_deltas()
@@ -238,6 +263,7 @@ if __name__ == "__main__":
         np.savez(os.path.join(current_folder, "results.npz"), cov=cov, snr=SNR, fisher_params=fisher_params, errors=errors, relative_errors=errors/fisher_params, names=param_names)
         print("Saved results to", current_folder)
         print("*************************************")
+        
 
 
 
