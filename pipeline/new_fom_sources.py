@@ -133,7 +133,7 @@ with open(f"fom_sources_e2yr.json", "r") as json_file:
 # breakpoint()
 # plot sources Mass1 vs Mass2
 plt.figure(figsize=(4, 4))
-for cat_name in ["/M11/EMRICAT101_MBH10_SIGMA2_NPL1100_CUSP2_JON1_SPIN3_EuNK0_SNR.dat"]:#"M1/EMRICAT101_MBH10_SIGMA2_NPL1010_CUSP1_JON2_SPIN1_EuNK0_SNR.dat",
+for cat_name in ["/M11/EMRICAT101_MBH10_SIGMA2_NPL1100_CUSP2_JON1_SPIN3_EuNK0_SNR.dat","M1/EMRICAT101_MBH10_SIGMA2_NPL1010_CUSP1_JON2_SPIN1_EuNK0_SNR.dat"]:
     catalog = np.loadtxt("/data/lsperi/EMRI-FoM/lisa-fom/catalogs/EMRIs/"+cat_name,skiprows=1)
     # M11/
     tPlunge = catalog[:, 0]
@@ -149,7 +149,7 @@ for cat_name in ["/M11/EMRICAT101_MBH10_SIGMA2_NPL1100_CUSP2_JON1_SPIN3_EuNK0_SN
 for source, params in grid_sources.items():
     m1 = params["m1"]/(1+z)
     m2 = params["m2"]/(1+z)
-    plt.scatter(m1, m2, alpha=0.7, color='red', marker='X')
+    plt.scatter(m1, m2, alpha=0.7, color='red', marker='P')
 plt.xscale('log')
 plt.yscale('log')
 plt.xlabel("Mass 1 (Solar Masses)")
@@ -162,17 +162,24 @@ plt.savefig("mass1_vs_mass2.png", dpi=300)
 plt.figure(figsize=(4, 4))
 mass_ratios = [params["m2"] / params["m1"] for params in grid_sources.values()]
 final_eccentricities = [params["e_f"] for params in grid_sources.values()]
-plt.scatter(mass_ratios, final_eccentricities, alpha=0.7, color='red', marker='X')
+plt.scatter(mass_ratios, final_eccentricities, alpha=0.7, color='red', marker='P')
 
 for cat_name in ["M1/EMRICAT101_MBH10_SIGMA2_NPL1010_CUSP1_JON2_SPIN1_EuNK0_SNR.dat","M11/EMRICAT101_MBH10_SIGMA2_NPL1100_CUSP2_JON1_SPIN3_EuNK0_SNR.dat"]:
     catalog = np.loadtxt("/data/lsperi/EMRI-FoM/lisa-fom/catalogs/EMRIs/"+cat_name,skiprows=1)
-    # M11/
+    snr_tot = catalog[:,-1]
+
     tPlunge = catalog[:, 0]
     logmu = catalog[:, 1]
     logM = catalog[:, 2]
     ePlunge = catalog[:, 3]
     Mcat = np.exp(logM)/MTSUN_SI
     mucat = np.exp(logmu)/MTSUN_SI
+
+    # Apply mask for snr_tot above 5
+    mask = snr_tot > 5
+    Mcat = Mcat[mask]
+    mucat = mucat[mask]
+    ePlunge = ePlunge[mask]
 
     plt.scatter(mucat/Mcat, ePlunge, color='blue', alpha=0.1)
 plt.xscale('log')
@@ -185,7 +192,6 @@ plt.tight_layout()
 plt.savefig("mass_ratio_vs_final_eccentricity.png", dpi=300)
 
 # plot for spin and eccentricities
-
 plt.figure(figsize=(4, 4))
 spins = np.asarray([params["a"] for params in grid_sources.values()])
 final_eccentricities = np.asarray([params["e_f"] for params in grid_sources.values()])
@@ -193,17 +199,16 @@ final_eccentricities = np.asarray([params["e_f"] for params in grid_sources.valu
 mask_positive = spins >= -1
 plt.scatter(spins[mask_positive], final_eccentricities[mask_positive], alpha=0.7, color='red', marker='P')
 
-for cat_name in ["M1/EMRICAT101_MBH10_SIGMA2_NPL1010_CUSP1_JON2_SPIN1_EuNK0_SNR.dat", "M11/EMRICAT101_MBH10_SIGMA2_NPL1100_CUSP2_JON1_SPIN3_EuNK0_SNR.dat"]:
-    catalog = np.loadtxt("/data/lsperi/EMRI-FoM/lisa-fom/catalogs/EMRIs/" + cat_name, skiprows=1)
-    tPlunge = catalog[:, 0]
-    logmu = catalog[:, 1]
-    logM = catalog[:, 2]
+for cat_name in ["M1/EMRICAT101_MBH10_SIGMA2_NPL1010_CUSP1_JON2_SPIN1_EuNK0_SNR.dat","M11/EMRICAT101_MBH10_SIGMA2_NPL1100_CUSP2_JON1_SPIN3_EuNK0_SNR.dat"]:
+    catalog = np.loadtxt("/data/lsperi/EMRI-FoM/lisa-fom/catalogs/EMRIs/"+cat_name,skiprows=1)
+    snr_tot = catalog[:,-1]
     ePlunge = catalog[:, 3]
-    Mcat = np.exp(logM) / MTSUN_SI
-    mucat = np.exp(logmu) / MTSUN_SI
     SMBHspin = catalog[:, 11]
 
-    plt.scatter(SMBHspin, ePlunge, color='blue', alpha=0.1)
+    # Apply mask for snr_tot above 5
+    mask = snr_tot > 5
+
+    plt.scatter(SMBHspin[mask], ePlunge[mask], color='blue', alpha=0.1)
 
 plt.xlabel("Spin (a)")
 plt.ylabel("Final Eccentricity")
@@ -212,6 +217,54 @@ plt.title("Final Eccentricity vs Spin")
 plt.grid(True)
 plt.tight_layout()
 plt.savefig("final_eccentricity_vs_spin.png", dpi=300)
+
+# plot for final eccentricity vs final GW frequency
+plt.figure(figsize=(4, 4))
+final_frequencies = np.abs(np.asarray([params["final_frequency"] for params in grid_sources.values()]))
+final_eccentricities = np.asarray([params["e_f"] for params in grid_sources.values()])
+plt.scatter(final_frequencies, final_eccentricities, alpha=0.7, color='red', marker='P', label='Grid Sources')
+
+for cat_name in ["M1/EMRICAT101_MBH10_SIGMA2_NPL1010_CUSP1_JON2_SPIN1_EuNK0_SNR.dat", "M11/EMRICAT101_MBH10_SIGMA2_NPL1100_CUSP2_JON1_SPIN3_EuNK0_SNR.dat"]:
+    catalog = np.loadtxt("/data/lsperi/EMRI-FoM/lisa-fom/catalogs/EMRIs/" + cat_name, skiprows=1)
+    snr_tot = catalog[:, -1]
+    ePlunge = catalog[:, 3]
+    nuPlunge = catalog[:, 4]
+
+    # Apply mask for snr_tot above 5
+    mask = snr_tot > 5
+    
+    plt.scatter(nuPlunge[mask], ePlunge[mask], color='blue', alpha=0.1, label=cat_name.split("/")[0])
+
+plt.xscale('log')
+plt.xlabel("Final GW Frequency (Hz)")
+plt.ylabel("Final Eccentricity")
+plt.title("Final Eccentricity vs Final GW Frequency")
+plt.grid(True)
+plt.tight_layout()
+plt.legend()
+plt.savefig("final_eccentricity_vs_final_frequency.png", dpi=300)
+
+
+# Histogram for the GW final frequencies
+plt.figure(figsize=(4, 4))
+final_frequencies = np.abs(np.asarray([params["final_frequency"] for params in grid_sources.values()]))
+plt.hist(np.log10(final_frequencies), bins=20, color='red', alpha=0.7, density=True, label='Grid Sources')
+
+for cat_name in ["M1/EMRICAT101_MBH10_SIGMA2_NPL1010_CUSP1_JON2_SPIN1_EuNK0_SNR.dat"]:#, "M11/EMRICAT101_MBH10_SIGMA2_NPL1100_CUSP2_JON1_SPIN3_EuNK0_SNR.dat"]:
+    catalog = np.loadtxt("/data/lsperi/EMRI-FoM/lisa-fom/catalogs/EMRIs/" + cat_name, skiprows=1)
+    snr_tot = catalog[:, -1]
+    nuPlunge = catalog[:, 4]
+
+    # Apply mask for snr_tot above 5
+    mask = snr_tot > 5
+    plt.hist(np.log10(nuPlunge[mask]), bins=20, color='blue', alpha=0.3, density=True, label='Catalog Sources M1')
+
+plt.xlabel("log10 Final GW Frequency (Hz)")
+plt.ylabel("Density")
+plt.title("Histogram of Final GW Frequencies")
+plt.grid(True)
+plt.tight_layout()
+plt.savefig("final_frequencies_histogram.png", dpi=300)
 
 # plt.figure()
 # for source, params in grid_sources.items():
