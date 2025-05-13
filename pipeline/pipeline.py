@@ -10,14 +10,28 @@ from few.trajectory.inspiral import EMRIInspiral
 from few.utils.geodesic import get_separatrix
 from few.trajectory.ode import KerrEccEqFlux
 from stableemrifisher.fisher import StableEMRIFisher
+from stableemrifisher.utils import inner_product
 from common import standard_cosmology
 import time
 import matplotlib.pyplot as plt
 from stableemrifisher.plot import CovEllipsePlot, StabilityPlot
 from waveform_utils import initialize_waveform_generator, transf_log_e_wave, generate_random_phases, generate_random_sky_localization
-    
+from few.utils.geodesic import get_fundamental_frequencies
+from scipy.signal.windows import tukey
 #psd stuff
 from psd_utils import load_psd, get_psd_kwargs
+
+import astropy.units as u
+from astropy.cosmology import Planck18, z_at_value
+
+cosmo = Planck18 #FlatLambdaCDM(H0=70, Om0=0.3, Tcmb0=2.725)
+
+def get_redshift(distance):
+    return (z_at_value(cosmo.luminosity_distance, distance * u.Gpc )).value
+
+def get_distance(redshift):
+    return cosmo.luminosity_distance(redshift).to(u.Gpc).value
+
 
 # Initialize logger
 logger = logging.getLogger()
@@ -25,8 +39,8 @@ logger = logging.getLogger()
 def parse_arguments():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--M", help="Primary Mass of the central black hole", type=float)
-    parser.add_argument("--mu", help="Secondary Mass of the compact object", type=float)
+    parser.add_argument("--M", help="Primary Mass of the central black hole at detector", type=float)
+    parser.add_argument("--mu", help="Secondary Mass of the compact object at detector", type=float)
     parser.add_argument("--a", help="Dimensionless Spin of the central black hole", type=float)
     parser.add_argument("--e_f", help="Final eccentricity at separatrix + 0.1", type=float)
     parser.add_argument("--T", help="Time to plunge", type=float)
@@ -56,6 +70,34 @@ def initialize_gpu(args):
         xp = np
     np.random.seed(2601)
     return xp
+
+
+from scipy.signal import get_window
+
+class wave_windowed_truncated():
+    def __init__(self, wave_gen, N, dt, xp, window_fn=('tukey', 0.005), fmin=0.0, fmax=1.0):
+        self.wave_gen = wave_gen
+        self.window_fn = window_fn
+        self.window = xp.asarray(get_window(self.window_fn, N))
+        self.frequency = xp.fft.rfftfreq(N, dt)
+        self.mask = (self.frequency > fmin) * (self.frequency < fmax)
+        self.xp = xp
+        self.N = N
+    
+    def __call__(self, *args, **kwargs):
+        wave = xp.asarray(self.wave_gen(*args, **kwargs))
+        # apply window
+        wave = wave * self.window
+        # take fft
+        wave_fft = self.xp.fft.rfft(wave,axis=1)
+        wave_fft[:,~self.mask] = 0.0 + 1j*0.0
+        # take ifft
+        wave = self.xp.fft.irfft(wave_fft,axis=1, n=self.N)
+        return wave
+
+    def __getattr__(self, name):
+        # Forward attribute access to base_wave
+        return getattr(self.wave_gen, name)
 
 
 inspiral_kwargs_back = {"err": 1e-10,"integrate_backwards": True}
@@ -90,85 +132,69 @@ if __name__ == "__main__":
     psd_wrap = load_psd(logger=logger, filename=args.psd_file, xp=xp, **psd_kwargs)
     
     # get the detector frame parameters
-    M = args.M * (1 + args.z)
-    mu = args.mu * (1 + args.z)
+    M = args.M
+    mu = args.mu
     a = args.a
     e_f = args.e_f
     x0_f = 1.0
     p_f = get_separatrix(args.a, args.e_f, x0_f) + 0.1
-    
-    dist = standard_cosmology(H0=67.).dl_zH0(args.z) / 1000.
-    
+    # TODO: update consistent with astropy cosmology
+    dist = get_distance(args.z)
+    print("Distance in Gpc", dist)
     T = args.T
-    # `source_frame_data` is a dictionary that contains various parameters related to the source frame
-    detector_frame_data = {
-        "M central black hole mass": M,
-        "mu secondary black hole mass": mu,
-        "a dimensionless central object spin": a,
-        "p_f final semi-latus rectum": p_f,
-        "e_f final eccentricity": e_f,
-        "z redshift": args.z,
-        "dist luminosity distance in Gpc": dist,
-        "T inspiral duration in years": T,
-    }
-    source_frame_data = {
-        "M central black hole mass": args.M,
-        "mu secondary black hole mass": args.mu,
-        "a dimensionless central object spin": args.a,
-        "p_f final semi-latus rectum": p_f,
-        "e_f final eccentricity": args.e_f,
-        "z redshift": args.z,
-        "dist luminosity distance in Gpc": dist,
-        "T inspiral duration in years": T,
-    }
-    # save in the repository the source and detector frame parameters
-    for el,name in zip([detector_frame_data, source_frame_data], ["detector_frame_data", "source_frame_data"]):
-        df = pd.DataFrame(el, index=[0])
-        # save df using pandas
-        df.to_markdown(os.path.join(args.repo, f"{name}.md"), floatfmt=".10e")
-        # save df using npz
-        np.savez(os.path.join(args.repo, f"{name}.npz"), **el)
 
     # initialize the trajectory
     traj = EMRIInspiral(func=KerrEccEqFlux)
     print("Generating backward trajectory")
     t_forward, p_forward, e_forward, x_forward, Phi_phi_forward, Phi_r_forward, Phi_theta_forward = traj(M, mu, a, p_f, e_f, x0_f, dt=10., T=2.0, integrate_backwards=False)
-    t_back, p_back, e_back, x_back, Phi_phi_back, Phi_r_back, Phi_theta_back = traj(M, mu, a, p_forward[-1], e_forward[-1], x_forward[-1], dt=1e-4, T=T, integrate_backwards=True)
-    # plt.figure(); plt.plot(p_back, e_back, label="p"); plt.savefig("p_back.png")
-    # plot forward trajectory
-    print("Generating forward trajectory")
-    t, p, e, x, Phi_phi, Phi_r, Phi_theta = traj(M, mu, a, p_back[-1], e_back[-1], x_back[-1], dt=10., T=2.0, integrate_backwards=False)
-    # plt.figure(); plt.plot(t/YRSID_SI, p, label="p"); plt.savefig("p_forward.png")
+    t_back, p_back, e_back, x_back, Phi_phi_back, Phi_r_back, Phi_theta_back = traj(M, mu, a, p_forward[-1], e_forward[-1], x_forward[-1], dt=10.0, T=T, integrate_backwards=True)
+    print("Found initial conditions", p_back[-1], e_back[-1], x_back[-1])
+    omegaPhi, omegaTheta, omegaR = get_fundamental_frequencies(a, p_back, e_back, x_back)
+    dimension_factor = 2.0 * np.pi * M * MTSUN_SI
+    omegaPhi = omegaPhi / dimension_factor
+    omegaTheta = omegaTheta / dimension_factor
+    omegaR = omegaR / dimension_factor
     print("Done with the trajectory")
-    # initialiaze the waveform generator
-    model = initialize_waveform_generator(T, args, inspiral_kwargs_forward)
-    # save in the repository the source and detector frame parameters
     # define the initial parameters
     p0, e0, x0 = p_back[-1], e_back[-1], x_back[-1]
     print("p0, e0, x0", p0, e0, x0)
+    # initialiaze the waveform generator
+    temp_model = initialize_waveform_generator(T, args, inspiral_kwargs_forward)
+    # save in the repository the source and detector frame parameters
+    
     Phi_phi0, Phi_r0, Phi_theta0 = generate_random_phases()
     qS, phiS, qK, phiK = generate_random_sky_localization()
     parameters = np.asarray([M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0])
     # evaluate waveform
-    model(*parameters)
+    temp_model(*parameters)
 
+    tic = time.time()
+    waveform_out = temp_model(*parameters)
+    toc = time.time()
+    timing = toc - tic
+    print("Time taken for one waveform generation: ", timing)
+    print("\n")
+    # create a waveform that is windowed and truncated 
+    # define frequency ranges for inner product
+    ns = temp_model.waveform_gen.waveform_generator.ns
+    ms = temp_model.waveform_gen.waveform_generator.ms
+    max_f = float(np.max(omegaPhi[None,:] * ms.get()[:,None] + omegaR[None,:] * ns.get()[:,None]))
+    # update the model with the windowed and truncated waveform
+    model = wave_windowed_truncated(temp_model, len(waveform_out[0]), args.dt, xp, window_fn=('tukey', 0.01), fmin=1e-5, fmax=max_f)
+    model(*parameters)
     tic = time.time()
     waveform_out = model(*parameters)
     toc = time.time()
     timing = toc - tic
     print("Time taken for one waveform generation: ", timing)
-    print("\n")
     # save the waveform generation time
     with open(os.path.join(args.repo, "waveform_generation_time.txt"), "w") as f:
         f.write(str(timing))
     # check if there are nans in the waveform_out[0]
     if xp.isnan(xp.asarray(waveform_out)).any():
         print("There are nans in the waveform")
-    # plot the waveform in the frequency domain
-    # window the signal using scipy.signal.windows.tukey
-    from scipy.signal.windows import tukey
-    window = xp.asarray(tukey(len(waveform_out[0]), alpha=0.05))
-    fft_waveform = xp.fft.rfft(waveform_out[0]*window).get() *args.dt
+
+    fft_waveform = xp.fft.rfft(waveform_out[0]).get() * args.dt
     freqs = np.fft.rfftfreq(len(waveform_out[0]), d=args.dt)
     mask = (freqs>1e-5)
     plt.figure()
@@ -179,6 +205,12 @@ if __name__ == "__main__":
     plt.legend()
     plt.savefig(os.path.join(args.repo, "waveform.png"))
     # plt.close("all")
+    # check horizon d_L
+    # d_L = inner_product(waveform_out, waveform_out, psd_wrap(freqs[1:]), dt=args.dt, use_gpu=args.use_gpu)**0.5/20.
+    # redshift = get_redshift(d_L)
+    # source_frame_m1 = parameters[0] / (1 + redshift)
+    # source_frame_m2 = parameters[1] / (1 + redshift)
+    # plt.figure(); plt.loglog(redshift, d_L); plt.xlabel("Redshift"); plt.grid(); plt.savefig(os.path.join(args.repo, "snr_vs_redshift.png"))
     # if low eccentricity, use the log_e transformation
     if args.e_f < 1e-3:
         log_e = True
@@ -203,20 +235,6 @@ if __name__ == "__main__":
         parameters = np.asarray([M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0])
 
         current_folder = os.path.join(args.repo, name_realization)
-        fish = StableEMRIFisher(*parameters, 
-                                dt=args.dt, T=T, EMRI_waveform_gen=EMRI_waveform_gen, noise_model=psd_wrap, noise_kwargs=dict(TDI="TDI2"), param_names=param_names, stats_for_nerds=False, use_gpu=args.use_gpu, 
-                                der_order=4., Ndelta=20, filename=current_folder,
-                                deltas = deltas,
-                                log_e = log_e, # useful for sources close to zero eccentricity
-                                CovEllipse=False, # will return the covariance and plot it
-                                stability_plot=False, # activate if unsure about the stability of the deltas
-                                window=window # addition of the window to avoid leakage
-                                )
-        #execution
-        SNR = fish.SNRcalc_SEF()
-        # obtain distance to get SNR=20
-        dist = SNR/20.
-        parameters[6] = dist
         # update the parameters
         parameters = np.asarray([M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0])
         # create folder for the realization
@@ -230,7 +248,7 @@ if __name__ == "__main__":
                                 log_e = log_e, # useful for sources close to zero eccentricity
                                 CovEllipse=False, # will return the covariance and plot it
                                 stability_plot=False, # activate if unsure about the stability of the deltas
-                                window=window # addition of the window to avoid leakage
+                                # window=window # addition of the window to avoid leakage
                                 )
 
         fim = fish()

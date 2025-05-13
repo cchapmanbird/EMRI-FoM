@@ -27,7 +27,7 @@ thr_err = [1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-1, 10., 10., 10., 10., 10.,     10.]
 # p0, phi0, theta0 are not used in the threshold
 
 # device: device to use on GPUs
-dev = 2
+dev = 7
 # defines the number of montecarlo runs over phases and sky locations
 # N_montecarlo: number of montecarlo runs over phases and sky locations
 Nmonte = 1
@@ -63,7 +63,7 @@ spins = 0.99
 dt = 5.0
 import json
 # open json file with the sources
-with open(f"fom_sources_1.99.json", "r") as json_file:
+with open(f"fom_sources.json", "r") as json_file:
     source_intr = json.load(json_file)
 # breakpoint()
 sources = []
@@ -78,15 +78,15 @@ for source, params in source_intr.items():
     T_plunge_yr = params["T_plunge_yr"]
     print("--------------------------------------")
     print(f"Source: {source}")
-    print(f"m1: {m1}, m2: {m2}")
-    print(f"T_plunge_yr: {T_plunge_yr}")
+    print(f"Detector frame m1: {m1}, m2: {m2}")
+    print(f"T_plunge_yr: {T_plunge_yr}, redshift: {redshift}")
     sources.append({
         "M": m1,
         "mu": m2,
         "a": a,
         "e_f": e_f,
         "T": 2.0,
-        "z": 0.1,
+        "z": redshift,
         "repo": source,
         "psd_file": psd_file,
         "model": model,
