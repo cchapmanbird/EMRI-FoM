@@ -241,6 +241,7 @@ if __name__ == "__main__":
         os.makedirs(current_folder, exist_ok=True)
         # save the parameters to txt file
         np.savetxt(os.path.join(current_folder, "all_parameters.txt"), parameters.T, header=" ".join(param_names))
+
         fish = StableEMRIFisher(*parameters, 
                                 dt=args.dt, T=T, EMRI_waveform_gen=EMRI_waveform_gen, noise_model=psd_wrap, noise_kwargs=dict(TDI="TDI2"), param_names=param_names, stats_for_nerds=False, use_gpu=args.use_gpu, 
                                 der_order=4., Ndelta=20, filename=current_folder,
@@ -250,38 +251,43 @@ if __name__ == "__main__":
                                 stability_plot=False, # activate if unsure about the stability of the deltas
                                 # window=window # addition of the window to avoid leakage
                                 )
+        # calculate the SNR
+        SNR = fish.SNRcalc_SEF()
+        np.savez(os.path.join(current_folder, "snr.npz"), snr=SNR, parameters=parameters)
+        calculate_fisher = True
+        if calculate_fisher:
+            # calculate the Fisher matrix
+            fim = fish()
+            cov = np.linalg.inv(fim)
+            fish.save_deltas()
+            # check the inversion
+            print("if correct matrix inversion, then",np.diag(fim @ cov).sum() - fim.shape[0], "should be approximately zero")
+            # check dimensions
+            print("Fisher matrix shape", fim.shape[0]==len(param_names))
+            if log_e:
+                jac = np.diag([1, 1, 1, 1, 1/parameters[4], 1, 1, 1, 1, 1, 1, 1]) #if working in log_e space apply jacobian to the fisher matrix
+                fim = jac.T @ fim @ jac
 
-        fim = fish()
-        cov = np.linalg.inv(fim)
-        fish.save_deltas()
-        # check the inversion
-        print("if correct matrix inversion, then",np.diag(fim @ cov).sum() - fim.shape[0], "should be approximately zero")
-        # check dimensions
-        print("Fisher matrix shape", fim.shape[0]==len(param_names))
-        if log_e:
-            jac = np.diag([1, 1, 1, 1, 1/parameters[4], 1, 1, 1, 1, 1, 1, 1]) #if working in log_e space apply jacobian to the fisher matrix
-            fim = jac.T @ fim @ jac
-
-        if deltas is None:
-            deltas = fish.deltas
-        
-        # create ellipse plot only the first montecarlo realization
-        cov = np.linalg.inv(fim)
-        if j == 0:
-            CovEllipsePlot(fish.param_names, fish.wave_params, cov, filename=current_folder + f"/covariance_ellipse_plot.png")
-        
-        # get errors
-        errors = np.sqrt(np.diag(cov))
-        # save the errors with pandas to markdown
-        fisher_params = np.delete(parameters, popinds)
-        errors_df = {"Parameter": param_names, "parameter value": fisher_params, "1 sigma Error": errors, "Relative Error": errors/fisher_params, "SNR": SNR}
-        errors_df = pd.DataFrame(errors_df)
-        errors_df.to_markdown(os.path.join(current_folder, "summary.md"), floatfmt=".10e")
-        # save the covariance matrix and the SNR to npz file
-        np.savez(os.path.join(current_folder, "results.npz"), cov=cov, snr=SNR, fisher_params=fisher_params, errors=errors, relative_errors=errors/fisher_params, names=param_names)
-        print("Saved results to", current_folder)
-        print("*************************************")
-        
+            if deltas is None:
+                deltas = fish.deltas
+            
+            # create ellipse plot only the first montecarlo realization
+            cov = np.linalg.inv(fim)
+            if j == 0:
+                CovEllipsePlot(fish.param_names, fish.wave_params, cov, filename=current_folder + f"/covariance_ellipse_plot.png")
+            
+            # get errors
+            errors = np.sqrt(np.diag(cov))
+            # save the errors with pandas to markdown
+            fisher_params = np.delete(parameters, popinds)
+            errors_df = {"Parameter": param_names, "parameter value": fisher_params, "1 sigma Error": errors, "Relative Error": errors/fisher_params, "SNR": SNR}
+            errors_df = pd.DataFrame(errors_df)
+            errors_df.to_markdown(os.path.join(current_folder, "summary.md"), floatfmt=".10e")
+            # save the covariance matrix and the SNR to npz file
+            np.savez(os.path.join(current_folder, "results.npz"), cov=cov, snr=SNR, fisher_params=fisher_params, errors=errors, relative_errors=errors/fisher_params, names=param_names)
+            print("Saved results to", current_folder)
+            print("*************************************")
+            
 
 
 

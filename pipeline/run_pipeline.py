@@ -9,9 +9,9 @@ import io
 import healpy as hp
 
 # decide whether to run the full pipeline and generate the results
-run_pipeline = True
+run_pipeline = False
 # decide whether to assess the science objectives
-assess_science_objectives = False
+assess_science_objectives = True
 # decide whether to generate the data for the redshift horizon plot
 generate_redshift_horizon = False
 # decide whether to plot the redshift horizon plot
@@ -27,13 +27,13 @@ thr_err = [1e-4, 1e-4, 1e-4, 1e-4, 1e-4, 1e-1, 10., 10., 10., 10., 10.,     10.]
 # p0, phi0, theta0 are not used in the threshold
 
 # device: device to use on GPUs
-dev = 7
+dev = 0
 # defines the number of montecarlo runs over phases and sky locations
 # N_montecarlo: number of montecarlo runs over phases and sky locations
-Nmonte = 1
+Nmonte = 100
 
 #define the psd and response properties
-channels = 'AE'
+channels = 'AET'
 tdi2 = True
 model = 'scirdv1'
 esaorbits = True
@@ -63,7 +63,7 @@ spins = 0.99
 dt = 5.0
 import json
 # open json file with the sources
-with open(f"fom_sources.json", "r") as json_file:
+with open(f"fom_sources_light.json", "r") as json_file:
     source_intr = json.load(json_file)
 # breakpoint()
 sources = []
@@ -85,7 +85,7 @@ for source, params in source_intr.items():
         "mu": m2,
         "a": a,
         "e_f": e_f,
-        "T": 2.0,
+        "T": T_plunge_yr,
         "z": redshift,
         "repo": source,
         "psd_file": psd_file,
@@ -182,21 +182,20 @@ def generate_latex_report(source_name, snr_status, snr_value, error_statuses, in
     """
 
     # load the injected parameters in the source frame
-    data_source = np.load(f"{source_name}/source_frame_data.npz")
-    data_detector = np.load(f"{source_name}/detector_frame_data.npz")
+    dict_source = source_intr[source_name]
     # for each of the data_source.files = ['M central black hole mass', 'mu secondary black hole mass', 'a dimensionless central object spin', 'p_f final semi-latus rectum', 'e_f final eccentricity', 'z redshift', 'dist luminosity distance in Gpc', 'T inspiral duration in years']
     # write  in the table the values
     latex_content += rf"""
     \begin{{table}}[h]
     \centering
-    \begin{{tabular}}{{|c|c|c|}}
+    \begin{{tabular}}{{|c|c|}}
     \hline
     \textbf{{Parameter}} & \textbf{{Source Frame Value}} & \textbf{{Detector Frame Value}}\\
     \hline
     """
     # loop over data_source.files and data_detector.files
-    for i, param in enumerate(data_source.files):
-        latex_content += rf"{param} & {data_source[param]} & {data_detector[param]}\\"
+    for param, value in dict_source.items():
+        latex_content += rf"{param} & {value}\\"
     latex_content += r"\hline\end{tabular}\end{table}"
     # for i, param in enumerate(param_names):
     #     latex_content += rf"{param} & {injected_params[i]}\\"
@@ -212,7 +211,7 @@ def generate_latex_report(source_name, snr_status, snr_value, error_statuses, in
     \hline
     """
     for i, param in enumerate(param_names):
-        latex_content += rf"{param} & {injected_params[i]}\\"
+        latex_content += rf"{str(param)} & {injected_params[i]}\\"
     latex_content += r"\hline\end{tabular}\end{table}"\
     
     # include SNR plot
@@ -249,18 +248,18 @@ def generate_latex_report(source_name, snr_status, snr_value, error_statuses, in
     # end of the document
     latex_content += "\\end{document}"
 
-    report_filename = f"{source_name}_assessment.tex"
+    report_filename = f"{source_name}Assessment.tex"
     with open(report_filename, "w") as f:
         f.write(latex_content)
     print(f"Generated LaTeX report: {report_filename}")
     
     # Compile LaTeX to PDF
     subprocess.run(["pdflatex", "-interaction=nonstopmode", report_filename])
-    print(f"Generated PDF report: {source_name}_assessment.pdf")
+    print(f"Generated PDF report: {source_name}Assessment.pdf")
     # remove aux, log and tex files
-    os.remove(f"{source_name}_assessment.aux")
-    os.remove(f"{source_name}_assessment.log")
-    os.remove(f"{source_name}_assessment.tex")
+    os.remove(f"{source_name}Assessment.aux")
+    os.remove(f"{source_name}Assessment.log")
+    os.remove(f"{source_name}Assessment.tex")
 
 # Assessment Process
 if assess_science_objectives:
@@ -268,14 +267,15 @@ if assess_science_objectives:
     for source in sources:
         source_name = source['repo']
         print(f"Assessing science objectives for {source_name}...")
-        filelist = glob.glob(f"{source_name}/*/*.npz")
+        filelist = sorted(glob.glob(f"{source_name}/*/results.npz"))
         total_results = {nn: [] for nn in ['cov', 'snr', 'fisher_params', 'errors', 'relative_errors']}
         for file in filelist:
+            print(f"Processing file: {file}")
             results = np.load(file)
-            source_frame_data = np.load(f"{source_name}/source_frame_data.npz")
-            redshift = source_frame_data['z redshift']
-            M_source = source_frame_data['M central black hole mass']
-            mu_source = source_frame_data['mu secondary black hole mass']
+            # source_frame_data = np.load(f"{source_name}/source_frame_data.npz")
+            redshift = source_intr[source_name]["redshift"]
+            M_source = source_intr[source_name]["m1_source"]
+            mu_source = source_intr[source_name]["m2_source"]
             J = cosmo.jacobian(M_source, mu_source, redshift)
             for el in total_results.keys():
                 if el == 'cov':
@@ -302,6 +302,8 @@ if assess_science_objectives:
         plt.legend()
         plt.savefig(f"{source_name}/snr_histogram.png")
         plt.close()
+        # save snr distribution in folder
+        np.savez(f"{source_name}/snr_distribution.npz", snr=total_results['snr'])
 
         par_vals = np.array(total_results['fisher_params'])
         errors = np.asarray([np.diag(el) for el in total_results['cov']])**0.5 # / total_results['fisher_params'][0]
@@ -368,6 +370,8 @@ if assess_science_objectives:
                 error_statuses.append((param, status, err_value, threshold))
                 # if par_vals[0][i] != 0:
                 plt.figure()
+                # add title with median and std
+                plt.title(f'Median: {np.median(rel_err[:,i]):.2e}, Std: {np.std(rel_err[:,i]):.2e}')
                 plt.hist(np.log10(rel_err[:,i]), bins=30, label='Source Frame', alpha=0.7, density=True)
                 # check if nans are present
                 if np.sum(np.isinf(det_frame_rel_err[:,i]))==0:
@@ -378,17 +382,20 @@ if assess_science_objectives:
                 plt.legend()
                 plt.savefig(f"{source_name}/relative_errors_histogram_{param}.png")
                 plt.close()
+                np.savez(f"{source_name}/relative_errors_histogram_{param}.npz", relative_error=rel_err[:,i])
                 
             if param == 'qS':
                 status = "PASS" if err_sky_loc < threshold else "FAIL"
                 error_statuses.append(("Sky Localization", status, err_sky_loc, threshold))
                 plt.figure()
+                plt.title(f'Median: {np.median(err_sky_loc):.2e}, Std: {np.std(err_sky_loc):.2e}')
                 plt.hist(err_sky_loc, bins=30, label='Source Frame')
                 plt.axvline(threshold, color='r', linestyle='--', label='Threshold')
                 plt.xlabel(f'Relative Error Sky Localization')
                 # plt.ylabel('Counts')
                 plt.savefig(f"{source_name}/relative_errors_histogram_skyloc.png")
                 plt.close()
+                np.savez(f"{source_name}/relative_errors_histogram_skyloc.npz", relative_error=err_sky_loc)
             
             
         

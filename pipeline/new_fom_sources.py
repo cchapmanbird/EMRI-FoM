@@ -36,9 +36,9 @@ def find_semi_latus_rectum(M, mu, a, e_2yr, T=2.0):
 
 # Generate a grid of sources
 m1_values = [1e7, 1e6, 1e5, 1e4]
-m2_values = [1e1, 1e3]
-a_values = [0.9]
-e_2yr_values = [1e-4, 0.1, 0.5] # Eccentricity values
+m2_values = [1e1]
+a_values = [-0.9, 0.9]
+e_2yr_values = [1e-4, 0.5] # Eccentricity values
 grid_sources = {}
 T_plunge_values = [1.99]#[7/365, 30/365, 1.0, 2.0] # List of time to plunge values
 redshift_dict = {
@@ -119,11 +119,11 @@ if produce_sources:
     plt.savefig(f"trajectory.png", dpi=300)
     # breakpoint()
     # Save grid_sources to a JSON file
-    with open(f"fom_sources.json", "w") as json_file:
+    with open(f"fom_sources_light.json", "w") as json_file:
         json.dump(grid_sources, json_file, indent=4)
 
 # open the JSON file and read the data
-with open(f"fom_sources.json", "r") as json_file:
+with open(f"fom_sources_light.json", "r") as json_file:
     grid_sources = json.load(json_file)
 
 # plot sources Mass1 vs Mass2
