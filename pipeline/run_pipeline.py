@@ -344,8 +344,7 @@ if assess_science_objectives:
         # plt.savefig(f"{source_name}/mollview_snr_orientation.png")
         # plt.close()
         
-        
-        Sigma = np.mean(total_results['cov'], axis=0)[6:8, 6:8]
+        Sigma = np.asarray(total_results['cov'])[:,6:8, 6:8]
         thetaS, phiS = total_results['fisher_params'][0][6:8]
         err_sky_loc = 2 * np.pi * np.sin(thetaS) * np.sqrt(np.linalg.det(Sigma)) * (180.0 / np.pi) ** 2
         
@@ -385,8 +384,8 @@ if assess_science_objectives:
                 np.savez(f"{source_name}/relative_errors_histogram_{param}.npz", relative_error=rel_err[:,i])
                 
             if param == 'qS':
-                status = "PASS" if err_sky_loc < threshold else "FAIL"
-                error_statuses.append(("Sky Localization", status, err_sky_loc, threshold))
+                status = "PASS" if np.median(err_sky_loc) < threshold else "FAIL"
+                error_statuses.append(("Sky Localization", status, np.median(err_sky_loc), threshold))
                 plt.figure()
                 plt.title(f'Median: {np.median(err_sky_loc):.2e}, Std: {np.std(err_sky_loc):.2e}')
                 plt.hist(err_sky_loc, bins=30, label='Source Frame')
