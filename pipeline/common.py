@@ -18,146 +18,83 @@ from scipy import integrate
 from scipy.interpolate import splrep, splev, RegularGridInterpolator, interp1d
 from scipy.constants import c
 
-c /= 1000.  # 2.99792458e+05 # in km/s
+import astropy.units as u
+from astropy.cosmology import Planck18, z_at_value
+cosmo = Planck18
 
+def get_redshift(distance):
+    return (z_at_value(cosmo.luminosity_distance, distance * u.Gpc )).value
 
-def h(z, Omega_m=0.3065, w0=-1., wa=0.):
+def get_distance(redshift):
+    return cosmo.luminosity_distance(redshift).to(u.Gpc).value
+
+class CosmoInterpolator:
     """
-    Returns dimensionless redshift-dependent hubble parameter.
-
-    Parameters
-    ----------
-    z : redshift
-    Omega_m : matter fraction
-    Dynamical dark energy: w(a) = w0+wa(1-a)
-
-    Returns
-    -------
-    dimensionless h(z) = sqrt(Omega_m*(1+z)^3 + Omega_Lambda
-    *(1+z)^[3(1+w0+wa)]*e^[-3*wa*z/(1+z)])
+    Class to interpolate cosmological parameters.
     """
-    Omega_Lambda = (1-Omega_m)
-    return np.sqrt(Omega_m*(1+z)**3 + Omega_Lambda* (1+z)**(3*(1+w0+wa)) * np.exp(-3*wa*z/(1+z)))
+    def __init__(self, min_z=1e-7, max_z=15.0, num_points=10000):
+        self.min_z = min_z
+        self.max_z = max_z
+        self.num_points = num_points
 
+        # Create a grid of redshifts and corresponding luminosity distances
+        self.redshifts = np.linspace(self.min_z, self.max_z, self.num_points)
+        self.luminosity_distances = np.array([get_distance(z) for z in self.redshifts])
+        self.min_luminosity_distance = np.min(self.luminosity_distances)
+        self.max_luminosity_distance = np.max(self.luminosity_distances)
+        self.luminosity_distance_interpolator = CubicSpline(self.redshifts, self.luminosity_distances)
+        self.redshift_interpolator = CubicSpline(self.luminosity_distances, self.redshifts)
+        dz_dl = self.redshift_interpolator.derivative()(self.luminosity_distances)
+        self.get_dz_dl_interp = CubicSpline(self.redshifts, dz_dl)
+        
 
-def dcH0overc(z, Omega_m=0.3065, w0=-1., wa=0.):
-    """
-    Returns dimensionless combination dc*H0/c
-    given redshift and matter fraction.
-
-    Parameters
-    ----------
-    z : redshift
-    Omega_m : matter fraction
-    Dynamical dark energy: w(a) = w0+wa(1-a)
-
-    Returns
-    -------
-    dimensionless combination dc*H0/c = \int_0^z dz'/h(z')
-    """
-    integrand = lambda zz: 1./h(zz, Omega_m, w0, wa)
-
-    if np.size(z)>1:
-        if np.size(np.where(z<=0))>0:
-            raise ValueError('Negative redshift input!')
-        result = np.array([integrate.quad(integrand, 0, zi)[0] for zi in z])
-    else:
-        if z<=0:
-            raise ValueError('Negative redshift input!')
-        result = integrate.quad(integrand, 0, z)[0]  # in km/s
-
-    return result
-
-
-def dLH0overc(z, Omega_m=0.3065, w0=-1., wa=0.):
-    """
-    Returns dimensionless combination dL*H0/c
-    given redshift and matter fraction.
-
-    Parameters
-    ----------
-    z : redshift
-    Omega_m : matter fraction
-
-    Returns
-    -------
-    dimensionless combination dL*H0/c = (1+z) * \int_0^z dz'/h(z')
-    """
-    return (1+z)*dcH0overc(z, Omega_m, w0, wa)
-
-class standard_cosmology(object):
-    """
-    from gwcosmo
-    """
-    def __init__(self, H0=70, Omega_m=0.3065, w0=-1., wa=0., zmax=10.0, zmin=1.e-5, zbin=5000):
-
-        self.c = c
-        self.H0 = H0
-        self.Omega_m = Omega_m
-        self.w0 = w0
-        self.wa = wa
-        self.zmax = zmax
-        self.zmin = zmin
-        self.zbin = zbin
-        self.z_array = np.logspace(np.log10(self.zmin), np.log10(self.zmax), self.zbin)
-
-        # Interpolation of z(dL)
-        self.dlH0overc_z_arr = np.array([dLH0overc(z, Omega_m=self.Omega_m, w0=self.w0, wa=self.wa)
-                        for z in self.z_array])
-        self.dlH0overc_of_z = splrep(self.z_array, self.dlH0overc_z_arr)
-
-    def update_parameters(self,param_dict):
+    def test_relationship(self):
         """
-        Update values of cosmological parameters.
-        Key in param_dict: H0
+        Test the relationship between luminosity distance and redshift.
         """
-        if 'H0' in param_dict:
-            if param_dict['H0'] != self.H0:
-                self.H0 = param_dict['H0']
+        # Generate a range of redshifts
+        z_values = np.random.uniform(self.min_z, self.max_z, 1000)
+        dL_true = np.asarray([get_distance(z) for z in z_values])
+        z_interp = self.redshift_interpolator(dL_true)
+        dL_interp = self.luminosity_distance_interpolator(z_values)
+        # plot relationship
+        plt.figure(figsize=(8, 6))
+        plt.plot(z_values, np.abs(1-dL_interp/dL_true), '.' ,label='Interpolated dL', color='blue')
+        plt.plot(z_values, np.abs(1-z_interp/z_values), '.' ,label='Interpolated z', color='red')
+        plt.xlabel('Redshift (z)')
+        plt.ylabel('Relative difference')
+        plt.legend()
+        plt.grid()
+        plt.xscale('log')
+        plt.yscale('log')
+        # plt.xlim(self.min_z, self.max_z)
+        # plt.ylim(self.min_luminosity_distance, self.max_luminosity_distance)
+        plt.savefig('luminosity_distance_vs_redshift.png')
 
-    def dl_zH0(self, z):
+    def get_redshift(self, luminosity_distance):
         """
-        Returns luminosity distance given redshift
-
-        Parameters
-        ----------
-        z : redshift
-
-        Returns
-        -------
-        luminosity distance, dl (in Mpc)
+        Get the redshift corresponding to a given luminosity distance.
         """
-        return splev(z, self.dlH0overc_of_z, ext=3)*c/self.H0
+        return self.redshift_interpolator(luminosity_distance)
     
-    def dl_dz(self, z):
+    def get_luminosity_distance(self, redshift):
         """
-        Returns luminosity derivative wrt redshift given redshift
-
-        Parameters
-        ----------
-        z : redshift
-
-        Returns
-        -------
-        redshift
+        Get the luminosity distance corresponding to a given redshift.
         """
-        return splev(z, self.dlH0overc_of_z, ext=3, der=1)*c/self.H0
+        return self.luminosity_distance_interpolator(redshift)
+
+    def get_dlum_dz(self, redshift):
+        """
+        Get the derivative of luminosity distance with respect to redshift.
+        """
+        return self.luminosity_distance_interpolator.derivative()(redshift)
     
-    def transform_mass_uncertainty(self, m, sigma_m, z, sigma_l):
+    def get_dz_dlum(self, luminosity_distance):
         """
-        Transform mass uncertainty from detector frame mass to source frame mass
+        Get the derivative of redshift with respect to luminosity distance.
+        """
+        return self.redshift_interpolator.derivative()(luminosity_distance)
 
-        Parameters
-        ----------
-        m : detector frame mass
-        sigma_m : mass uncertainty
-        z : redshift
-        sigma_l [Mpc] : luminosity distance uncertainty
-        """
-        sigma_dz = sigma_l / np.abs(cosmo.dl_dz(z))
-        sigma_Msource = np.sqrt( (sigma_m / (1+z))**2 + (m/(1+z**2) * sigma_dz)**2 )
-        return sigma_Msource
-    
     def jacobian(self, M_s, mu_s, z):
         """Jacobian to obtain source frame Fisher matrix from detector frame Fisher matrix. GammaNew = J^T Gamma J
 
@@ -170,7 +107,8 @@ class standard_cosmology(object):
         Returns:
             np.array: Jacobian matrix
         """
-        dz_dl = 1. / self.dl_dz(z)
+        dz_dl = self.get_dz_dl_interp(z)
+        print("dz_dl: ", dz_dl)
         first_row =  np.array([(1+z), 0.0,   0.0, 0.0, 0.0, M_s * dz_dl,  0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         second_row = np.array([0.0,   (1+z), 0.0, 0.0, 0.0, mu_s * dz_dl, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         third_row =  np.array([0.0,   0.0,   1.0, 0.0, 0.0, 0.0,          0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
@@ -187,13 +125,35 @@ class standard_cosmology(object):
         # print("shape of J: ", J.shape)
         return J
 
+
+    def transform_mass_uncertainty(self, m, sigma_m, z, sigma_l):
+        """
+        Transform mass uncertainty from detector frame mass to source frame mass
+
+        Parameters
+        ----------
+        m : detector frame mass
+        sigma_m : mass uncertainty
+        z : redshift
+        sigma_l [Mpc] : luminosity distance uncertainty
+        """
+        sigma_dz = sigma_l / np.abs(self.get_luminosity_distance(z))
+        sigma_Msource = np.sqrt( (sigma_m / (1+z))**2 + (m/(1+z**2) * sigma_dz)**2 )
+        return sigma_Msource
+
+CosmoInt = CosmoInterpolator()
+CosmoInt.test_relationship()
+
 if __name__ == "__main__":
 
     # test transformation of mass uncertainty
-    cosmo = standard_cosmology(zmax=10.0, zmin=1.e-3, zbin=100000)
+    cosmo = CosmoInterpolator()
     z = 0.1
-    l = cosmo.dl_zH0(z)
-    print("Luminosity distance [Mpc]: ", l, "Redshift", z)
+    l = cosmo.get_luminosity_distance(z)
+    print("Luminosity distance [Gpc]: ", l, "Redshift", z)
+    z = 1.0
+    l = cosmo.get_luminosity_distance(z)
+    print("Luminosity distance [Gpc]: ", l, "Redshift", z)
     m = 1.e6
     msource = m / (1+z)
     sigma_m_values = np.logspace(-5, -2, 4) * m
@@ -233,24 +193,6 @@ if __name__ == "__main__":
 
     plt.tight_layout()
     plt.savefig('uncertainty_msource.png')
-    # print("Sigma Msource: ", sigma_msource, "Sigma Mdetector: ", sigma_m)
-    # # relative uncertainty
-    # print("Relative uncertainty in source: ", sigma_msource / msource, " and detector mass ",sigma_m / m)
-    # print("Sigma L: ", sigma_l, "Sigma dz: ", sigma_l / np.abs(cosmo.dl_dz(z)))
-
-    # plot dL(z)
-    cosmo = standard_cosmology(zmax=100.0, zmin=1.e-9, zbin=100000)
-    z = np.logspace(np.log10(1e-9), -2, 1000)
-    dl = np.array([cosmo.dl_zH0(zi) for zi in z])/1e3
-    plt.figure()
-    plt.plot(z, dl)
-    # plot horizontal line at 8 kpc
-    plt.axhline(8e-9, color='r', label='8 kpc')
-    plt.legend()
-    plt.xscale('log')
-    plt.yscale('log')
-    plt.xlabel('z')
-    plt.ylabel('dL (Gpc)')
 
     galaxies = {
     # Local Group
@@ -277,24 +219,3 @@ if __name__ == "__main__":
     # "J1120+0641": (7.08, None, 2.0e9),  # Mortlock et al. 2011
     }
 
-
-    # Extract data for plotting
-    # galaxy_redshifts = np.array([galaxies[name][0] for name in galaxies])
-    # galaxy_distances = np.array([cosmo.dl_zH0(galaxies[name][0]) for name in galaxies])/1e3
-
-    # Plot
-    # Define markers and colors
-    markers = ['o', 's', 'D', '^', 'v', '<', '>', 'p', '*', 'h', 'H', 'x', 'd', '|', '_']
-    colors = plt.cm.viridis(np.linspace(0, 1, len(galaxies)))
-
-    # Annotate galaxies with different colors and markers
-    for i, (name, (z, d, mass)) in enumerate(galaxies.items()):
-        labmass = f", M={int(galaxies[name][2]/1e6)}" + r"$\times 10^6 M_\odot$" if galaxies[name][2] is not None else ""
-        plt.scatter(galaxies[name][0], cosmo.dl_zH0(galaxies[name][0])/1e3, label=name + labmass, 
-                    color=colors[i], marker=markers[i % len(markers)], zorder=3)
-        # plt.annotate(name, (z, cosmo.dl_zH0(z)/1e3), textcoords="offset points", xytext=(-10, 5), ha='right', fontsize=9)
-
-
-    plt.legend(loc='upper left')
-    plt.grid(True)
-    plt.savefig('dL_z.png')

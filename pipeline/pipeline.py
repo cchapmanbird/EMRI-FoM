@@ -11,7 +11,7 @@ from few.utils.geodesic import get_separatrix
 from few.trajectory.ode import KerrEccEqFlux
 from stableemrifisher.fisher import StableEMRIFisher
 from stableemrifisher.utils import inner_product
-from common import standard_cosmology
+from common import CosmoInterpolator
 import time
 import matplotlib.pyplot as plt
 from stableemrifisher.plot import CovEllipsePlot, StabilityPlot
@@ -21,17 +21,7 @@ from scipy.signal.windows import tukey
 #psd stuff
 from psd_utils import load_psd, get_psd_kwargs
 
-import astropy.units as u
-from astropy.cosmology import Planck18, z_at_value
-
-cosmo = Planck18 #FlatLambdaCDM(H0=70, Om0=0.3, Tcmb0=2.725)
-
-def get_redshift(distance):
-    return (z_at_value(cosmo.luminosity_distance, distance * u.Gpc )).value
-
-def get_distance(redshift):
-    return cosmo.luminosity_distance(redshift).to(u.Gpc).value
-
+cosmo = CosmoInterpolator()
 
 # Initialize logger
 logger = logging.getLogger()
@@ -139,7 +129,7 @@ if __name__ == "__main__":
     x0_f = 1.0
     p_f = get_separatrix(args.a, args.e_f, x0_f) + 0.1
     # TODO: update consistent with astropy cosmology
-    dist = get_distance(args.z)
+    dist = cosmo.get_luminosity_distance(args.z)
     print("Distance in Gpc", dist)
     T = args.T
 

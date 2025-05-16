@@ -114,8 +114,8 @@ for source, params in source_intr.items():
 # names of parameters
 param_names = np.array(['M','mu','a','p0','e0','xI0','dist','qS','phiS','qK','phiK','Phi_phi0','Phi_theta0','Phi_r0'])
 # jacobian to obtain source frame Fisher matrix from detector frame Fisher matrix
-from common import standard_cosmology
-cosmo = standard_cosmology(zmax=10.0, zmin=1.e-5, zbin=100000)
+from common import CosmoInterpolator
+cosmo = CosmoInterpolator()
 
 popinds = []
 popinds.append(5)

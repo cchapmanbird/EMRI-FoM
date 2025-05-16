@@ -7,7 +7,7 @@ TODO:
 - Get pipeline for parameter estimation
 - Update the horizon redshift to be averaged
 - Everything with new Kerr Equatorial model so no inclination
-- Need to think about Quadrupole moment https://arxiv.org/abs/gr-qc/0612029
+- Need to think about Quadrupole moment https://arxiv.org/abs/gr-qc/0612029 , mapping in eq 43 of https://arxiv.org/pdf/gr-qc/0510129
 - Talk with Andrea Sartirana and Maxime
 
 ## Installation Instructions
@@ -82,6 +82,8 @@ from fastlisaresponse import ResponseWrapper
 ### Test waveform and response
 ```
 python -m unittest test_waveform_and_response.py 
+cd pipeline
+python pipeline.py --M 1e6 --mu 1e1 --a 0.5 --e_f 0.1 --T 1.0 --z 0.1 --repo test --psd_file TDI2_AE_psd.npy --dt 10.0 --use_gpu --N_montecarlo 1 --device 0 --repo test
 ```
 
 ## Running the pipeline
