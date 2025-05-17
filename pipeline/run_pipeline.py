@@ -269,6 +269,7 @@ if assess_science_objectives:
         print(f"Assessing science objectives for {source_name}...")
         filelist = sorted(glob.glob(f"{source_name}/*/results.npz"))
         total_results = {nn: [] for nn in ['cov', 'snr', 'fisher_params', 'errors', 'relative_errors']}
+        list_ratios = []
         for file in filelist:
             print(f"Processing file: {file}")
             results = np.load(file)
@@ -277,10 +278,16 @@ if assess_science_objectives:
             M_source = source_intr[source_name]["m1_source"]
             mu_source = source_intr[source_name]["m2_source"]
             J = cosmo.jacobian(M_source, mu_source, redshift)
+            
             for el in total_results.keys():
                 if el == 'cov':
-                    Gamma = np.linalg.inv(results[el])
-                    total_results[el].append(np.linalg.inv(J.T @ Gamma @ J))
+                    detector_frame_cov = results[el]
+                    source_frame_cov = J @ detector_frame_cov @ J.T
+                    sigma_m1_source_det_ratio = source_frame_cov[0,0]**0.5 / detector_frame_cov[0,0]**0.5
+                    # print(f"Source frame covariance matrix: {source_frame_cov[0,0]**0.5}")
+                    # print(f"Detector frame covariance matrix: {detector_frame_cov[0,0]**0.5}")
+                    list_ratios.append([sigma_m1_source_det_ratio,source_frame_cov[5,5]**0.5/results["fisher_params"][5]])
+                    total_results[el].append(source_frame_cov)
                     # total_results[el].append(results[el])
                 if el == 'fisher_params':
                     source_frame_par = results[el]
@@ -290,6 +297,15 @@ if assess_science_objectives:
                 else:
                     total_results[el].append(results[el])
         
+        list_ratios = np.array(list_ratios)
+        plt.figure()
+        plt.loglog(list_ratios[:,1], list_ratios[:,0], '.')
+        plt.ylabel('Ratio of source frame to detector frame covariance matrix')
+        plt.xlabel('Relative uncertainty lum dist')
+        plt.title(f'Ratio of source frame to detector frame covariance matrix for {source_name}')
+        plt.savefig(f"{source_name}/ratio_source_detector_covariance.png")
+        plt.close()
+
         mean_snr = np.mean(total_results['snr'])
         # plot SNR histogram
         plt.figure()

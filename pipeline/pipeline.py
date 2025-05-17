@@ -221,12 +221,10 @@ if __name__ == "__main__":
         # generate random parameters
         Phi_phi0, Phi_r0, Phi_theta0 = generate_random_phases()
         qS, phiS, qK, phiK = generate_random_sky_localization()
-        # define the initial parameters
+        # update the parameters
         parameters = np.asarray([M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0])
 
         current_folder = os.path.join(args.repo, name_realization)
-        # update the parameters
-        parameters = np.asarray([M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0])
         # create folder for the realization
         os.makedirs(current_folder, exist_ok=True)
         # save the parameters to txt file
@@ -274,7 +272,7 @@ if __name__ == "__main__":
             errors_df = pd.DataFrame(errors_df)
             errors_df.to_markdown(os.path.join(current_folder, "summary.md"), floatfmt=".10e")
             # save the covariance matrix and the SNR to npz file
-            np.savez(os.path.join(current_folder, "results.npz"), cov=cov, snr=SNR, fisher_params=fisher_params, errors=errors, relative_errors=errors/fisher_params, names=param_names)
+            np.savez(os.path.join(current_folder, "results.npz"), gamma=fim, cov=cov, snr=SNR, fisher_params=fisher_params, errors=errors, relative_errors=errors/fisher_params, names=param_names)
             print("Saved results to", current_folder)
             print("*************************************")
             

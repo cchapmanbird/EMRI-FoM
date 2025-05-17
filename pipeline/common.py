@@ -111,7 +111,6 @@ class CosmoInterpolator:
             np.array: Jacobian matrix
         """
         dz_dl = self.get_dz_dl_interp(z)
-        print("dz_dl: ", dz_dl)
         first_row =  np.array([(1+z), 0.0,   0.0, 0.0, 0.0, M_s * dz_dl,  0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         second_row = np.array([0.0,   (1+z), 0.0, 0.0, 0.0, mu_s * dz_dl, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
         third_row =  np.array([0.0,   0.0,   1.0, 0.0, 0.0, 0.0,          0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
@@ -140,8 +139,8 @@ class CosmoInterpolator:
         z : redshift
         sigma_l [Mpc] : luminosity distance uncertainty
         """
-        sigma_dz = sigma_l / np.abs(self.get_luminosity_distance(z))
-        sigma_Msource = np.sqrt( (sigma_m / (1+z))**2 + (m/(1+z**2) * sigma_dz)**2 )
+        sigma_dz = sigma_l  * np.abs(self.get_dz_dlum(self.get_luminosity_distance(z)))
+        sigma_Msource = np.sqrt( (sigma_m / (1+z))**2 + (m/(1+z)**2 * sigma_dz)**2 )
         return sigma_Msource
 
 CosmoInt = CosmoInterpolator()
@@ -157,15 +156,23 @@ if __name__ == "__main__":
     # z = 1.0
     # l = cosmo.get_luminosity_distance(z)
     # print("Luminosity distance [Gpc]: ", l, "Redshift", z)
+    
     m = 1.e6
     msource = m / (1+z)
     sigma_m_values = np.logspace(-5, -2, 4) * m
     sigma_l_values = np.logspace(-3, -0.5, 20) * l
     sigma_msource_values = np.zeros((len(sigma_m_values), len(sigma_l_values)))
-
+    print("of order one = ",np.abs(cosmo.get_dz_dlum(cosmo.get_luminosity_distance(z)))/ z * l)
     for i, sigma_m in enumerate(sigma_m_values):
         for j, sigma_l in enumerate(sigma_l_values):
-            sigma_msource_values[i, j] = cosmo.transform_mass_uncertainty(m, sigma_m, z, sigma_l)
+            Gamma = np.eye(12)
+            Gamma[0,0] = Gamma[0,0] / sigma_m**2
+            Gamma[5,5] = Gamma[5,5] / sigma_l**2
+            J = cosmo.jacobian(msource, 10.0, z)
+            Cov = np.linalg.inv(J.T @ Gamma @ J)
+            new_sigma_m = np.sqrt(Cov[0, 0])
+            sigma_msource_values[i, j] = new_sigma_m # 
+    print("check jacobian transformation: ", np.abs(1-new_sigma_m/cosmo.transform_mass_uncertainty(m, sigma_m, z, sigma_l)))
 
     plt.figure(figsize=(12, 6))
 
