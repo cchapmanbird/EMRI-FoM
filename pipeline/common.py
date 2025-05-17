@@ -19,20 +19,20 @@ from scipy.interpolate import splrep, splev, RegularGridInterpolator, interp1d
 from scipy.constants import c
 
 import astropy.units as u
-from astropy.cosmology import Planck18, z_at_value
-cosmo = Planck18
+from astropy.cosmology import Planck18, z_at_value, FlatLambdaCDM
+ref_cosmo = FlatLambdaCDM(H0=70, Om0=0.3)
 
 def get_redshift(distance):
-    return (z_at_value(cosmo.luminosity_distance, distance * u.Gpc )).value
+    return (z_at_value(ref_cosmo.luminosity_distance, distance * u.Gpc )).value
 
 def get_distance(redshift):
-    return cosmo.luminosity_distance(redshift).to(u.Gpc).value
+    return ref_cosmo.luminosity_distance(redshift).to(u.Gpc).value
 
 class CosmoInterpolator:
     """
     Class to interpolate cosmological parameters.
     """
-    def __init__(self, min_z=1e-7, max_z=15.0, num_points=10000):
+    def __init__(self, min_z=1e-3, max_z=15.0, num_points=10000):
         self.min_z = min_z
         self.max_z = max_z
         self.num_points = num_points
@@ -46,6 +46,9 @@ class CosmoInterpolator:
         self.redshift_interpolator = CubicSpline(self.luminosity_distances, self.redshifts)
         dz_dl = self.redshift_interpolator.derivative()(self.luminosity_distances)
         self.get_dz_dl_interp = CubicSpline(self.redshifts, dz_dl)
+        # plt.figure(figsize=(8, 6))
+        # plt.plot(np.linspace(self.min_z, self.max_z, self.num_points*10), self.get_dz_dl_interp(np.linspace(self.min_z, self.max_z, self.num_points*10)))
+        # plt.savefig('dz_dl.png')
         
 
     def test_relationship(self):
@@ -151,9 +154,9 @@ if __name__ == "__main__":
     z = 0.1
     l = cosmo.get_luminosity_distance(z)
     print("Luminosity distance [Gpc]: ", l, "Redshift", z)
-    z = 1.0
-    l = cosmo.get_luminosity_distance(z)
-    print("Luminosity distance [Gpc]: ", l, "Redshift", z)
+    # z = 1.0
+    # l = cosmo.get_luminosity_distance(z)
+    # print("Luminosity distance [Gpc]: ", l, "Redshift", z)
     m = 1.e6
     msource = m / (1+z)
     sigma_m_values = np.logspace(-5, -2, 4) * m
