@@ -1,4 +1,4 @@
-# nohup python pipeline_snr.py > out.out &
+# nohup python pipeline_snr.py > out_snr.out &
 import os
 import sys
 # if input is test
@@ -6,11 +6,11 @@ if len(sys.argv) > 1 and sys.argv[1] == "test":
     # test mode
     Nmonte = 1
     # device: device to use on GPUs
-    dev = 0
+    dev = 3
     repo_root = "test/"
 else:
     # production mode
-    Nmonte = 10
+    Nmonte = 100
     # device: device to use on GPUs
     dev = 0
     repo_root = "production/"
@@ -76,7 +76,7 @@ with open(repo_root + sources_file, "w") as f:
 if len(sys.argv) > 1 and sys.argv[1] == "test":
     sources = sources[:1]  # Only run the first source in test mode
 
-# Run the pipeline for each source from command
+# # Run the pipeline for each source from command
 # for source in sources:
 #     command = (
 #         f"python pipeline.py --M {source['M']} --mu {source['mu']} --a {source['a']} "

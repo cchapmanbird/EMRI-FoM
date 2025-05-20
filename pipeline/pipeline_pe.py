@@ -1,4 +1,4 @@
-# nohup python pipeline_pe.py > out.out &
+# nohup python pipeline_pe.py > out_pe.out &
 import os
 import sys
 # if input is test
@@ -10,7 +10,7 @@ if len(sys.argv) > 1 and sys.argv[1] == "test":
     repo_root = "test/"
 else:
     # production mode
-    Nmonte = 1
+    Nmonte = 100
     # device: device to use on GPUs
     dev = 0
     repo_root = "production/"
@@ -76,50 +76,50 @@ with open(repo_root + sources_file, "w") as f:
 if len(sys.argv) > 1 and sys.argv[1] == "test":
     sources = sources[:1]  # Only run the first source in test mode
 
-# Run the pipeline for each source from command
-for source in sources:
-    command = (
-        f"python pipeline.py --M {source['M']} --mu {source['mu']} --a {source['a']} "
-        f"--e_f {source['e_f']} --T {source['T']} --z {source['z']} "
-        f"--repo {source['repo']} --psd_file {source['psd_file']} --model {source['model']} --channels {source['channels']} "
-        f"--dt {source['dt']}  --use_gpu --N_montecarlo {source['N_montecarlo']} --device {source['device']} --calculate_fisher {source['pe']} "
-    )
-    if include_foreground:
-        command += " --foreground"
-    if esaorbits:
-        command += " --esaorbits"
-    if tdi2:
-        command += " --tdi2"
-    
-    os.system(command)
-
-# # Run the pipeline for each source using condor
+# # Run the pipeline for each source from command
 # for source in sources:
-#     extra_args = ""
-#     if include_foreground:
-#         extra_args += " --foreground"
-#     if esaorbits:
-#         extra_args += " --esaorbits"
-#     if tdi2:
-#         extra_args += " --tdi2"
-
-#     condor_command = (
-#         f'condor_submit '
-#         f'-a "M={source["M"]}" '
-#         f'-a "mu={source["mu"]}" '
-#         f'-a "a={source["a"]}" '
-#         f'-a "e_f={source["e_f"]}" '
-#         f'-a "T={source["T"]}" '
-#         f'-a "z={source["z"]}" '
-#         f'-a "repo={source["repo"]}" '
-#         f'-a "psd_file={source["psd_file"]}" '
-#         f'-a "model={source["model"]}" '
-#         f'-a "channels={source["channels"]}" '
-#         f'-a "dt={source["dt"]}" '
-#         f'-a "N_montecarlo={source["N_montecarlo"]}" '
-#         f'-a "device={source["device"]}" '
-#         f'-a "calculate_fisher={source["pe"]}" '
-#         f'-a "extra_args={extra_args.strip()}" '
-#         f'submit_pipeline.submit'
+#     command = (
+#         f"python pipeline.py --M {source['M']} --mu {source['mu']} --a {source['a']} "
+#         f"--e_f {source['e_f']} --T {source['T']} --z {source['z']} "
+#         f"--repo {source['repo']} --psd_file {source['psd_file']} --model {source['model']} --channels {source['channels']} "
+#         f"--dt {source['dt']}  --use_gpu --N_montecarlo {source['N_montecarlo']} --device {source['device']} --calculate_fisher {source['pe']} "
 #     )
-#     os.system(condor_command)
+#     if include_foreground:
+#         command += " --foreground"
+#     if esaorbits:
+#         command += " --esaorbits"
+#     if tdi2:
+#         command += " --tdi2"
+    
+#     os.system(command)
+
+# Run the pipeline for each source using condor
+for source in sources:
+    extra_args = ""
+    if include_foreground:
+        extra_args += " --foreground"
+    if esaorbits:
+        extra_args += " --esaorbits"
+    if tdi2:
+        extra_args += " --tdi2"
+
+    condor_command = (
+        f'condor_submit '
+        f'-a "M={source["M"]}" '
+        f'-a "mu={source["mu"]}" '
+        f'-a "a={source["a"]}" '
+        f'-a "e_f={source["e_f"]}" '
+        f'-a "T={source["T"]}" '
+        f'-a "z={source["z"]}" '
+        f'-a "repo={source["repo"]}" '
+        f'-a "psd_file={source["psd_file"]}" '
+        f'-a "model={source["model"]}" '
+        f'-a "channels={source["channels"]}" '
+        f'-a "dt={source["dt"]}" '
+        f'-a "N_montecarlo={source["N_montecarlo"]}" '
+        f'-a "device={source["device"]}" '
+        f'-a "calculate_fisher={source["pe"]}" '
+        f'-a "extra_args={extra_args.strip()}" '
+        f'submit_pipeline.submit'
+    )
+    os.system(condor_command)
