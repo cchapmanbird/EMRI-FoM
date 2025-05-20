@@ -1,0 +1,17 @@
+# Condor submit file for pipeline.py job submission
+universe = vanilla
+executable = /data/lsperi/EMRI-FoM/pipeline/pipeline.py
+arguments = --M $(M) --mu $(mu) --a $(a) --e_f $(e_f) --T $(T) --z $(z) --repo $(repo) --psd_file $(psd_file) --model $(model) --channels $(channels) --dt $(dt) --use_gpu --N_montecarlo $(N_montecarlo) --device $(device) $(extra_args)
+
+output = pipeline_$(repo).out
+error  = pipeline_$(repo).err
+log    = pipeline_$(repo).log
+
+request_memory = 32.0GB
+request_disk = 2.0GB
+request_cpus = 2
+notification = Never
+requirements = TARGET.CUDAGlobalMemoryMb>20000
+request_gpus = 1
+
+queue
