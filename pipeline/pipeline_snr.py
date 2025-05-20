@@ -41,20 +41,20 @@ include_foreground = True
 dt = 5.0
 sources = []
 
-m1_values = [1e7, 1e6, 1e5, 1e4]
+m1_values = [10**(4.5), 10**(5.5), 10**6.5, 1e7, 1e6, 1e5, 1e4]
 m2 = 10.
 a = 0.9
 e_2yr_values = [1e-4] # Eccentricity does not have a big impact on horizon
 # open dictionary with the sources
 
-for redshift in [0.1, 0.5, 1.0, 2.0]:
+for redshift in [0.05]:#[0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 2.5]:
     for T_plunge_yr in [0.5, 2.0]:
         for m1 in m1_values:
             for e_f in e_2yr_values:
                 source = f"m1={m1}_m2={m2}_a={a}_e_f={e_f}_T_plunge_yr={T_plunge_yr}_z={redshift}"
                 sources.append({
-                "M": m1,
-                "mu": m2,
+                "M": m1 * (1 + redshift),
+                "mu": m2 * (1 + redshift),
                 "a": a,
                 "e_f": e_f,
                 "T": T_plunge_yr,
@@ -67,13 +67,14 @@ for redshift in [0.1, 0.5, 1.0, 2.0]:
                 "N_montecarlo": Nmonte,
                 "device": dev,
                 "threshold_SNR": thr_snr,
+                "pe": 0,
                 })
 
 
 print("Running the pipeline...")
 source_runtimes = {}
 
-# Run the pipeline for each source
+# Run the pipeline for each source from command
 # for source in sources:
 #     command = (
 #         f"python pipeline.py --M {source['M']} --mu {source['mu']} --a {source['a']} "
@@ -90,8 +91,8 @@ source_runtimes = {}
     
 #     os.system(command)
 
-
-for source in sources[:1]:
+# Run the pipeline for each source using condor
+for source in sources:
     extra_args = ""
     if include_foreground:
         extra_args += " --foreground"
@@ -115,6 +116,7 @@ for source in sources[:1]:
         f'-a "dt={source["dt"]}" '
         f'-a "N_montecarlo={source["N_montecarlo"]}" '
         f'-a "device={source["device"]}" '
+        f'-a "calculate_fisher={source["pe"]}" '
         f'-a "extra_args={extra_args.strip()}" '
         f'submit_pipeline.submit'
     )

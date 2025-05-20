@@ -1,3 +1,4 @@
+#!/data/lsperi/miniconda3/envs/fom/bin/python
 # python pipeline.py --M 1e6 --mu 1e1 --a 0.5 --e_f 0.1 --T 1.0 --z 0.1 --repo test --psd_file TDI2_AE_psd.npy --dt 10.0 --use_gpu --N_montecarlo 1 --device 3 --repo test
 import os
 import logging
@@ -47,6 +48,7 @@ def parse_arguments():
     parser.add_argument('--tdi2', action='store_true', default=False, help="Use 2nd generation TDI channels")
     parser.add_argument('--channels', type=str, default="AE", help="TDI channels to use")
     parser.add_argument('--model', type=str, default="scirdv1", help="Noise model to use") #TODO: is this used?
+    parser.add_argument("--calculate_fisher", help="Calculate the Fisher matrix", type=int, default=0)
     
     return parser.parse_args()
 
@@ -100,7 +102,8 @@ popinds.append(12)
 param_names = np.delete(param_names, popinds).tolist()
 
 if __name__ == "__main__":
-
+    start_script = time.time()
+    
     args = parse_arguments()
     #args = process_args(args)
     xp = initialize_gpu(args)
@@ -241,8 +244,9 @@ if __name__ == "__main__":
                                 )
         # calculate the SNR
         SNR = fish.SNRcalc_SEF()
-        np.savez(os.path.join(current_folder, "snr.npz"), snr=SNR, parameters=parameters)
-        calculate_fisher = True
+        np.savez(os.path.join(current_folder, "snr.npz"), snr=SNR, parameters=parameters, redshift=args.z, e_f=args.e_f, Tplunge=T)
+        
+        calculate_fisher = bool(args.calculate_fisher)
         if calculate_fisher:
             # calculate the Fisher matrix
             fim = fish()
@@ -261,6 +265,10 @@ if __name__ == "__main__":
             
             # create ellipse plot only the first montecarlo realization
             cov = np.linalg.inv(fim)
+            
+            J = cosmo.jacobian(M / (1 + args.z), mu / (1 + args.z), args.z)
+            source_frame_cov = J @ cov @ J.T
+
             if j == 0:
                 CovEllipsePlot(fish.param_names, fish.wave_params, cov, filename=current_folder + f"/covariance_ellipse_plot.png")
             
@@ -272,10 +280,17 @@ if __name__ == "__main__":
             errors_df = pd.DataFrame(errors_df)
             errors_df.to_markdown(os.path.join(current_folder, "summary.md"), floatfmt=".10e")
             # save the covariance matrix and the SNR to npz file
-            np.savez(os.path.join(current_folder, "results.npz"), gamma=fim, cov=cov, snr=SNR, fisher_params=fisher_params, errors=errors, relative_errors=errors/fisher_params, names=param_names)
+            Sigma = cov[6:8, 6:8]
+            err_sky_loc = 2 * np.pi * np.sin(qS) * np.sqrt(np.linalg.det(Sigma)) * (180.0 / np.pi) ** 2
+            np.savez(os.path.join(current_folder, "results.npz"), gamma=fim, cov=cov, snr=SNR, fisher_params=fisher_params, errors=errors, relative_errors=errors/fisher_params, names=param_names, source_frame_cov=source_frame_cov, err_sky_loc=err_sky_loc, redshift=args.z, e_f=args.e_f)
             print("Saved results to", current_folder)
             print("*************************************")
             
 
 
-
+    
+    end_script = time.time()
+    print("Total time taken for the script: ", end_script - start_script)
+    # save total time taken
+    with open(os.path.join(args.repo, "total_time_script.txt"), "w") as f:
+        f.write(str(end_script - start_script))

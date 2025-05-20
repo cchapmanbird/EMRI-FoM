@@ -9,9 +9,9 @@ import io
 import healpy as hp
 
 # decide whether to run the full pipeline and generate the results
-run_pipeline = False
+run_pipeline = True
 # decide whether to assess the science objectives
-assess_science_objectives = True
+assess_science_objectives = False
 # decide whether to generate the data for the redshift horizon plot
 generate_redshift_horizon = False
 # decide whether to plot the redshift horizon plot
