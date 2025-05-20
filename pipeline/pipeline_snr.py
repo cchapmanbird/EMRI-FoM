@@ -1,23 +1,22 @@
+# nohup python pipeline_snr.py > out.out &
 import os
-import time
-import glob
-import numpy as np
-import subprocess
-import matplotlib.pyplot as plt
-import pandas as pd
-import io
+import sys
+# if input is test
+if len(sys.argv) > 1 and sys.argv[1] == "test":
+    # test mode
+    Nmonte = 1
+    # device: device to use on GPUs
+    dev = 0
+    repo_root = "test/"
+else:
+    # production mode
+    Nmonte = 10
+    # device: device to use on GPUs
+    dev = 0
+    repo_root = "production/"
 
-# the following two lines define the thresholds for the science objectives
-# threshold_SNR: threshold on SNR for the science objectives
-thr_snr = [20.0, 25., 30.]
-# qs is used as sky localization threshold
-# p0, phi0, theta0 are not used in the threshold
-
-# device: device to use on GPUs
-dev = 0
-# defines the number of montecarlo runs over phases and sky locations
-# N_montecarlo: number of montecarlo runs over phases and sky locations
-Nmonte = 10
+print("Running the pipeline in mode:", repo_root)
+os.makedirs(repo_root, exist_ok=True)
 
 #define the psd and response properties
 channels = 'AET'
@@ -29,8 +28,8 @@ psd_file = "TDI2_AE_psd.npy"
 include_foreground = True
 
 # source frame parameters
-# M: central mass of the binary in solar masses
-# mu: secondary mass of the binary in solar masses
+# M: central mass of the binary in solar masses source frame
+# mu: secondary mass of the binary in solar masses source frame
 # a: dimensionless spin of the central black hole
 # e_f: final eccentricity of the binary
 # T: observation time in years
@@ -41,17 +40,16 @@ include_foreground = True
 dt = 5.0
 sources = []
 
-m1_values = [10**(4.5), 10**(5.5), 10**6.5, 1e7, 1e6, 1e5, 1e4]
+m1_values = [1e7, 10**6.5, 1e6, 10**(5.5), 1e5, 10**(4.5), 1e4]
 m2 = 10.
 a = 0.9
 e_2yr_values = [1e-4] # Eccentricity does not have a big impact on horizon
-# open dictionary with the sources
-
-for redshift in [0.05]:#[0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 2.5]:
+# First find 
+for redshift in [0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 1.5]:
     for T_plunge_yr in [0.5, 2.0]:
         for m1 in m1_values:
             for e_f in e_2yr_values:
-                source = f"m1={m1}_m2={m2}_a={a}_e_f={e_f}_T_plunge_yr={T_plunge_yr}_z={redshift}"
+                source = repo_root + f"m1={m1}_m2={m2}_a={a}_e_f={e_f}_T_plunge_yr={T_plunge_yr}_z={redshift}"
                 sources.append({
                 "M": m1 * (1 + redshift),
                 "mu": m2 * (1 + redshift),
@@ -66,13 +64,17 @@ for redshift in [0.05]:#[0.1, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 2.5]:
                 "dt": dt,
                 "N_montecarlo": Nmonte,
                 "device": dev,
-                "threshold_SNR": thr_snr,
                 "pe": 0,
                 })
+# save sources to a file
+sources_file = "sources_snr.txt"
+with open(repo_root + sources_file, "w") as f:
+    for source in sources:
+        f.write(f"{source}\n")
 
 
-print("Running the pipeline...")
-source_runtimes = {}
+if len(sys.argv) > 1 and sys.argv[1] == "test":
+    sources = sources[:1]  # Only run the first source in test mode
 
 # Run the pipeline for each source from command
 # for source in sources:
