@@ -7,16 +7,15 @@ if len(sys.argv) > 1 and sys.argv[1] == "test":
     Nmonte = 1
     # device: device to use on GPUs
     dev = 0
-    repo_root = "test/"
+    repo_root = "test_pe_"
 else:
     # production mode
     Nmonte = 100
     # device: device to use on GPUs
     dev = 0
-    repo_root = "production/"
+    repo_root = "production_pe_"
 
 print("Running the pipeline in mode:", repo_root)
-os.makedirs(repo_root, exist_ok=True)
 
 #define the psd and response properties
 channels = 'AET'
@@ -43,7 +42,7 @@ sources = []
 m1_z_values = [(1e7,0.2), (1e6,0.8), (1e5, 0.3), (1e4, 0.09)]
 m2 = 10.
 a = 0.9
-e_2yr_values = [1e-4, 0.05] # Eccentricity does not have a big impact on horizon
+e_2yr_values = [1e-4] # Eccentricity does not have a big impact on horizon
 # First find 
 for T_plunge_yr in [0.5]:
     for m1_z in m1_z_values:
