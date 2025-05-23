@@ -39,15 +39,16 @@ include_foreground = True
 dt = 5.0
 sources = []
 
-m1_values = [1e7, 10**6.5, 1e6, 10**(5.5), 1e5, 10**(4.5), 1e4]
+m1_values = [1e7, 1e6, 1e5]
 m2 = 10.
-a = 0.9
-e_2yr_values = [1e-4] # Eccentricity does not have a big impact on horizon
+a_values = [-0.99, 0.0, 0.99]
+# e_2yr_values = [1e-4] # Eccentricity does not have a big impact on horizon
+e_f = 1e-4
 # First find 
 for redshift in [0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 1.5]:
-    for T_plunge_yr in [0.5, 2.0]:
+    for T_plunge_yr in [1.]:
         for m1 in m1_values:
-            for e_f in e_2yr_values:
+            for a in a_values:
                 source = repo_root + f"m1={m1}_m2={m2}_a={a}_e_f={e_f}_T_plunge_yr={T_plunge_yr}_z={redshift}"
                 sources.append({
                 "M": m1 * (1 + redshift),
