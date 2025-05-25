@@ -10,12 +10,13 @@ import healpy as hp
 from scipy.interpolate import griddata
 from matplotlib.colors import ListedColormap
 import os
+import matplotlib.colors as mcolors
 
 # the following two lines define the thresholds for the science objectives
 # threshold_SNR: threshold on SNR for the science objectives
 thr_snr = [20.0, 25., 30.]
 
-list_folders = sorted(glob.glob("./production_snr_*"))
+list_folders = sorted(glob.glob("./production_snr_m*"))
 print(list_folders)
 list_results = []
 # Assessment Process
@@ -35,7 +36,7 @@ for source in list_folders:
     # SNR assessment
     snr_list = np.asarray([np.load(el)["snr"] for el in sorted(glob.glob(f"{source}/*/snr.npz"))])
     print(f"Mean SNR: {np.mean(snr_list)}")
-    list_results.append({"m1":source_params[0], "m2":source_params[1], "snr":snr_list, "redshift":redshift, "dist":source_params[6], "Tpl": Tpl})
+    list_results.append({"m1":source_params[0], "m2":source_params[1], "a":source_params[2], "snr": snr_list, "redshift":redshift, "dist":source_params[6], "Tpl": Tpl})
     # plot SNR histogram
     plt.figure()
     plt.hist(np.log10(snr_list), bins=30)
@@ -52,15 +53,16 @@ for source in list_folders:
 
 
 # Prepare folders for Tpl == 0.5 and Tpl == 2.0
-folders = {0.5: "Tpl_0.5", 2.0: "Tpl_2.0"}
+spin = 0.0
+folders = {1.0: "Tpl_1.0"}
 for folder in folders.values():
     os.makedirs(folder, exist_ok=True)
 
 for Tpl_val, folder in folders.items():
     # Collect m1, redshift, and mean SNR for each source with this Tpl
-    m1_vals = np.asarray([np.log10(res["m1"]) for res in list_results if res["Tpl"] == Tpl_val])
-    redshift_vals = np.asarray([res["redshift"] for res in list_results if res["Tpl"] == Tpl_val])
-    mean_snr_vals = np.asarray([np.mean(res["snr"]) for res in list_results if res["Tpl"] == Tpl_val])
+    m1_vals = np.asarray([np.log10(res["m1"]) for res in list_results if (res["Tpl"] == Tpl_val)and(res["a"]==spin) ])
+    redshift_vals = np.asarray([res["redshift"] for res in list_results if (res["Tpl"] == Tpl_val)and(res["a"]==spin) ])
+    mean_snr_vals = np.asarray([np.mean(res["snr"]) for res in list_results if (res["Tpl"] == Tpl_val)and(res["a"]==spin) ])
     snr_thresholds = [20.0, 25.0, 30.0]
     results_redshift_at_snr = {thr: {} for thr in snr_thresholds}
 
@@ -99,7 +101,7 @@ for Tpl_val, folder in folders.items():
     plt.close()
 
     plt.figure()
-    import matplotlib.colors as mcolors
+    
     levels = np.logspace(np.log10(20), np.log10(1000), 5)
     norm = mcolors.LogNorm(vmin=levels[0], vmax=mean_snr_vals.max() if len(mean_snr_vals) > 0 else 1000)
     if len(m1_vals) > 0 and len(redshift_vals) > 0 and len(mean_snr_vals) > 0:

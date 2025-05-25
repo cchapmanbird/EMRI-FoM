@@ -36,9 +36,9 @@ def parse_arguments():
     parser.add_argument("--mu", help="Secondary Mass of the compact object at detector", type=float)
     parser.add_argument("--a", help="Dimensionless Spin of the central black hole", type=float)
     parser.add_argument("--e_f", help="Final eccentricity at separatrix + 0.1", type=float)
-    parser.add_argument("--T", help="Time to plunge", type=float)
-    # parser.add_argument("--Tobs", help="Observation time in years", type=float, default=2.0)
+    parser.add_argument("--T", help="Observation time", type=float)
     parser.add_argument("--z", help="Redshift", type=float)
+
     parser.add_argument("--repo", help="Name of the folder where results are stored", type=str)
     parser.add_argument("--psd_file", help="Path to a file containing PSD frequency-value pairs", default="TDI2_AE_psd.npy")
     parser.add_argument("--dt", help="Sampling cadence in seconds", type=float, default=10.0)
@@ -51,6 +51,8 @@ def parse_arguments():
     parser.add_argument('--channels', type=str, default="AE", help="TDI channels to use")
     parser.add_argument('--model', type=str, default="scirdv1", help="Noise model to use") #TODO: is this used?
     parser.add_argument("--calculate_fisher", help="Calculate the Fisher matrix", type=int, default=0)
+    # optional time to plunge
+    parser.add_argument("--Tpl", help="Time to plunge", type=float, default=0.0)
     
     return parser.parse_args()
 
@@ -67,6 +69,7 @@ def initialize_gpu(args):
 
 
 from scipy.signal import get_window
+from matplotlib.colors import LogNorm
 
 class wave_windowed_truncated():
     def __init__(self, wave_gen, N, dt, xp, window_fn=('tukey', 0.005), fmin=0.0, fmax=1.0):
@@ -129,20 +132,25 @@ if __name__ == "__main__":
     # get the detector frame parameters
     M = args.M
     mu = args.mu
-    a = args.a
+    a = np.abs(args.a)
     e_f = args.e_f
-    x0_f = 1.0
-    p_f = get_separatrix(args.a, args.e_f, x0_f) + 0.1
-    # TODO: update consistent with astropy cosmology
+    x0_f = 1.0 * np.sign(args.a) if args.a != 0.0 else 1.0
+    p_f = get_separatrix(a, args.e_f, x0_f) + 0.1
     dist = cosmo.get_luminosity_distance(args.z)
     print("Distance in Gpc", dist)
+    # observation time
+    if args.Tpl > 0.0:
+        Tpl = args.Tpl
+    else:
+        Tpl = args.T
+    
     T = args.T
 
     # initialize the trajectory
     traj = EMRIInspiral(func=KerrEccEqFlux)
     print("Generating backward trajectory")
-    t_forward, p_forward, e_forward, x_forward, Phi_phi_forward, Phi_r_forward, Phi_theta_forward = traj(M, mu, a, p_f, e_f, x0_f, dt=10., T=2.0, integrate_backwards=False)
-    t_back, p_back, e_back, x_back, Phi_phi_back, Phi_r_back, Phi_theta_back = traj(M, mu, a, p_forward[-1], e_forward[-1], x_forward[-1], dt=10.0, T=T, integrate_backwards=True)
+    t_forward, p_forward, e_forward, x_forward, Phi_phi_forward, Phi_r_forward, Phi_theta_forward = traj(M, mu, a, p_f, e_f, x0_f, dt=10., T=100.0, integrate_backwards=False)
+    t_back, p_back, e_back, x_back, Phi_phi_back, Phi_r_back, Phi_theta_back = traj(M, mu, a, p_forward[-1], e_forward[-1], x_forward[-1], dt=10.0, T=Tpl, integrate_backwards=True)
     print("Found initial conditions", p_back[-1], e_back[-1], x_back[-1])
     omegaPhi, omegaTheta, omegaR = get_fundamental_frequencies(a, p_back, e_back, x_back)
     dimension_factor = 2.0 * np.pi * M * MTSUN_SI
@@ -155,10 +163,9 @@ if __name__ == "__main__":
     print("p0, e0, x0", p0, e0, x0)
     # initialiaze the waveform generator
     temp_model = initialize_waveform_generator(T, args, inspiral_kwargs_forward)
-    # save in the repository the source and detector frame parameters
-    
-    Phi_phi0, Phi_r0, Phi_theta0 = generate_random_phases()
-    qS, phiS, qK, phiK = generate_random_sky_localization()
+    # base waveform has always the same parameters for comparison
+    Phi_phi0, Phi_r0, Phi_theta0 = 0.0, 0.0, 0.0# generate_random_phases()
+    qS, phiS, qK, phiK = np.pi/3, np.pi/3, np.pi/3, np.pi/3 # generate_random_sky_localization()
     parameters = np.asarray([M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0])
     # evaluate waveform
     temp_model(*parameters)
@@ -173,7 +180,7 @@ if __name__ == "__main__":
     # define frequency ranges for inner product
     ns = temp_model.waveform_gen.waveform_generator.ns
     ms = temp_model.waveform_gen.waveform_generator.ms
-    max_f = float(np.max(omegaPhi[None,:] * ms.get()[:,None] + omegaR[None,:] * ns.get()[:,None]))
+    max_f = float(np.max(omegaPhi[None,:] * ms.get()[:,None] + omegaR[None,:] * ns.get()[:,None])) * 1.01 # added a 1% safety factor
     # update the model with the windowed and truncated waveform
     model = wave_windowed_truncated(temp_model, len(waveform_out[0]), args.dt, xp, window_fn=('tukey', 0.01), fmin=1e-5, fmax=max_f)
     model(*parameters)
@@ -198,7 +205,29 @@ if __name__ == "__main__":
     plt.xlabel("Frequency [Hz]")
     plt.ylabel(r"Amplitude $|\tilde h(f)|$")
     plt.legend()
-    plt.savefig(os.path.join(args.repo, "waveform.png"))
+    plt.ylim(1e-45, 1e-35)
+    plt.savefig(os.path.join(args.repo, "waveform_frequency_domain.png"))
+    # Plot waveform in time domain
+    plt.figure()
+    plt.plot(np.arange(len(waveform_out[0].get())) * args.dt, waveform_out[0].get(), label="A")
+    plt.plot(np.arange(len(waveform_out[0].get())) * args.dt, waveform_out[1].get(), label="E", alpha=0.7)
+    plt.xlabel("Time [s]")
+    plt.ylabel("Strain")
+    plt.title("Waveform in Time Domain")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(args.repo, "waveform_time_domain.png"))
+    # Plot spectrogram
+    plt.figure()
+    plt.specgram(waveform_out[0].get(), NFFT=256, Fs=1/args.dt, noverlap=128, scale='dB', cmap='viridis')
+    plt.yscale('log')
+    plt.ylim(1e-5, 1e-1)  # Adjust y-axis limits for better visibility
+    plt.xlabel("Time [s]")
+    plt.ylabel("Frequency [Hz]")
+    plt.title("Spectrogram (Real part)")
+    plt.colorbar(label='Intensity [dB]')
+    plt.tight_layout()
+    plt.savefig(os.path.join(args.repo, "waveform_spectrogram.png"))
     # plt.close("all")
     # check horizon d_L
     # d_L = inner_product(waveform_out, waveform_out, psd_wrap(freqs[1:]), dt=args.dt, use_gpu=args.use_gpu)**0.5/20.

@@ -48,7 +48,7 @@ for T_plunge_yr in [0.5]:
     for m1_z in m1_z_values:
         m1, redshift = m1_z
         for e_f in e_2yr_values:
-            source = repo_root + f"m1={m1}_m2={m2}_a={a}_e_f={e_f}_T_plunge_yr={T_plunge_yr}_z={redshift}"
+            source = repo_root + f"m1={m1}_m2={m2}_a={a}_e_f={e_f}_T={T_plunge_yr}_z={redshift}"
             sources.append({
             "M": m1 * (1 + redshift),
             "mu": m2 * (1 + redshift),
