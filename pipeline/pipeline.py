@@ -149,8 +149,40 @@ if __name__ == "__main__":
     # initialize the trajectory
     traj = EMRIInspiral(func=KerrEccEqFlux)
     print("Generating backward trajectory")
-    t_forward, p_forward, e_forward, x_forward, Phi_phi_forward, Phi_r_forward, Phi_theta_forward = traj(M, mu, a, p_f, e_f, x0_f, dt=10., T=100.0, integrate_backwards=False)
-    t_back, p_back, e_back, x_back, Phi_phi_back, Phi_r_back, Phi_theta_back = traj(M, mu, a, p_forward[-1], e_forward[-1], x_forward[-1], dt=10.0, T=Tpl, integrate_backwards=True)
+    t_forward, p_forward, e_forward, x_forward, Phi_phi_forward, Phi_r_forward, Phi_theta_forward = traj(M, mu, a, p_f, e_f, x0_f, dt=1e-5, T=100.0, integrate_backwards=False)
+    t_back, p_back, e_back, x_back, Phi_phi_back, Phi_r_back, Phi_theta_back = traj(M, mu, a, p_forward[-1], e_forward[-1], x_forward[-1], dt=1e-5, T=Tpl, integrate_backwards=True)
+    # and forward trajectory to check the evolution
+    t_plot, p_plot, e_plot, x_plot, Phi_phi_plot, Phi_r_plot, Phi_theta_plot = traj(M, mu, a, p_back[-1], e_back[-1], x_back[-1], dt=1e-5, T=T, integrate_backwards=False)
+    # Plot (t, p), (t, e), (p, e), (t, Phi_phi)
+    fig, axs = plt.subplots(2, 2, figsize=(12, 8))
+
+    # (t, p)
+    axs[0, 0].plot(t_plot, p_plot)
+    axs[0, 0].set_xlabel("Time [s]")
+    axs[0, 0].set_ylabel("p")
+    axs[0, 0].set_title("(t, p)")
+
+    # (t, e)
+    axs[0, 1].plot(t_plot, e_plot)
+    axs[0, 1].set_xlabel("Time [s]")
+    axs[0, 1].set_ylabel("e")
+    axs[0, 1].set_title("(t, e)")
+
+    # (p, e)
+    axs[1, 0].plot(p_plot, e_plot)
+    axs[1, 0].set_xlabel("p")
+    axs[1, 0].set_ylabel("e")
+    axs[1, 0].set_title("(p, e)")
+
+    # (t, Phi_phi)
+    axs[1, 1].plot(t_plot, Phi_phi_plot)
+    axs[1, 1].set_xlabel("Time [s]")
+    axs[1, 1].set_ylabel("Phi_phi")
+    axs[1, 1].set_title("(t, Phi_phi)")
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(args.repo, "trajectory_subplots.png"))
+    plt.close(fig)
     print("Found initial conditions", p_back[-1], e_back[-1], x_back[-1])
     omegaPhi, omegaTheta, omegaR = get_fundamental_frequencies(a, p_back, e_back, x_back)
     dimension_factor = 2.0 * np.pi * M * MTSUN_SI
@@ -168,19 +200,25 @@ if __name__ == "__main__":
     qS, phiS, qK, phiK = np.pi/3, np.pi/3, np.pi/3, np.pi/3 # generate_random_sky_localization()
     parameters = np.asarray([M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0])
     # evaluate waveform
-    temp_model(*parameters)
+    temp_model(*parameters, mode_selection_threshold=1e-5)
 
     tic = time.time()
-    waveform_out = temp_model(*parameters)
+    waveform_out = temp_model(*parameters, mode_selection_threshold=1e-5)
     toc = time.time()
     timing = toc - tic
     print("Time taken for one waveform generation: ", timing)
     print("\n")
-    # create a waveform that is windowed and truncated 
     # define frequency ranges for inner product
     ns = temp_model.waveform_gen.waveform_generator.ns
     ms = temp_model.waveform_gen.waveform_generator.ms
-    max_f = float(np.max(omegaPhi[None,:] * ms.get()[:,None] + omegaR[None,:] * ns.get()[:,None])) * 1.01 # added a 1% safety factor
+    ls = temp_model.waveform_gen.waveform_generator.ls
+    max_f = float(np.max(np.abs(omegaPhi[None,:] * ms.get()[:,None] + omegaR[None,:] * ns.get()[:,None]))) * 1.01 # added a 1% safety factor
+    # define modes for waveform
+    waveform_kwargs = {"mode_selection": [(ll,mm,nn) for ll,mm,nn in zip(ls.get(), ms.get(), ns.get())],}
+    # create a waveform that is windowed and truncated 
+    test_1 = np.sum(np.abs(temp_model(*parameters, **waveform_kwargs)[0] - temp_model(*parameters, mode_selection=[(2,2,0)])[0]))
+    test_2 = np.sum(np.abs(temp_model(*parameters, **waveform_kwargs)[0] - waveform_out[0]))
+    print("Test 1: ", test_1 !=0.0, "\nTest 2: ", test_2 == 0.0)
     # update the model with the windowed and truncated waveform
     model = wave_windowed_truncated(temp_model, len(waveform_out[0]), args.dt, xp, window_fn=('tukey', 0.01), fmin=1e-5, fmax=max_f)
     model(*parameters)
@@ -219,7 +257,7 @@ if __name__ == "__main__":
     plt.savefig(os.path.join(args.repo, "waveform_time_domain.png"))
     # Plot spectrogram
     plt.figure()
-    plt.specgram(waveform_out[0].get(), NFFT=256, Fs=1/args.dt, noverlap=128, scale='dB', cmap='viridis')
+    plt.specgram(waveform_out[0].get(), NFFT=int(86400/args.dt), Fs=1/args.dt, noverlap=128, scale='dB', cmap='viridis')
     plt.yscale('log')
     plt.ylim(1e-5, 1e-1)  # Adjust y-axis limits for better visibility
     plt.xlabel("Time [s]")
@@ -272,6 +310,7 @@ if __name__ == "__main__":
                                 CovEllipse=False, # will return the covariance and plot it
                                 stability_plot=False, # activate if unsure about the stability of the deltas
                                 # window=window # addition of the window to avoid leakage
+                                waveform_kwargs=waveform_kwargs
                                 )
         # calculate the SNR
         SNR = fish.SNRcalc_SEF()

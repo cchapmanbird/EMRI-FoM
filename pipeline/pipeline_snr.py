@@ -1,6 +1,7 @@
 # nohup python pipeline_snr.py > out_snr.out &
 import os
 import sys
+import numpy as np
 # if input is test
 if len(sys.argv) > 1 and sys.argv[1] == "test":
     # test mode
@@ -39,23 +40,24 @@ include_foreground = True
 dt = 5.0
 sources = []
 
-m1_values = [1e7, 1e6, 1e5]
+m1_values = [1e7, 3162277.6601683795, 1e6, 316227.7660168379, 1e5, 31622.776601683792, 1e4]
 m2 = 10.
 a_values = [-0.99, 0.0, 0.99]
 # e_2yr_values = [1e-4] # Eccentricity does not have a big impact on horizon
 e_f = 1e-4
 # First find 
-for redshift in [0.05, 0.1, 0.25, 0.5, 0.75, 1.0, 1.5]:
-    for T_plunge_yr in [1.]:
+
+for redshift in np.logspace(-2, np.log10(1.5),5):
+    for Tobs in [0.5, 1., 2.]:
         for m1 in m1_values:
             for a in a_values:
-                source = repo_root + f"m1={m1}_m2={m2}_a={a}_e_f={e_f}_T={T_plunge_yr}_z={redshift}"
+                source = repo_root + f"m1={m1}_m2={m2}_a={a}_e_f={e_f}_T={Tobs}_z={redshift}"
                 sources.append({
                 "M": m1 * (1 + redshift),
                 "mu": m2 * (1 + redshift),
                 "a": a,
                 "e_f": e_f,
-                "T": T_plunge_yr,
+                "T": Tobs,
                 "z": redshift,
                 "repo": source,
                 "psd_file": psd_file,

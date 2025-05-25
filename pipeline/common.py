@@ -229,3 +229,19 @@ if __name__ == "__main__":
     # "J1120+0641": (7.08, None, 2.0e9),  # Mortlock et al. 2011
     }
 
+    # Plot rho = (1 + z)**(5/6) / D_L(z) over a range of redshifts
+    z_plot = np.logspace(-2, 1., 1000)
+    dL_plot = cosmo.get_luminosity_distance(z_plot)
+    rho = (1 + z_plot)**(5/6) / dL_plot
+
+    plt.figure(figsize=(8, 6))
+    plt.plot(z_plot, rho)
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.xlabel('Redshift (z)')
+    plt.ylabel(r'$\rho = (1+z)^{5/6} / D_L(z)$ [1/Gpc]')
+    plt.title(r'$\rho$ vs Redshift')
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig('rho_vs_redshift.png')
+    print(np.logspace(np.log10(0.05), np.log10(1.5), 5))
