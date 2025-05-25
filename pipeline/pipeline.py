@@ -53,7 +53,7 @@ def parse_arguments():
     parser.add_argument("--calculate_fisher", help="Calculate the Fisher matrix", type=int, default=0)
     # optional time to plunge
     parser.add_argument("--Tpl", help="Time to plunge", type=float, default=0.0)
-    
+
     return parser.parse_args()
 
 def initialize_gpu(args):

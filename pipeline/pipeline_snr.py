@@ -37,14 +37,14 @@ include_foreground = True
 # repo: name of the repository where the results will be saved
 # psd_file: name of the file with the power spectral density
 # dt: time step in seconds
-dt = 5.0
+dt = 1.
 sources = []
 
-m1_values = [1e7, 3162277.6601683795, 1e6, 316227.7660168379, 1e5, 31622.776601683792, 1e4]
+m1_values = [3162.2776601683792,  1e3]#[1e7, 3162277.6601683795, 1e6, 316227.7660168379, 1e5, 31622.776601683792, 1e4, 3162.2776601683792,  1e3]
 m2 = 10.
 a_values = [-0.99, 0.0, 0.99]
 # e_2yr_values = [1e-4] # Eccentricity does not have a big impact on horizon
-e_f = 1e-4
+e_f = 1e-6
 # First find 
 
 for redshift in np.logspace(-2, np.log10(1.5),5):
