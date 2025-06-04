@@ -90,6 +90,7 @@ for spin in [-0.99, 0.0, 0.99]:
             m1_vals = []
             redshift_vals = []
             mean_snr_vals = []
+            std_snr_vals = []
             # Iterate over groups in HDF5 file
             for source in h5f:
                 grp = h5f[source]
@@ -104,9 +105,11 @@ for spin in [-0.99, 0.0, 0.99]:
                     m1_vals.append(np.log10(m1))
                     redshift_vals.append(redshift)
                     mean_snr_vals.append(np.mean(snr))
+                    std_snr_vals.append(np.std(snr))
             m1_vals = np.asarray(m1_vals)
             redshift_vals = np.asarray(redshift_vals)
             mean_snr_vals = np.asarray(mean_snr_vals)
+            std_snr_vals = np.asarray(std_snr_vals)
             snr_thresholds = [20.0, 40.0, 80.0]
             results_redshift_at_snr = {thr: {} for thr in snr_thresholds}
 
@@ -168,13 +171,18 @@ for spin in [-0.99, 0.0, 0.99]:
 
             plt.figure()
             if len(m1_vals) > 0 and len(redshift_vals) > 0 and len(mean_snr_vals) > 0:
-                sc = plt.scatter(redshift_vals, mean_snr_vals, c=m1_vals, cmap='viridis', s=60)
+                # Plot with error bars
+                sc = plt.scatter(redshift_vals, mean_snr_vals, c=m1_vals, cmap='viridis', s=60, label='Mean SNR')
+                plt.errorbar(
+                    redshift_vals, mean_snr_vals, yerr=std_snr_vals,
+                    fmt='none', ecolor='gray', alpha=0.5, capsize=2, label='SNR std'
+                )
                 # Add theoretical line: (1+z)**(5/6) / D_L(z)
                 z_theory = np.linspace(redshift_vals.min(), redshift_vals.max(), 200)
                 D_L = cosmo.get_luminosity_distance(z_theory)
                 theory_curve = (1 + z_theory) ** (5 / 6) / D_L
                 # Scale for visual comparison
-                theory_curve_scaled = theory_curve * mean_snr_vals.mean() / theory_curve.mean()/10
+                theory_curve_scaled = theory_curve * mean_snr_vals.mean() / theory_curve.mean() / 10
                 plt.plot(z_theory, theory_curve_scaled, 'k--', label=r'$(1+z)^{5/6}/D_L(z)$ (scaled)')
                 plt.legend()
                 plt.axhline(thr_snr[0], color='r', linestyle='--', label=f'Threshold {thr_snr[0]}')
@@ -191,6 +199,10 @@ for spin in [-0.99, 0.0, 0.99]:
             plt.figure()
             if len(m1_vals) > 0 and len(redshift_vals) > 0 and len(mean_snr_vals) > 0:
                 sc = plt.scatter(m1_vals, mean_snr_vals, c=redshift_vals, cmap='viridis', s=60)
+                plt.errorbar(
+                    m1_vals, mean_snr_vals, yerr=std_snr_vals,
+                    fmt='none', ecolor='gray', alpha=0.5, capsize=2, label='SNR std'
+                )
                 plt.axhline(thr_snr[0], color='r', linestyle='--', label=f'Threshold {thr_snr[0]}')
                 plt.yscale('log')
                 plt.xlabel(r'$\log_{10} m_1$')

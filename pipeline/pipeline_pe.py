@@ -39,7 +39,7 @@ include_foreground = True
 dt = 5.0
 sources = []
 
-m1_z_values = [(1e7,0.1), (1e6,0.5), (1e5, 0.3)]
+m1_z_values = [(1e7,0.01), (1e6,0.01), (1e5, 0.01), (1e4, 0.01), (1e3, 0.01)]
 m2 = 10.
 a = 1e-5
 e_2yr_values = [1e-5] # Eccentricity does not have a big impact on horizon
