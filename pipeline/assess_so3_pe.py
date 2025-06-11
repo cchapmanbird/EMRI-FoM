@@ -12,6 +12,16 @@ from matplotlib.colors import ListedColormap
 import os
 import h5py
 
+
+label_fontsize = 18
+tick_fontsize = 18
+title_fontsize = 18
+
+plt.rcParams["text.usetex"] = True
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["font.serif"] = ["Computer Modern"]
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+plt.rcParams["figure.figsize"] = (4, 3)
 # the following two lines define the thresholds for the science objectives
 # threshold_SNR: threshold on SNR for the science objectives
 thr_snr = [20.0, 25., 30.]
@@ -29,12 +39,15 @@ else:
         for source in list_folders:
             print(f"Assessing science objectives for {source}...")
             m1_str = float(source.split("m1=")[-1].split("_")[0])
-            Tpl = float(source.split("yr=")[-1].split("_")[0])
+            Tpl = float(source.split("T=")[-1].split("_")[0])
             redshift = np.load(sorted(glob.glob(f"{source}/*/snr.npz"))[0])["redshift"]
             detector_params = np.load(sorted(glob.glob(f"{source}/*/snr.npz"))[0])["parameters"]
             source_params = detector_params.copy()
             source_params[0] = source_params[0] / (1 + redshift)
             source_params[1] = source_params[1] / (1 + redshift)
+            # if (source_params[0] > 5e6)or(source_params[0] < 5e3)or(float(detector_params[2])!=1e-7):
+            #     print(f"Skipping {source} because m1={source_params[0]} > 1e6")
+            #     continue
             # pe assessment
             source_cov = np.asarray([np.load(el)["source_frame_cov"] for el in sorted(glob.glob(f"{source}/*/results.npz"))])
             detector_cov = np.asarray([np.load(el)["cov"] for el in sorted(glob.glob(f"{source}/*/results.npz"))])
@@ -52,8 +65,7 @@ else:
             plt.hist(snr_list, bins=30)
             plt.xlabel('SNR')
             plt.ylabel('Counts')
-            plt.legend()
-            plt.savefig(f"{source}/snr_histogram.png")
+            plt.savefig(f"{source}/snr_histogram.png",dpi=300)
             plt.figure()
             nside = 12
             npix = hp.nside2npix(nside)
@@ -67,7 +79,7 @@ else:
             counts[counts == 0] = 1  # avoid division by zero
             sky_map = sky_map / counts
             hp.mollview(sky_map, title=f"SNR across sky", unit="SNR", cmap="viridis")
-            plt.savefig(f"{source}/snr_sky.png")
+            plt.savefig(f"{source}/snr_sky.png",dpi=300)
             plt.close()
 
             measurement_precision = np.asarray([np.sqrt(np.diag(source_cov[ii])) for ii in range(len(fish_params))])
@@ -123,7 +135,7 @@ else:
                 plt.xlabel(xlabel)
                 plt.ylabel('Counts')
                 plt.legend()
-                plt.savefig(f"{source}/{el}_histogram.png")
+                plt.savefig(f"{source}/{el}_histogram.png",dpi=300)
                 plt.close()
 
                 # SNR vs error plot
@@ -138,7 +150,7 @@ else:
                 plt.xlabel('SNR')
                 plt.ylabel(xlabel)
                 plt.legend()
-                plt.savefig(f"{source}/snr_{el}.png")
+                plt.savefig(f"{source}/snr_{el}.png",dpi=300)
                 plt.close()
 
                 # plot of SNR across the sky
@@ -156,7 +168,7 @@ else:
                 counts[counts == 0] = 1  # avoid division by zero
                 sky_map = sky_map / counts  # average error per pixel
                 hp.mollview(sky_map, title=f"Precision error across sky for {el}", unit="Error", cmap="viridis")
-                plt.savefig(f"{source}/precision_error_sky_{el}.png")
+                plt.savefig(f"{source}/precision_error_sky_{el}.png",dpi=300)
                 plt.close()
 
                 # Save distributions
@@ -210,10 +222,11 @@ with h5py.File(h5_path, "r") as h5f:
         plt.figure()
         plt.errorbar(m1_arr, means, yerr=stds, fmt='o-', capsize=3)
         plt.xscale("log")
+        plt.yscale("log")
         plt.xlabel("m1")
-        plt.ylabel(f"Mean ± Std Precision ({pname})")
+        plt.ylabel(f"Precision ({pname})")
         plt.title(f"Precision of {pname} vs m1")
         plt.grid(True)
         plt.tight_layout()
-        plt.savefig(f"precision_vs_m1_{pname}.png")
+        plt.savefig(f"precision_vs_m1_{pname}.png",dpi=300)
         plt.close()

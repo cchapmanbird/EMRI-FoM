@@ -17,6 +17,17 @@ cosmo = CosmoInterpolator()
 import json
 import glob
 from matplotlib.lines import Line2D
+
+
+label_fontsize = 18
+tick_fontsize = 18
+title_fontsize = 18
+
+plt.rcParams["text.usetex"] = True
+plt.rcParams["font.family"] = "serif"
+plt.rcParams["font.serif"] = ["Computer Modern"]
+plt.rcParams["mathtext.fontset"] = "dejavuserif"
+plt.rcParams["figure.figsize"] = (4, 3)
 # the following two lines define the thresholds for the science objectives
 # threshold_SNR: threshold on SNR for the science objectives
 thr_snr = [20.0, 25., 30.]
@@ -73,14 +84,14 @@ else:
             plt.xlabel('Log10 SNR')
             plt.ylabel('Counts')
             plt.legend()
-            plt.savefig(f"{source}/snr_histogram.png")
+            plt.savefig(f"{source}/snr_histogram.png",dpi=300)
             plt.close()
             # save snr distribution in folder
             np.savez(f"{source}/snr_distribution.npz", snr=snr_list)
 
 # Set spin and Tobs values directly
 for spin in [-0.99, 0.0, 0.99]:
-    for Tobs_val in [0.5]:#, 1.0, 2.0]:
+    for Tobs_val in [0.5, 1.0, 2.0]:
         print(f"Processing Tobs={Tobs_val}, spin={spin}")
 
         folder = f"Tobs_{Tobs_val}_spin_{spin}"
@@ -144,10 +155,9 @@ for spin in [-0.99, 0.0, 0.99]:
                     plt.plot(m1_plot, z_plot, 'o-', label=f'Redshift at SNR={snr_threshold}')
             plt.xlabel(r'$\log_{10} m_1$')
             plt.ylabel('Redshift at SNR threshold')
-            plt.title(f'Redshift where SNR threshold is reached vs Mass (Tobs={Tobs_val})')
             plt.legend()
             plt.tight_layout()
-            plt.savefig(f"{folder}/redshift_at_snr_thresholds_vs_mass.png")
+            plt.savefig(f"{folder}/redshift_at_snr_thresholds_vs_mass.png",dpi=300)
             plt.close()
             
             plt.figure()
@@ -161,12 +171,12 @@ for spin in [-0.99, 0.0, 0.99]:
                 cbar.set_ticklabels([f"{l:.0f}" for l in levels])
                 cbar.ax.set_yscale('log')
                 plt.yscale('log')
-                plt.xlabel(r'$m_1 [M_\odot]$')
+                plt.xlabel(r'$\log_{10} m_1$')
                 plt.ylabel('Redshift')
                 plt.ylim(redshift_vals.min(), 1.6)
                 plt.tight_layout()
                 plt.grid()
-                plt.savefig(f"{folder}/Mass_redshift_snr_scatter.png")
+                plt.savefig(f"{folder}/Mass_redshift_snr_scatter.png",dpi=300)
                 plt.close()
 
             plt.figure()
@@ -193,7 +203,7 @@ for spin in [-0.99, 0.0, 0.99]:
                 cbar = plt.colorbar(sc)
                 cbar.set_label(r'$\log_{10} m_1$')
                 plt.tight_layout()
-                plt.savefig(f"{folder}/SNR_vs_redshift.png")
+                plt.savefig(f"{folder}/SNR_vs_redshift.png",dpi=300)
                 plt.close()
 
             plt.figure()
@@ -210,7 +220,7 @@ for spin in [-0.99, 0.0, 0.99]:
                 cbar = plt.colorbar(sc)
                 cbar.set_label("Redshift")
                 plt.tight_layout()
-                plt.savefig(f"{folder}/SNR_vs_mass.png")
+                plt.savefig(f"{folder}/SNR_vs_mass.png",dpi=300)
                 plt.close()
 
             # Write markdown table
@@ -257,7 +267,6 @@ for spin in [-0.99, 0.0, 0.99]:
 
 plt.xlabel(r'$\log_{10} m_1$')
 plt.ylabel('Redshift at SNR threshold')
-plt.title('Redshift at SNR thresholds for different spins')
 
 # Custom legends
 spin_handles = [
@@ -273,5 +282,5 @@ second_legend = plt.legend(handles=snr_handles, title="SNR (color)", loc='upper 
 plt.gca().add_artist(first_legend)
 
 plt.tight_layout()
-plt.savefig("redshift_at_snr_thresholds_vs_mass_all_spins.png")
+plt.savefig("redshift_at_snr_thresholds_vs_mass_all_spins.png",dpi=300)
 plt.close()
