@@ -83,13 +83,13 @@ class wave_windowed_truncated():
     
     def __call__(self, *args, **kwargs):
         wave = xp.asarray(self.wave_gen(*args, **kwargs))
-        # apply window
-        wave = wave * self.window
         # take fft
         wave_fft = self.xp.fft.rfft(wave,axis=1)
         wave_fft[:,~self.mask] = 0.0 + 1j*0.0
         # take ifft
         wave = self.xp.fft.irfft(wave_fft,axis=1, n=self.N)
+        # apply window
+        wave = wave * self.window
         return wave
 
     def __getattr__(self, name):

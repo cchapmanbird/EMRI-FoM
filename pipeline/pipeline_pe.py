@@ -1,6 +1,8 @@
 # nohup python pipeline_pe.py > out_pe.out &
 import os
 import sys
+import json
+import numpy as np
 # if input is test
 if len(sys.argv) > 1 and sys.argv[1] == "test":
     # test mode
@@ -10,7 +12,7 @@ if len(sys.argv) > 1 and sys.argv[1] == "test":
     repo_root = "test_pe_"
 else:
     # production mode
-    Nmonte = 100
+    Nmonte = 1000
     # device: device to use on GPUs
     dev = 0
     repo_root = "production_pe_"
@@ -38,33 +40,39 @@ include_foreground = True
 # dt: time step in seconds
 dt = 1.0
 sources = []
+# Load spin, m1, and redshift values from a JSON file
+json_file = "requirements_results/snr_redshift_evaluation.json"
+with open(json_file, "r") as jf:
+    source_data = json.load(jf)
 
-m1_z_values = [(1e6,0.3), (1e5, 0.3), (1e4, 0.1), (1e3, 0.05)]
-m2 = 10.
-a = 0.0
-e_2yr_values = [1e-8]
-# First find 
-for T_plunge_yr in [0.5]:
-    for m1_z in m1_z_values:
-        m1, redshift = m1_z
-        for e_f in e_2yr_values:
-            source = repo_root + f"m1={m1}_m2={m2}_a={a}_e_f={e_f}_T={T_plunge_yr}_z={redshift}"
-            sources.append({
-            "M": m1 * (1 + redshift),
-            "mu": m2 * (1 + redshift),
-            "a": a,
-            "e_f": e_f,
-            "T": T_plunge_yr,
-            "z": redshift,
-            "repo": source,
-            "psd_file": psd_file,
-            "model": model,
-            "channels": channels,
-            "dt": dt,
-            "N_montecarlo": Nmonte,
-            "device": dev,
-            "pe": 1,
-            })
+spin = "0.0"
+m1_ = np.asarray(source_data[spin]["m1"])
+spin_ = np.zeros_like(m1_) + float(spin)
+z_ = np.asarray(source_data[spin]["redshift"])
+mask = (m1_ == 1e3) + (m1_ ==  316227.7660168379) + (m1_ == 1e7)
+m1_a_z_values = np.column_stack((m1_[mask], spin_[mask], z_[mask]))
+for m1, a, z in zip(m1_[mask], spin_[mask], z_[mask]):
+    source = repo_root + f"m1={m1}_m2=10._a={a}_e_f=1e-8_T=0.5_z={z}"
+    sources.append({"M": m1 * (1 + z),"mu": 10. * (1 + z),"a": a,"e_f": 1e-8,"T": 0.5,"z": z,"repo": source,"psd_file": psd_file,"model": model,"channels": channels,"dt": dt,"N_montecarlo": Nmonte,"device": dev,"pe": 1,})
+
+spin = "0.99"
+m1_ = np.asarray(source_data[spin]["m1"])
+spin_ = np.zeros_like(m1_) + float(spin)
+z_ = np.asarray(source_data[spin]["redshift"])
+mask = (m1_ == 1e4) + (m1_ == 1e6) + (m1_ == 1e7)
+for m1, a, z in zip(m1_[mask], spin_[mask], z_[mask]):
+    source = repo_root + f"m1={m1}_m2=10._a={a}_e_f=1e-8_T=0.5_z={z}"
+    sources.append({"M": m1 * (1 + z),"mu": 10. * (1 + z),"a": a,"e_f": 1e-8,"T": 0.5,"z": z,"repo": source,"psd_file": psd_file,"model": model,"channels": channels,"dt": dt,"N_montecarlo": Nmonte,"device": dev,"pe": 1,})
+
+spin = "-0.99"
+m1_ = np.asarray(source_data[spin]["m1"])
+spin_ = np.zeros_like(m1_) + float(spin)
+z_ = np.asarray(source_data[spin]["redshift"])
+mask = (m1_ == 1e3) + (m1_ ==  3162277.6601683795) + (m1_ == 1e7)
+for m1, a, z in zip(m1_[mask], spin_[mask], z_[mask]):
+    source = repo_root + f"m1={m1}_m2=10._a={a}_e_f=1e-8_T=0.5_z={z}"
+    sources.append({"M": m1 * (1 + z),"mu": 10. * (1 + z),"a": a,"e_f": 1e-8,"T": 0.5,"z": z,"repo": source,"psd_file": psd_file,"model": model,"channels": channels,"dt": dt,"N_montecarlo": Nmonte,"device": dev,"pe": 1,})
+
 # save sources to a file
 sources_file = "sources_pe.txt"
 with open(repo_root + sources_file, "w") as f:

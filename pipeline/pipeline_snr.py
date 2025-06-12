@@ -11,7 +11,7 @@ if len(sys.argv) > 1 and sys.argv[1] == "test":
     repo_root = "test_snr_"
 else:
     # production mode
-    Nmonte = 100
+    Nmonte = 1000
     # device: device to use on GPUs
     dev = 0
     repo_root = "production_snr_"
@@ -40,15 +40,15 @@ include_foreground = True
 dt = 1.
 sources = []
 
-m1_values = [3162.2776601683792,  1e3]#[1e7, 3162277.6601683795, 1e6, 316227.7660168379, 1e5, 31622.776601683792, 1e4, 3162.2776601683792,  1e3]
+m1_values = [31622776.60168379, 1e7, 3162277.6601683795, 1e6, 316227.7660168379, 1e5, 31622.776601683792, 1e4, 3162.2776601683792,  1e3]
 m2 = 10.
 a_values = [-0.99, 0.0, 0.99]
 # e_2yr_values = [1e-4] # Eccentricity does not have a big impact on horizon
-e_f = 1e-6
+e_f = 1e-8
 # First find 
 
 for redshift in np.logspace(-2, np.log10(1.5),5):
-    for Tobs in [0.5, 1., 2.]:
+    for Tobs in [0.5]:#, 1., 2.]:
         for m1 in m1_values:
             for a in a_values:
                 source = repo_root + f"m1={m1}_m2={m2}_a={a}_e_f={e_f}_T={Tobs}_z={redshift}"
