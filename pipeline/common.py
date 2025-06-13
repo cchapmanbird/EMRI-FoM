@@ -7,12 +7,6 @@ from pathlib import Path
 import numpy as np
 from scipy.interpolate import CubicSpline
 
-try:
-    import cupy as xp
-except:
-    xp = np
-
-
 import numpy as np
 from scipy import integrate
 from scipy.interpolate import splrep, splev, RegularGridInterpolator, interp1d
@@ -144,12 +138,12 @@ class CosmoInterpolator:
         return sigma_Msource
 
 CosmoInt = CosmoInterpolator()
-CosmoInt.test_relationship()
 
 if __name__ == "__main__":
 
     # test transformation of mass uncertainty
     cosmo = CosmoInterpolator()
+    CosmoInt.test_relationship()
     z = 0.1
     l = cosmo.get_luminosity_distance(z)
     print("Luminosity distance [Gpc]: ", l, "Redshift", z)

@@ -61,6 +61,7 @@ else:
 
             # SNR assessment
             snr_list = np.asarray([np.load(el)["snr"] for el in sorted(glob.glob(f"{source}/*/snr.npz"))])
+
             plt.figure()
             plt.hist(snr_list, bins=30)
             plt.xlabel('SNR')
@@ -142,7 +143,7 @@ else:
                 plt.figure()
                 plt.plot(snr_list, error_source, 'o', label='Source frame')
                 plt.plot(snr_list, error_detector, 'x', label='Detector frame')
-                snr_vec = np.linspace(np.min(snr_list), np.max(snr_list), 100)
+                snr_vec = np.linspace(np.min(snr_list), np.max(snr_list), len(lum_dist))
                 if el == "dist":
                     plt.plot(snr_vec, lum_dist / snr_vec, 'r--', label='d/SNR')
                 else:
