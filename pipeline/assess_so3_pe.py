@@ -126,8 +126,10 @@ else:
                     error_source = error_source / source_params[ii]
                     error_detector = error_detector / detector_params[ii]
                     xlabel = 'Relative error ' + el
+                    group_name = f"relative_errors_{el}"
                 else:
                     xlabel = 'Absolute error ' + el
+                    group_name = f"absolute_errors_{el}"
 
                 # Histogram plot
                 plt.figure()
@@ -175,59 +177,59 @@ else:
                 # Save distributions
                 np.savez(f"{source}/{el}_distribution.npz", error_source=error_source, error_detector=error_detector)
                 # Save errors in HDF5
-                err_grp = grp.create_group(f"errors_{el}")
+                err_grp = grp.create_group(group_name)
                 err_grp.create_dataset("error_source", data=error_source)
                 err_grp.create_dataset("error_detector", data=error_detector)
 
-# Plot mean and std precision of parameters as a function of m1
-import matplotlib.pyplot as plt
+# # Plot mean and std precision of parameters as a function of m1
+# import matplotlib.pyplot as plt
 
-with h5py.File(h5_path, "r") as h5f:
-    m1_list = []
-    param_means = {}
-    param_stds = {}
-    param_names = None
+# with h5py.File(h5_path, "r") as h5f:
+#     m1_list = []
+#     param_means = {}
+#     param_stds = {}
+#     param_names = None
 
-    # Gather all parameter names from the first group
-    for group in h5f:
-        for err_key in h5f[group]:
-            if err_key.startswith("errors_"):
-                if param_names is None:
-                    param_names = []
-                param_names.append(err_key.replace("errors_", ""))
-        break
+#     # Gather all parameter names from the first group
+#     for group in h5f:
+#         for err_key in h5f[group]:
+#             if err_key.startswith("errors_"):
+#                 if param_names is None:
+#                     param_names = []
+#                 param_names.append(err_key.replace("errors_", ""))
+#         break
 
-    # Initialize storage
-    for pname in param_names:
-        param_means[pname] = []
-        param_stds[pname] = []
+#     # Initialize storage
+#     for pname in param_names:
+#         param_means[pname] = []
+#         param_stds[pname] = []
 
-    # Loop through groups
-    for group in h5f:
-        m1 = h5f[group].attrs["m1"] if "m1" in h5f[group].attrs else h5f[group]["m1"][()]
-        m1_list.append(m1)
-        for pname in param_names:
-            err_grp = h5f[group][f"errors_{pname}"]
-            error_source = err_grp["error_source"][()]
-            param_means[pname].append(np.mean(error_source))
-            param_stds[pname].append(np.std(error_source))
+#     # Loop through groups
+#     for group in h5f:
+#         m1 = h5f[group].attrs["m1"] if "m1" in h5f[group].attrs else h5f[group]["m1"][()]
+#         m1_list.append(m1)
+#         for pname in param_names:
+#             err_grp = h5f[group][f"errors_{pname}"]
+#             error_source = err_grp["error_source"][()]
+#             param_means[pname].append(np.mean(error_source))
+#             param_stds[pname].append(np.std(error_source))
 
-    m1_arr = np.array(m1_list)
-    sort_idx = np.argsort(m1_arr)
-    m1_arr = m1_arr[sort_idx]
+#     m1_arr = np.array(m1_list)
+#     sort_idx = np.argsort(m1_arr)
+#     m1_arr = m1_arr[sort_idx]
 
-    # Plot for each parameter
-    for pname in param_names:
-        means = np.array(param_means[pname])[sort_idx]
-        stds = np.array(param_stds[pname])[sort_idx]
-        plt.figure()
-        plt.errorbar(m1_arr, means, yerr=stds, fmt='o-', capsize=3)
-        plt.xscale("log")
-        plt.yscale("log")
-        plt.xlabel("m1")
-        plt.ylabel(f"Precision ({pname})")
-        plt.title(f"Precision of {pname} vs m1")
-        plt.grid(True)
-        plt.tight_layout()
-        plt.savefig(f"precision_vs_m1_{pname}.png",dpi=300)
-        plt.close()
+#     # Plot for each parameter
+#     for pname in param_names:
+#         means = np.array(param_means[pname])[sort_idx]
+#         stds = np.array(param_stds[pname])[sort_idx]
+#         plt.figure()
+#         plt.errorbar(m1_arr, means, yerr=stds, fmt='o-', capsize=3)
+#         plt.xscale("log")
+#         plt.yscale("log")
+#         plt.xlabel("m1")
+#         plt.ylabel(f"Precision ({pname})")
+#         plt.title(f"Precision of {pname} vs m1")
+#         plt.grid(True)
+#         plt.tight_layout()
+#         plt.savefig(f"precision_vs_m1_{pname}.png",dpi=300)
+#         plt.close()

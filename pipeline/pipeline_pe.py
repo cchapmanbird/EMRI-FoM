@@ -38,44 +38,47 @@ include_foreground = True
 # repo: name of the repository where the results will be saved
 # psd_file: name of the file with the power spectral density
 # dt: time step in seconds
-dt = 1.0
+dt = 0.5
+Tpl = 0.5  # observation time in years
+ef = 1e-8  # final eccentricity of the binary
 sources = []
 # Load spin, m1, and redshift values from a JSON file
 json_file = "requirements_results/snr_redshift_evaluation.json"
 with open(json_file, "r") as jf:
     source_data = json.load(jf)
 
-# spin = "0.0"
-# m1_ = np.asarray(source_data[spin]["m1"])
-# spin_ = np.zeros_like(m1_) + float(spin)
-# z_ = np.asarray(source_data[spin]["redshift"])
+spin = "0.0"
+m1_ = np.asarray(source_data[spin]["m1"])
+spin_ = np.zeros_like(m1_) + float(spin)
+z_ = np.asarray(source_data[spin]["redshift"])
 # mask = (m1_ == 1e3) + (m1_ ==  316227.7660168379) + (m1_ == 1e7)
-# m1_a_z_values = np.column_stack((m1_[mask], spin_[mask], z_[mask]))
-# for m1, a, z in zip(m1_[mask], spin_[mask], z_[mask]):
-#     source = repo_root + f"m1={m1}_m2=10._a={a}_e_f=1e-8_T=0.5_z={z}"
-#     sources.append({"M": m1 * (1 + z),"mu": 10. * (1 + z),"a": a,"e_f": 1e-8,"T": 0.5,"z": z,"repo": source,"psd_file": psd_file,"model": model,"channels": channels,"dt": dt,"N_montecarlo": Nmonte,"device": dev,"pe": 1,})
+mask = (m1_ > 1e2)
+m1_a_z_values = np.column_stack((m1_[mask], spin_[mask], z_[mask]))
+for m1, a, z in zip(m1_[mask], spin_[mask], z_[mask]):
+    source = repo_root + f"m1={m1}_m2=10._a={a}_e_f=1e-8_T=0.5_z={z}"
+    sources.append({"M": m1 * (1 + z),"mu": 10. * (1 + z),"a": a,"e_f": ef,"T": Tpl,"z": z,"repo": source,"psd_file": psd_file,"model": model,"channels": channels,"dt": dt,"N_montecarlo": Nmonte,"device": dev,"pe": 1,})
 
 # missing ./production_pe_m1=1000.0_m2=10._a=0.0_e_f=1e-8_T=0.5_z=0.036521124844052635
-source = repo_root + "m1=1000.0_m2=10._a=0.0_e_f=1e-8_T=0.5_z=0.036521124844052635"
-sources.append({"M": 1000.0 * (1 + 0.036521124844052635),"mu": 10. * (1 + 0.036521124844052635),"a": 0.0,"e_f": 1e-8,"T": 0.5,"z": 0.036521124844052635,"repo": source,"psd_file": psd_file,"model": model,"channels": channels,"dt": dt,"N_montecarlo": Nmonte,"device": dev,"pe": 1,})
+# source = repo_root + "m1=1000.0_m2=10._a=0.0_e_f=1e-8_T=0.5_z=0.036521124844052635"
+# sources.append({"M": 1000.0 * (1 + 0.036521124844052635),"mu": 10. * (1 + 0.036521124844052635),"a": 0.0,"e_f": 1e-8,"T": 0.5,"z": 0.036521124844052635,"repo": source,"psd_file": psd_file,"model": model,"channels": channels,"dt": dt,"N_montecarlo": Nmonte,"device": dev,"pe": 1,})
 
-# spin = "0.99"
-# m1_ = np.asarray(source_data[spin]["m1"])
-# spin_ = np.zeros_like(m1_) + float(spin)
-# z_ = np.asarray(source_data[spin]["redshift"])
+spin = "0.99"
+m1_ = np.asarray(source_data[spin]["m1"])
+spin_ = np.zeros_like(m1_) + float(spin)
+z_ = np.asarray(source_data[spin]["redshift"])
 # mask = (m1_ == 1e4) + (m1_ == 1e6) + (m1_ == 1e7)
-# for m1, a, z in zip(m1_[mask], spin_[mask], z_[mask]):
-#     source = repo_root + f"m1={m1}_m2=10._a={a}_e_f=1e-8_T=0.5_z={z}"
-#     sources.append({"M": m1 * (1 + z),"mu": 10. * (1 + z),"a": a,"e_f": 1e-8,"T": 0.5,"z": z,"repo": source,"psd_file": psd_file,"model": model,"channels": channels,"dt": dt,"N_montecarlo": Nmonte,"device": dev,"pe": 1,})
+for m1, a, z in zip(m1_[mask], spin_[mask], z_[mask]):
+    source = repo_root + f"m1={m1}_m2=10._a={a}_e_f=1e-8_T=0.5_z={z}"
+    sources.append({"M": m1 * (1 + z),"mu": 10. * (1 + z),"a": a,"e_f": ef,"T": Tpl,"z": z,"repo": source,"psd_file": psd_file,"model": model,"channels": channels,"dt": dt,"N_montecarlo": Nmonte,"device": dev,"pe": 1,})
 
-# spin = "-0.99"
-# m1_ = np.asarray(source_data[spin]["m1"])
-# spin_ = np.zeros_like(m1_) + float(spin)
-# z_ = np.asarray(source_data[spin]["redshift"])
+spin = "-0.99"
+m1_ = np.asarray(source_data[spin]["m1"])
+spin_ = np.zeros_like(m1_) + float(spin)
+z_ = np.asarray(source_data[spin]["redshift"])
 # mask = (m1_ == 1e3) + (m1_ ==  3162277.6601683795) + (m1_ == 1e7)
-# for m1, a, z in zip(m1_[mask], spin_[mask], z_[mask]):
-#     source = repo_root + f"m1={m1}_m2=10._a={a}_e_f=1e-8_T=0.5_z={z}"
-#     sources.append({"M": m1 * (1 + z),"mu": 10. * (1 + z),"a": a,"e_f": 1e-8,"T": 0.5,"z": z,"repo": source,"psd_file": psd_file,"model": model,"channels": channels,"dt": dt,"N_montecarlo": Nmonte,"device": dev,"pe": 1,})
+for m1, a, z in zip(m1_[mask], spin_[mask], z_[mask]):
+    source = repo_root + f"m1={m1}_m2=10._a={a}_e_f=1e-8_T=0.5_z={z}"
+    sources.append({"M": m1 * (1 + z),"mu": 10. * (1 + z),"a": a,"e_f": ef,"T": Tpl,"z": z,"repo": source,"psd_file": psd_file,"model": model,"channels": channels,"dt": dt,"N_montecarlo": Nmonte,"device": dev,"pe": 1,})
 
 # save sources to a file
 sources_file = "sources_pe.txt"
