@@ -37,6 +37,19 @@ else:
     with h5py.File(h5_path, "w") as h5f:
         # Assessment Process
         for source in list_folders:
+            try:
+                if not os.path.exists(source):
+                    print(f"Skipping {source} because it does not exist.")
+                    continue
+                if not os.path.exists(f"{source}/realization_0/snr.npz"):
+                    print(f"Skipping {source} because snr.npz does not exist.")
+                    continue
+                if not os.path.exists(f"{source}/realization_0/results.npz"):
+                    print(f"Skipping {source} because results.npz does not exist.")
+                    continue
+            except Exception as e:
+                print(f"Error processing {source}: {e}")
+                continue
             print(f"Assessing science objectives for {source}...")
             m1_str = float(source.split("m1=")[-1].split("_")[0])
             Tpl = float(source.split("T=")[-1].split("_")[0])
@@ -56,6 +69,7 @@ else:
             fish_params[:, 1] = fish_params[:, 1] / (1 + redshift)
             lum_dist = fish_params[:,5]
             sky_loc = fish_params[:,6:8]
+            spin_loc = fish_params[:, 8:10]
             eccentricity = fish_params[:, 4]
             assert np.sum(np.sum(np.diff(fish_params,axis=0),axis=0)[:6])==0.0
 
@@ -68,20 +82,20 @@ else:
             plt.ylabel('Counts')
             plt.savefig(f"{source}/snr_histogram.png",dpi=300)
             plt.figure()
-            nside = 12
-            npix = hp.nside2npix(nside)
-            sky_map = np.zeros(npix)
-            theta = sky_loc[:, 0]
-            phi = sky_loc[:, 1]
-            pixels = hp.ang2pix(nside, theta, phi)
-            for i, pix in enumerate(pixels):
-                sky_map[pix] += snr_list[i]
-            counts = np.bincount(pixels, minlength=npix)
-            counts[counts == 0] = 1  # avoid division by zero
-            sky_map = sky_map / counts
-            hp.mollview(sky_map, title=f"SNR across sky", unit="SNR", cmap="viridis")
-            plt.savefig(f"{source}/snr_sky.png",dpi=300)
-            plt.close()
+            # nside = 12
+            # npix = hp.nside2npix(nside)
+            # sky_map = np.zeros(npix)
+            # theta = sky_loc[:, 0]
+            # phi = sky_loc[:, 1]
+            # pixels = hp.ang2pix(nside, theta, phi)
+            # for i, pix in enumerate(pixels):
+            #     sky_map[pix] += snr_list[i]
+            # counts = np.bincount(pixels, minlength=npix)
+            # counts[counts == 0] = 1  # avoid division by zero
+            # sky_map = sky_map / counts
+            # hp.mollview(sky_map, title=f"SNR across sky", unit="SNR", cmap="viridis")
+            # plt.savefig(f"{source}/snr_sky.png",dpi=300)
+            # plt.close()
 
             measurement_precision = np.asarray([np.sqrt(np.diag(source_cov[ii])) for ii in range(len(fish_params))])
             detector_measurement_precision = np.asarray([np.sqrt(np.diag(detector_cov[ii])) for ii in range(len(fish_params))])
@@ -108,7 +122,8 @@ else:
                 "lum_dist": lum_dist,
                 "eccentricity": eccentricity,
                 "snr": snr_list,
-                "sky_loc": sky_loc
+                "sky_loc": sky_loc,
+                "spin_loc": spin_loc,
             }
             list_results.append(result)
             # Store in HDF5
@@ -156,23 +171,23 @@ else:
                 plt.savefig(f"{source}/snr_{el}.png",dpi=300)
                 plt.close()
 
-                # plot of SNR across the sky
-                plt.figure()
-                nside = 8
-                npix = hp.nside2npix(nside)
-                sky_map = np.zeros(npix)
-                theta = sky_loc[:, 0]
-                phi = sky_loc[:, 1]
-                pixels = hp.ang2pix(nside, theta, phi)
-                # Accumulate the sum of errors in each pixel
-                for i, pix in enumerate(pixels):
-                    sky_map[pix] += error_source[i]
-                counts = np.bincount(pixels, minlength=npix)
-                counts[counts == 0] = 1  # avoid division by zero
-                sky_map = sky_map / counts  # average error per pixel
-                hp.mollview(sky_map, title=f"Precision error across sky for {el}", unit="Error", cmap="viridis")
-                plt.savefig(f"{source}/precision_error_sky_{el}.png",dpi=300)
-                plt.close()
+                # # plot of SNR across the sky
+                # plt.figure()
+                # nside = 8
+                # npix = hp.nside2npix(nside)
+                # sky_map = np.zeros(npix)
+                # theta = sky_loc[:, 0]
+                # phi = sky_loc[:, 1]
+                # pixels = hp.ang2pix(nside, theta, phi)
+                # # Accumulate the sum of errors in each pixel
+                # for i, pix in enumerate(pixels):
+                #     sky_map[pix] += error_source[i]
+                # counts = np.bincount(pixels, minlength=npix)
+                # counts[counts == 0] = 1  # avoid division by zero
+                # sky_map = sky_map / counts  # average error per pixel
+                # hp.mollview(sky_map, title=f"Precision error across sky for {el}", unit="Error", cmap="viridis")
+                # plt.savefig(f"{source}/precision_error_sky_{el}.png",dpi=300)
+                # plt.close()
 
                 # Save distributions
                 np.savez(f"{source}/{el}_distribution.npz", error_source=error_source, error_detector=error_detector)
@@ -180,6 +195,8 @@ else:
                 err_grp = grp.create_group(group_name)
                 err_grp.create_dataset("error_source", data=error_source)
                 err_grp.create_dataset("error_detector", data=error_detector)
+                plt.close('all')
+    print(f"Results saved to {h5_path}")
 
 # # Plot mean and std precision of parameters as a function of m1
 # import matplotlib.pyplot as plt
