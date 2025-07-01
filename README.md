@@ -2,13 +2,15 @@
 
 This repository contains codes for computing Figures of Merit (FoMs) related to Extreme Mass Ratio Inspirals (EMRIs) and Intermedia Mass Ratio Inspirals (IMRIs).
 
+![SNR Figure of Merit Example](pipeline/requirements_results/error_distribution_absolute_errors_a.png)
+![PE Figure of Merit Example](pipeline/requirements_results/snr_redshift_requirement_allspins.png)
+
 TODO:
-- Find justification for updating the current SO3 parameters to be https://gitlab.in2p3.fr/LISA/lisa-fom/-/tree/develop?ref_type=heads
-- Get pipeline for parameter estimation
-- Update the horizon redshift to be averaged
-- Everything with new Kerr Equatorial model so no inclination
-- Need to think about Quadrupole moment https://arxiv.org/abs/gr-qc/0612029 , mapping in eq 43 of https://arxiv.org/pdf/gr-qc/0510129
-- Talk with Andrea Sartirana and Maxime
+- Create requirements for parameter estimation and upload everything in SO3 https://gitlab.in2p3.fr/LISA/lisa-fom/-/tree/develop?ref_type=heads
+- Quadrupole moment https://arxiv.org/abs/gr-qc/0612029 , mapping in eq 43 of https://arxiv.org/pdf/gr-qc/0510129
+- Check Fisher Information Stability and update with Shubham folder
+- Update response to newest one (Maybe? we can also keep the old response)
+- Check installation instructions
 
 ## Installation Instructions
 
