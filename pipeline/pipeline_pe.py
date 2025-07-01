@@ -39,8 +39,8 @@ include_foreground = True
 # psd_file: name of the file with the power spectral density
 # dt: time step in seconds
 dt = 1.0
-Tpl = 0.5  # observation time in years
-ef = 1e-8  # final eccentricity of the binary
+Tpl = 1.0  # observation time in years
+ef = 1e-4  # final eccentricity of the binary
 sources = []
 # Load spin, m1, and redshift values from a JSON file
 json_file = "requirements_results/snr_redshift_evaluation.json"
@@ -49,7 +49,7 @@ with open(json_file, "r") as jf:
 
 
 spin_values = ["0.0", "0.99", "-0.99"]
-masses_to_select = [1e3, 1e4, 1e5, 1e6, 1e7]
+masses_to_select = [1e4, 1e5, 1e6, 1e7]
 
 for spin in spin_values:
     m1_ = np.asarray(source_data[spin]["m1"])
@@ -61,10 +61,10 @@ for spin in spin_values:
         a = float(a)
         z = float(z)
         if m1 == 1e3:
-            Tpl = 0.25
+            Tpl = 0.1
         else:
             Tpl = 0.5
-        source = repo_root + f"m1={m1}_m2=10._a={a}_e_f=1e-8_T=0.5_z={z}"
+        source = repo_root + f"m1={m1}_m2=10._a={a}_e_f={ef}_T={Tpl}_z={z}"
         sources.append({
             "M": m1 * (1 + z),
             "mu": 10. * (1 + z),
