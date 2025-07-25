@@ -45,4 +45,3 @@ class transf_log_e_wave():
     def __getattr__(self, name):
         # Forward attribute access to base_wave
         return getattr(self.base_wave, name)
-
