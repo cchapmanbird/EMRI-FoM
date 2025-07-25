@@ -143,7 +143,7 @@ class CosmoInterpolator:
         seventh_row = np.array([0.0,   0.0,   0.0, 0.0, 0.0, 0.0,          1.0, 0.0, 0.0, 0.0, 0.0])
         eighth_row =  np.array([0.0,   0.0,   0.0, 0.0, 0.0, 0.0,          0.0, 1.0, 0.0, 0.0, 0.0])
         ninth_row =  np.array([0.0,   0.0,   0.0, 0.0, 0.0, 0.0,          0.0, 0.0, 1.0, 0.0, 0.0])
-        tenth_row =  np.array([0.0,   0.0,   0.0, 0.0, 0.0, 0.0,          0.0, 0.0, 0.0, 1.0, 0.0, 0.0])
+        tenth_row =  np.array([0.0,   0.0,   0.0, 0.0, 0.0, 0.0,          0.0, 0.0, 0.0, 1.0, 0.0])
         eleventh_row = np.array([0.0,   0.0,   0.0, 0.0, 0.0, 0.0,          0.0, 0.0, 0.0, 0.0, 1.0])
         J = np.array([first_row, second_row, third_row, fourth_row, fifth_row, sixth_row, seventh_row, eighth_row, ninth_row, tenth_row, eleventh_row])
         # print("shape of J: ", J.shape)

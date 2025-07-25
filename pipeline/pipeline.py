@@ -1,5 +1,5 @@
 #!/work/fduque/miniforge3/envs/fom/bin/python
-# python pipeline.py --M 1e6 --mu 1e1 --a 0.5 --e_f 0.1 --T 1.0 --z 1.5 --repo test --psd_file TDI2_AE_psd.npy --dt 10.0 --use_gpu --N_montecarlo 1 --device 3 --repo test
+# python pipeline.py --M 1e6 --mu 1e1 --a 0.5 --e_f 0.1 --T 4.0 --z 0.5 --psd_file TDI2_AE_psd.npy --dt 10.0 --use_gpu --N_montecarlo 1 --device 3 -power_law --repo test_acc --calculate_fisher 1
 import os
 print("PID:",os.getpid())
 
