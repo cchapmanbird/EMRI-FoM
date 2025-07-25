@@ -1,7 +1,7 @@
 # Condor submit file for pipeline.py job submission
 universe = vanilla
-executable = /data/lsperi/EMRI-FoM/pipeline/pipeline.py
-arguments = --M $(M) --mu $(mu) --a $(a) --e_f $(e_f) --T $(T) --z $(z) --repo $(repo) --psd_file $(psd_file) --model $(model) --channels $(channels) --dt $(dt) --use_gpu --N_montecarlo $(N_montecarlo) --device $(device) --calculate_fisher $(calculate_fisher) $(extra_args) 
+executable = /work/fduque/miniforge3/envs/fom/bin/python
+arguments = /data/fduque/EMRI-FoM/pipeline/pipeline.py --M $(M) --mu $(mu) --a $(a) --e_f $(e_f) --T $(T) --z $(z) --repo $(repo) --psd_file $(psd_file) --model $(model) --channels $(channels) --dt $(dt) --use_gpu --N_montecarlo $(N_montecarlo) --device $(device) --calculate_fisher $(calculate_fisher) $(extra_args) 
 
 output = pipeline_$(repo).out
 error  = pipeline_$(repo).err
