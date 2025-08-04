@@ -24,29 +24,15 @@ Follow these steps to set up the environment and install the necessary packages.
 
 Below is a quick set of instructions to install the Fast EMRI Waveform (FEW) package.
 
-Create an environment for the figures of merit
+Create an environment for the figures of merit by installing the latest version of FEW:
 ```sh
-conda create -n fom -c conda-forge -y gcc_linux-64 gxx_linux-64 wget gsl lapack=3.6.1 hdf5 numpy Cython python=3.12 pandas fortran-compiler
-conda activate fom
-pip install tabulate markdown pypandoc scikit-learn healpy lisaanalysistools seaborn corner scipy tqdm jupyter ipython h5py requests matplotlib eryn
+conda create -n fom_env -c conda-forge -y --override-channels python=3.12 fastemriwaveforms-cuda12x
+conda activate fom_env
+pip install tabulate markdown pypandoc scikit-learn healpy lisaanalysistools seaborn corner scipy tqdm jupyter ipython h5py requests matplotlib eryn Cython
 ```
+Check which of the above packages are actually needed
 
-Locate where the `nvcc` compile is located and add it to the path, in my case it is located in `/usr/local/cuda-12.5/bin/`
-```sh
-pip install cupy-cuda12x GPUtil jax[cuda]
-export PATH=$PATH:/usr/local/cuda-12.5/bin/
-```
-
-Check the version of your compiler by running `nvcc --version` and install the corresponding FEW cuda version for running on GPUs [temporary workaround until the repo is merged back into the toolkit]:
-```sh
-git clone https://github.com/znasipak/FastEMRIWaveforms-Soton-Hackathon-2025.git
-cd FastEMRIWaveforms-Soton-Hackathon-2025/
-git checkout PaperProduction
-pip install .
-cd ..
-```
-
-Test the installation device by running python
+Test the installation of FEW on GPU by running python
 ```python
 import few
 few.get_backend("cuda12x")
@@ -62,40 +48,33 @@ cd ..
 ```
 
 ### Install `lisa-on-gpu` for LISA Response
-Install the response
-<!-- ```sh
-git clone https://github.com/mikekatz04/lisa-on-gpu.git
-cd lisa-on-gpu
-python scripts/prebuild.py
-pip install .
-``` -->
+To install the response on GPUs, you need to locate where the `nvcc` compiler is and add it to the path. For instance it could be located in `/usr/local/cuda-12.5/bin/` and I would add it to the path with
 ```sh
+export PATH=$PATH:/usr/local/cuda-12.5/bin/
+```
+
+Then I can install the response
+```sh
+pip install 
 cd lisa-on-gpu
 python setup.py install
 cd ..
 ```
 
 Verify `lisa-on-gpu` Installation by opening a Python shell and run:
-
 ```python
 from fastlisaresponse import ResponseWrapper
 ```
 
-### Test waveform and response
+### Test installation
+
+Test the waveform and response in the main folder
 ```
 python -m unittest test_waveform_and_response.py 
+```
+
+Test the pipeline
+```
 cd pipeline
 python pipeline.py --M 1e6 --mu 1e1 --a 0.5 --e_f 0.1 --T 1.0 --z 0.1 --repo test --psd_file TDI2_AE_psd.npy --dt 10.0 --use_gpu --N_montecarlo 1 --device 0 --repo test
 ```
-
-## Running the pipeline
-
-Place yourself in the folder pipeline and run the pipeline on GPUs
-```
-cd pipeline
-python run_pipeline.py
-```
-
-Inside the `run_pipeline.py` you can modify the thresholds for the science objectives, the sources and the number of randomization over sky and phase.
-
-You can also run the pipeline in the background with `nohup python run_pipeline.py > logpipeline.log &`
