@@ -1,5 +1,4 @@
-#!/work/fduque/miniforge3/envs/fom/bin/python
-# python pipeline.py --M 1e6 --mu 1e1 --a 0.5 --e_f 0.1 --T 4.0 --z 0.5 --psd_file TDI2_AE_psd.npy --dt 10.0 --use_gpu --N_montecarlo 1 --device 3 -power_law --repo test_acc --calculate_fisher 1
+# python pipeline.py --M 1e6 --mu 1e1 --a 0.5 --e_f 0.1 --T 4.0 --z 0.5 --psd_file TDI2_AE_psd.npy --dt 10.0 --use_gpu --N_montecarlo 1 --device 0 --power_law --repo test_acc --calculate_fisher 1
 import os
 print("PID:",os.getpid())
 
@@ -265,7 +264,9 @@ if __name__ == "__main__":
     test_2 = np.sum(np.abs(temp_model(*parameters, **waveform_kwargs)[0] - waveform_out[0]))
     print("Test 1: ", test_1 !=0.0, "\nTest 2: ", test_2 == 0.0)
     # update the model with the windowed and truncated waveform
-    model = wave_windowed_truncated(temp_model, len(waveform_out[0]), args.dt, xp, window_fn=('tukey', 0.01), fmin=1e-5, fmax=max_f)
+    fmin=1e-5
+    fmax=max_f
+    model = temp_model # wave_windowed_truncated(temp_model, len(waveform_out[0]), args.dt, xp, window_fn=('tukey', 0.01), fmin=fmin, fmax=fmax)
     model(*parameters)
     tic = time.time()
     waveform_out = model(*parameters)
@@ -353,7 +354,7 @@ if __name__ == "__main__":
             der_order = 4.0
 
 
-        fish = StableEMRIFisher(*parameters[:-2], add_param_args = {"A": A, "nr": nr},
+        fish = StableEMRIFisher(*parameters[:-2], add_param_args = {"A": A, "nr": nr}, fmin=fmin, fmax=fmax,
                                 dt=args.dt, T=T, EMRI_waveform_gen=EMRI_waveform_gen, noise_model=psd_wrap, noise_kwargs=dict(TDI="TDI2"), channels=["A", "E", "T"], param_names=param_names, stats_for_nerds=False, use_gpu=args.use_gpu, 
                                 der_order=der_order, Ndelta=20, filename=current_folder,
                                 deltas = deltas,
