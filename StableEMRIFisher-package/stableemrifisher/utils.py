@@ -3,6 +3,7 @@ from scipy.interpolate import make_interp_spline
 from stableemrifisher.noise import noise_PSD_AE, sensitivity_LWA
 from few.utils.constants import YRSID_SI
 
+
 try:
     import cupy as cp
     cp.ones(5)
@@ -32,6 +33,7 @@ def tukey(N, alpha=0.5, use_gpu=False):
         xp = np
     else:
         assert GPU_AVAILABLE
+        xp = np
 
     t = xp.linspace(0., 1., N)
     window = xp.ones(N)
@@ -42,7 +44,7 @@ def tukey(N, alpha=0.5, use_gpu=False):
     return window
     
 
-def generate_PSD(waveform, dt, noise_PSD=noise_PSD_AE, channels = ["A","E"], noise_kwargs={}, use_gpu=False):
+def generate_PSD(waveform, dt, noise_PSD=noise_PSD_AE, channels = ["A","E"], noise_kwargs={"TDI":"TDI1"}, use_gpu=False):
     """
     generate the power spectral density for a given waveform, noise_PSD function,
     requested number of response channels, and response generation
@@ -63,14 +65,6 @@ def generate_PSD(waveform, dt, noise_PSD=noise_PSD_AE, channels = ["A","E"], noi
     else:
         xp = np
         
-    try:
-        response = noise_kwargs["TDI"]
-        print(f"TDI detected. response = {response}") 
-    except:
-        print("TDI not found. Setting response as 'LWA'")
-        response = "LWA"
-        channels = ["I","II"]
-        
     # If we use LWA, extract real and imaginary components (channels 1 and 2)
     if waveform.ndim == 1:
         waveform = xp.asarray([waveform.real, waveform.imag])
@@ -83,20 +77,24 @@ def generate_PSD(waveform, dt, noise_PSD=noise_PSD_AE, channels = ["A","E"], noi
     # Compute evolution time of EMRI 
     T = (df * YRSID_SI)**-1
 
-    freq_np = xp.asarray(freq) # Compute frequencies
+    if use_gpu:
+        freq_np = xp.asnumpy(freq) # Compute frequencies
+    else:
+        freq_np = freq
 
     # Generate PSDs given LWA/TDI variables
-    if response == "TDI1" or response == "TDI2":
-        PSD = 2*[noise_PSD(freq_np[1:], **noise_kwargs)]
+    if isinstance(noise_kwargs, list):
+        PSD = [noise_PSD(freq_np[1:], **noise_kwargs_temp) for noise_kwargs_temp in noise_kwargs]
     else:
-        PSD = 2*[sensitivity_LWA(freq_np[1:])]  
+        PSD = len(channels) * [noise_PSD(freq_np[1:], **noise_kwargs)]
+        
     PSD_cp = [xp.asarray(item) for item in PSD] # Convert to cupy array
     
     #PSD_funcs = PSD_cp[0:len(PSD_cp)] # Choose which channels to include
-    return PSD_cp[0:len(channels)]    
+    return PSD_cp[0:len(channels)]      
 
 
-def inner_product(a, b, PSD, dt, window=None, use_gpu=False):
+def inner_product(a, b, PSD, dt, window=None, fmin = None, fmax = None, use_gpu=False):
     """
     Compute the frequency domain inner product of two time-domain arrays.
 
@@ -107,9 +105,12 @@ def inner_product(a, b, PSD, dt, window=None, use_gpu=False):
     Args:
         a (np.ndarray): The first time-domain signal. It should have dimensions (N_channels, N), where N is the length of the signal.
         b (np.ndarray): The second time-domain signal. It should have dimensions (N_channels, N), where N is the length of the signal.
-        df (float): The frequency resolution, i.e., the spacing between frequency bins.
         PSD (np.ndarray): The power spectral density (PSD) of the signals. It should be a 1D array of length N_channels.
-
+        dt (float): The sampling interval, i.e., the spacing between time samples.
+        window (np.ndarray, optional): a window array to envelope the waveform time series. Default is None (no window).
+        fmin (float, optional): minimum frequency for inner_product sum. Default is None.
+        fmax (float, optional): maximum frequency for inner_product sum. Default is None.
+        use_gpu (bool, optional): whether to use gpu. Default is False.
     Returns:
         float: The frequency-domain inner product of the two signals.
 
@@ -119,9 +120,41 @@ def inner_product(a, b, PSD, dt, window=None, use_gpu=False):
     else:
         xp = np
 
+    #print("fmin: {}, fmax: {}".format(fmin, fmax))
+
+    #frequency cutoff mask
+    if (fmin != None) or (fmax != None):
+        
+        length = len(a[0])
+        freq = xp.fft.rfftfreq(length)/dt
+
+        if use_gpu:
+            freq = freq.get() #convert to numpy
+
+        if fmin != None:
+            mask_min = (freq > fmin)
+        
+        if fmax != None:
+            mask_max = (freq < fmax)
+
+        if (fmin != None) and (fmax == None):
+            freq_mask = mask_min
+        elif (fmin == None) and (fmax != None):
+            freq_mask = mask_max
+        else:
+            freq_mask = xp.logical_and(mask_min, mask_max)
+
+    else:
+        length = len(a[0])
+        freq = xp.fft.rfftfreq(length)/dt
+
+        freq_mask = np.full(len(freq), True, dtype = bool)
+
+    freq_mask = freq_mask[1:] #skip the first element corresponding to f = 0.0
+
     a = xp.atleast_2d(a)
     b = xp.atleast_2d(b)
-    PSD = xp.atleast_2d(xp.asarray(PSD))[0][None,:]  # handle passing the same PSD for multiple channels
+    PSD = xp.atleast_2d(xp.asarray(PSD))  # handle passing the same PSD for multiple channels
 
     N = a.shape[1]
 
@@ -134,11 +167,21 @@ def inner_product(a, b, PSD, dt, window=None, use_gpu=False):
     else:
         a_in, b_in = a, b
 
-    a_fft = dt * xp.fft.rfft(a_in, axis=-1)[:,1:]
-    b_fft = dt * xp.fft.rfft(b_in, axis=-1)[:,1:]
+    if xp.iscomplexobj(a_in):
+        a_fft_plus = (dt * xp.fft.rfft(a_in.real, axis=-1)[:,1:])[:,freq_mask]
+        a_fft_cross = (dt * xp.fft.rfft(a_in.imag, axis=-1)[:,1:])[:,freq_mask]
 
-    # Compute inner products over given channels
-    inner_prod = 4 * df * ((a_fft.conj() * b_fft).real / PSD).sum()
+        b_fft_plus = (dt * xp.fft.rfft(b_in.real, axis=-1)[:,1:])[:,freq_mask]
+        b_fft_cross = (dt * xp.fft.rfft(b_in.imag, axis=-1)[:,1:])[:,freq_mask]
+
+        inner_prod = 4 * df * ((a_fft_plus.conj() * b_fft_plus + a_fft_cross * b_fft_cross.conj()).real / PSD[:,freq_mask]).sum()
+        
+    else:
+        a_fft = (dt * xp.fft.rfft(a_in, axis=-1)[:,1:])[:,freq_mask]
+        b_fft = (dt * xp.fft.rfft(b_in, axis=-1)[:,1:])[:,freq_mask]
+
+        # Compute inner products over given channels
+        inner_prod = 4 * df * ((a_fft.conj() * b_fft).real / PSD[:,freq_mask]).sum()
     
     if use_gpu:
         inner_prod = inner_prod.get()
@@ -152,12 +195,12 @@ def SNRcalc(waveform, PSD, dt, window=None, use_gpu=False):
         float: SNR of the source.
     """
         
-    return np.sqrt(inner_product(waveform,waveform, PSD, dt , window=window, use_gpu=use_gpu))
+    return np.sqrt(inner_product(waveform, waveform, PSD, dt , window=window, use_gpu=use_gpu))
 
 def padding(a, b, use_gpu=False):
     """
     Make time series 'a' the same length as time series 'b'.
-    Both 'a' and 'b' must be cupy array.
+    Both 'a' and 'b' must be cupy array of the same shape.
 
     returns padded 'a'
     """
@@ -169,15 +212,30 @@ def padding(a, b, use_gpu=False):
     a = xp.asarray(a)
     b = xp.asarray(b)
 
-    if len(a) < len(b):
-        return xp.concatenate((a,xp.zeros(len(b)-len(a))))
-
-    elif len(a) > len(b):
-        return a[:len(b)]
+    assert a.ndim == b.ndim
+    
+    if a.ndim > 1:
+        a_temp = []
+        
+        for i in range(len(a)):
+            if len(a[i]) < len(b[i]):
+                a_temp.append(xp.concatenate((a,xp.zeros(len(b[i])-len(a[i])))))
+        
+            elif len(a[i]) > len(b[i]):
+                a_temp.append(a[i][:len(b[i])])
+                
+            else:
+                a_temp.append(a[i])
+        
+        a = xp.array(a_temp)
 
     else:
-        return a
-
+        if len(a) < len(b):
+            a = xp.concatenate((a,xp.zeros(len(b)-len(a))))
+        elif len(a) > len(b):
+            a = a[:len(b)]
+            
+    return a
 
 def get_inspiral_overwrite_fun(interpolation_factor, spline_order=7):
     def func(self, *args, **kwargs):
@@ -203,3 +261,25 @@ def get_inspiral_overwrite_fun(interpolation_factor, spline_order=7):
         return (t_new.copy(),) + tuple(upsampled.copy())
 
     return func    
+
+def fishinv(M, Fisher, index_of_M = 0):
+    """ 
+    Calculate the Fisher inverse by transforming the index of M to lnM to improve conditionality of the matrix first. 
+    ONLY WORKS WITH INPUTS THAT HAVE PARAM M AT INDEX "index_of_M"!
+    Helps with stability of Fisher inversion.
+    """
+    
+    #Jacobian for Fisher = partial old/partial new, going from M -> lnM
+    
+    J = np.eye(len(Fisher))
+    J[index_of_M,index_of_M] = M
+
+    Fisher_lnM = J.T @ Fisher @ J
+
+    Fisher_lnM_inv = np.linalg.inv(Fisher_lnM)
+
+    #Jacobian for Covariance = partial new/partial old, going from lnM -> M
+
+    Fisher_inv = J.T @ Fisher_lnM_inv @ J
+    
+    return Fisher_inv

@@ -120,6 +120,34 @@ class CosmoInterpolator:
         J = np.array([first_row, second_row, third_row, fourth_row, fifth_row, sixth_row, seventh_row, eighth_row, ninth_row, tenth_row, eleventh_row, twelfth_row])
         # print("shape of J: ", J.shape)
         return J
+    
+    def jacobian_powerlaw(self, M_s, mu_s, z):
+        """Jacobian to obtain source frame Fisher matrix from detector frame Fisher matrix. GammaNew = J^T Gamma J
+
+        Args:
+            M_s (float): Source frame central mass of the binary in solar masses
+            mu_s (float): secondary mass of the binary in solar masses
+            dz_dl (float): Derivative of redshift with respect to luminosity distance
+            z (float): Redshift of the source
+
+        Returns:
+            np.array: Jacobian matrix
+        """
+        dz_dl = self.get_dz_dl_interp(z)
+        first_row =  np.array([(1+z), 0.0,   0.0, 0.0, M_s * dz_dl,  0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        second_row = np.array([0.0,   (1+z), 0.0, 0.0, mu_s * dz_dl, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+        third_row =  np.array([0.0,   0.0,   1.0, 0.0, 0.0, 0.0,          0.0, 0.0, 0.0, 0.0, 0.0])
+        fourth_row = np.array([0.0,   0.0,   0.0, 1.0, 0.0, 0.0,          0.0, 0.0, 0.0, 0.0, 0.0])
+        fifth_row =  np.array([0.0,   0.0,   0.0, 0.0, 1.0, 0.0,          0.0, 0.0, 0.0, 0.0, 0.0])
+        sixth_row =  np.array([0.0,   0.0,   0.0, 0.0, 0.0, 1.0,          0.0, 0.0, 0.0, 0.0, 0.0])
+        seventh_row = np.array([0.0,   0.0,   0.0, 0.0, 0.0, 0.0,          1.0, 0.0, 0.0, 0.0, 0.0])
+        eighth_row =  np.array([0.0,   0.0,   0.0, 0.0, 0.0, 0.0,          0.0, 1.0, 0.0, 0.0, 0.0])
+        ninth_row =  np.array([0.0,   0.0,   0.0, 0.0, 0.0, 0.0,          0.0, 0.0, 1.0, 0.0, 0.0])
+        tenth_row =  np.array([0.0,   0.0,   0.0, 0.0, 0.0, 0.0,          0.0, 0.0, 0.0, 1.0, 0.0])
+        eleventh_row = np.array([0.0,   0.0,   0.0, 0.0, 0.0, 0.0,          0.0, 0.0, 0.0, 0.0, 1.0])
+        J = np.array([first_row, second_row, third_row, fourth_row, fifth_row, sixth_row, seventh_row, eighth_row, ninth_row, tenth_row, eleventh_row])
+        # print("shape of J: ", J.shape)
+        return J
 
 
     def transform_mass_uncertainty(self, m, sigma_m, z, sigma_l):
