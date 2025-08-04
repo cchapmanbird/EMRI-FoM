@@ -292,10 +292,9 @@ class StableEMRIFisher:
         
         # Compute SNR
         logger.info(f"Computing SNR for parameters: {self.wave_params}") 
-        
-        return SNRcalc(self.waveform, self.PSD_funcs, dt=self.dt, window=self.window, use_gpu=self.use_gpu, fmin=self.fmin, fmax=self.fmax)
-        
-    
+
+        return SNRcalc(self.waveform, self.PSD_funcs, dt=self.dt, window=self.window, fmin=self.fmin, fmax=self.fmax, use_gpu=self.use_gpu)
+
     def check_if_plunging(self):
         """
         Checks if the body is plunging based on the computed trajectory.
@@ -399,7 +398,7 @@ class StableEMRIFisher:
                         del_k = derivative(waveform_generator, self.wave_params, self.param_names[i], delta_init[k], use_gpu=self.use_gpu, waveform=waveform, order=self.order, waveform_kwargs=self.waveform_kwargs)
 
                 #Calculating the Fisher Elements
-                Gammai = inner_product(del_k,del_k, PSD_funcs, self.dt, window=self.window, use_gpu=self.use_gpu, fmin=self.fmin, fmax=self.fmax)
+                Gammai = inner_product(del_k,del_k, PSD_funcs, self.dt, window=self.window, fmin = self.fmin, fmax = self.fmax, use_gpu=self.use_gpu)
                 logger.debug(f"Gamma_ii: {Gammai}")
                 if np.isnan(Gammai):
                     Gamma.append(0.0) #handle nan's
@@ -497,9 +496,9 @@ class StableEMRIFisher:
         for i in range(self.npar):
             for j in range(i,self.npar):
                 if self.use_gpu:
-                    Fisher[i,j] = np.float64(xp.asnumpy(inner_product(dtv[i],dtv[j],self.PSD_funcs, self.dt, window=self.window, use_gpu=self.use_gpu).real))
+                    Fisher[i,j] = np.float64(xp.asnumpy(inner_product(dtv[i],dtv[j],self.PSD_funcs, self.dt, window=self.window,  fmin = self.fmin, fmax = self.fmax, use_gpu=self.use_gpu).real))
                 else:
-                    Fisher[i,j] = np.float64((inner_product(dtv[i],dtv[j],self.PSD_funcs, self.dt, window=self.window, use_gpu=self.use_gpu).real))
+                    Fisher[i,j] = np.float64((inner_product(dtv[i],dtv[j],self.PSD_funcs, self.dt, window=self.window,  fmin = self.fmin, fmax = self.fmax, use_gpu=self.use_gpu).real))
 
                 #Exploiting symmetric property of the Fisher Matrix
                 Fisher[j,i] = Fisher[i,j]
