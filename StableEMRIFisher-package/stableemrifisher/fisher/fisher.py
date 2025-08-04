@@ -27,7 +27,8 @@ logger.info("startup")
 class StableEMRIFisher:
     
     def __init__(self, M, mu, a, p0, e0, Y0, dist, qS, phiS, qK, phiK,
-                 Phi_phi0, Phi_theta0, Phi_r0, dt = 10., T = 1.0, add_param_args = None, waveform_kwargs=None, EMRI_waveform_gen = None, window = None, noise_model = noise_PSD_AE, noise_kwargs={"TDI":'TDI1'}, channels=["A","E"],
+                 Phi_phi0, Phi_theta0, Phi_r0, dt = 10., T = 1.0, add_param_args = None, waveform_kwargs=None, EMRI_waveform_gen = None, window = None, fmin=None, fmax=None,
+                 noise_model = noise_PSD_AE, noise_kwargs={"TDI":'TDI1'}, channels=["A","E"],
                  param_names=None, deltas=None, der_order=2, Ndelta=8, CovEllipse=False, stability_plot=False, save_derivatives=False,
                  live_dangerously = False, plunge_check=True, filename=None, suffix=None, stats_for_nerds=False, use_gpu=False, log_e = False):
         """
@@ -51,6 +52,8 @@ class StableEMRIFisher:
                 waveform_kwargs (dict, optional): dictionary of any additional waveform arguments (for e.g. mich = True). Default is None. 
                 EMRI_waveform_gen (object, optional): EMRI waveform generator object. Can be GenerateEMRIWaveform object or ResponseWrapper object. Default is None.
                 window (np.ndarray, optional): window function for the waveform. Default is None.
+                fmin (float, optional): Minimum frequency for the Fisher matrix calculation. Default is None.
+                fmax (float, optional): Maximum frequency for the Fisher matrix calculation. Default is None
                 noise_weighted_waveform (bool, optional): whether input waveform is already noise-weighted. If so, we don't weight by the PSD.
                 noise_model (func, optional): function to calculate the noise of the instrument at a given frequency and noise configuration. frequency should be the first argument. Default is noise_PSD_AE.
                 noise_kwargs (dict, optional): additional keyword arguments to be provided to the noise model function. Default is {"TDI":'TDI1'} (kwarg for noise_PSD_AE).
@@ -98,7 +101,9 @@ class StableEMRIFisher:
         self.order = der_order
         self.Ndelta = Ndelta
         self.window = window
-        
+        self.fmin = fmin
+        self.fmax = fmax
+
         if stats_for_nerds:
             logger.setLevel("DEBUG")
 
@@ -288,7 +293,7 @@ class StableEMRIFisher:
         # Compute SNR
         logger.info(f"Computing SNR for parameters: {self.wave_params}") 
         
-        return SNRcalc(self.waveform, self.PSD_funcs, dt=self.dt, window=self.window, use_gpu=self.use_gpu)
+        return SNRcalc(self.waveform, self.PSD_funcs, dt=self.dt, window=self.window, use_gpu=self.use_gpu, fmin=self.fmin, fmax=self.fmax)
         
     
     def check_if_plunging(self):
@@ -394,7 +399,7 @@ class StableEMRIFisher:
                         del_k = derivative(waveform_generator, self.wave_params, self.param_names[i], delta_init[k], use_gpu=self.use_gpu, waveform=waveform, order=self.order, waveform_kwargs=self.waveform_kwargs)
 
                 #Calculating the Fisher Elements
-                Gammai = inner_product(del_k,del_k, PSD_funcs, self.dt, window=self.window, use_gpu=self.use_gpu)
+                Gammai = inner_product(del_k,del_k, PSD_funcs, self.dt, window=self.window, use_gpu=self.use_gpu, fmin=self.fmin, fmax=self.fmax)
                 logger.debug(f"Gamma_ii: {Gammai}")
                 if np.isnan(Gammai):
                     Gamma.append(0.0) #handle nan's

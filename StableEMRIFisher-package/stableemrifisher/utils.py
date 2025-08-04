@@ -188,14 +188,14 @@ def inner_product(a, b, PSD, dt, window=None, fmin = None, fmax = None, use_gpu=
 
     return inner_prod
     
-def SNRcalc(waveform, PSD, dt, window=None, use_gpu=False):
+def SNRcalc(waveform, PSD, dt, window=None, use_gpu=False, fmin=None, fmax=None):
     """
     Give the SNR of a given waveform after SEF initialization.
     Returns:
         float: SNR of the source.
     """
         
-    return np.sqrt(inner_product(waveform, waveform, PSD, dt , window=window, use_gpu=use_gpu))
+    return np.sqrt(inner_product(waveform, waveform, PSD, dt , window=window, use_gpu=use_gpu, fmin=fmin, fmax=fmax))
 
 def padding(a, b, use_gpu=False):
     """
