@@ -7,7 +7,7 @@ output = pipeline_$(repo).out
 error  = pipeline_$(repo).err
 log    = pipeline_$(repo).log
 
-request_memory = 32.0GB
+request_memory = 64GB
 request_disk = 2.0GB
 request_cpus = 2
 notification = Never

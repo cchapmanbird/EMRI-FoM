@@ -64,25 +64,25 @@ m1 = 1e6
 a = 0.99
 z = 1.5
 
-for ef in [0.01, 0.3]:
-    for m2 in [10.0, 50.0]:
-        source = repo_root + f"m1={m1}_m2={m2}_a={a}_e_f={ef}_T={Tpl}_z={z}"
-        sources.append({
-            "M": m1 * (1 + z),
-            "mu": m2 * (1 + z),
-            "a": a,
-            "e_f": ef,
-            "T": Tpl,
-            "z": z,
-            "repo": source,
-            "psd_file": psd_file,
-            "model": model,
-            "channels": channels,
-            "dt": dt,
-            "N_montecarlo": Nmonte,
-            "device": dev,
-            "pe": 1,
-        })
+for ef, m2 in [(0.01, 10), (0.01, 50.0), (0.1, 10.0), (0.05, 50.0)]:
+# for ef, m2 in [(0.05, 50.0)]:
+    source = repo_root + f"m1={m1}_m2={m2}_a={a}_e_f={ef}_T={Tpl}_z={z}"
+    sources.append({
+        "M": m1 * (1 + z),
+        "mu": m2 * (1 + z),
+        "a": a,
+        "e_f": ef,
+        "T": Tpl,
+        "z": z,
+        "repo": source,
+        "psd_file": psd_file,
+        "model": model,
+        "channels": channels,
+        "dt": dt,
+        "N_montecarlo": Nmonte,
+        "device": dev,
+        "pe": 1,
+    })
 
 # save sources to a file
 sources_file = "sources_pe.txt"

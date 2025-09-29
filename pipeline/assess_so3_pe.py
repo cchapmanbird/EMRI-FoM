@@ -26,10 +26,10 @@ plt.rcParams["figure.figsize"] = (4, 3)
 # threshold_SNR: threshold on SNR for the science objectives
 thr_snr = [20.0, 25., 30.]
 
-list_folders = sorted(glob.glob("./production_pe_m*"))
+list_folders = sorted(glob.glob("./production_inference_*e_f=0.01*"))
 print(list_folders)
 list_results = []
-h5_path = "pe_results.h5"
+h5_path = "inference_results.h5"
 # check if the HDF5 file already exists
 if os.path.exists(h5_path):
     print(f"HDF5 file {h5_path} already exists.")
@@ -55,6 +55,7 @@ else:
             Tpl = float(source.split("T=")[-1].split("_")[0])
             redshift = np.load(sorted(glob.glob(f"{source}/*/snr.npz"))[0])["redshift"]
             detector_params = np.load(sorted(glob.glob(f"{source}/*/snr.npz"))[0])["parameters"]
+            e_f = np.load(sorted(glob.glob(f"{source}/*/snr.npz"))[0])["e_f"]
             source_params = detector_params.copy()
             source_params[0] = source_params[0] / (1 + redshift)
             source_params[1] = source_params[1] / (1 + redshift)
@@ -117,6 +118,7 @@ else:
             result = {
                 "m1": source_params[0],
                 "m2": source_params[1],
+                "e_f": e_f,
                 "Tpl": Tpl,
                 "redshift": redshift,
                 "lum_dist": lum_dist,
