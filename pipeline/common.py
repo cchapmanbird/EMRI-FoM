@@ -1,16 +1,8 @@
-from stableemrifisher.fisher import StableEMRIFisher
-from few.waveform import GenerateEMRIWaveform
-from fastlisaresponse import ResponseWrapper
 import matplotlib.pyplot as plt
-import os
-from pathlib import Path
 import numpy as np
 from scipy.interpolate import CubicSpline
 
 import numpy as np
-from scipy import integrate
-from scipy.interpolate import splrep, splev, RegularGridInterpolator, interp1d
-from scipy.constants import c
 
 import astropy.units as u
 from astropy.cosmology import Planck18, z_at_value, FlatLambdaCDM
