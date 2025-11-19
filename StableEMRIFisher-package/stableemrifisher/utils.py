@@ -132,10 +132,10 @@ def inner_product(a, b, PSD, dt, window=None, fmin = None, fmax = None, use_gpu=
             freq = freq.get() #convert to numpy
 
         if fmin != None:
-            mask_min = (freq > fmin)
+            mask_min = xp.asarray(freq > fmin)
         
         if fmax != None:
-            mask_max = (freq < fmax)
+            mask_max = xp.asarray(freq < fmax)
 
         if (fmin != None) and (fmax == None):
             freq_mask = mask_min
