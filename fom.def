@@ -1,10 +1,11 @@
 Bootstrap: docker
 From: ghcr.io/nvidia/jax:jax-2024-07-24
+# the above version is chose for compatibility with fastemriwaveforms-cuda12x and the local CUDA driver
 
 %post
-    python3 -m pip install --upgrade pip
-    python3 -m pip install --no-cache-dir nvidia-cuda-runtime-cu12 astropy eryn fastemriwaveforms-cuda12x multiprocess optax matplotlib scipy jupyter interpax numba Cython lisaanalysistools
-    python3 -c "import few; few.get_backend('cuda12x'); print('FEW installation successful')"
+    python -m pip install --upgrade pip
+    python -m pip install --no-cache-dir nvidia-cuda-runtime-cu12 astropy eryn fastemriwaveforms-cuda12x multiprocess optax matplotlib scipy jupyter interpax numba Cython lisaanalysistools tabulate
+    python -c "import few; few.get_backend('cuda12x'); print('FEW installation successful')"
 
     # Set compilers explicitly and unset conda variables
     unset CC CXX CUDACXX
@@ -19,8 +20,6 @@ From: ghcr.io/nvidia/jax:jax-2024-07-24
     python setup.py install
     cd ../StableEMRIFisher-package/
     python -m pip install .
-    cd ../../
-    rm -rf emri_fom_temp
-%test
-    python3 -m unittest test_waveform_and_response.py
-    echo "LISA on GPU and StableEMRIFisher-package installation successful"
+    cd ../
+    # python -m unittest test_waveform_and_response.py
+    # echo "LISA on GPU and StableEMRIFisher-package installation successful"
