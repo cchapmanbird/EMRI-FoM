@@ -186,3 +186,25 @@ def compute_snr2(freqs, tdi_channels, psd_fn, xp=np):
     return snr2
 
 
+if __name__ == "__main__":
+
+    # Example usage: create the three interpolant functions
+    psd_emri_1p5 = load_psd_from_file("TDI2_AE_psd_emri_background_1.5_yr.npy")
+    psd_emri_4p5 = load_psd_from_file("TDI2_AE_psd_emri_background_4.5_yr.npy")
+    psd_nominal = load_psd_from_file("TDI2_AE_psd.npy")
+
+    print("Created PSD functions:", psd_emri_1p5, psd_emri_4p5, psd_nominal)
+
+    # plot example
+    import matplotlib.pyplot as plt
+    freqs = np.logspace(-5, 0.0, 1000)
+    plt.loglog(freqs, psd_emri_1p5(freqs), label="EMRI background 1.5 yr")
+    plt.loglog(freqs, psd_emri_4p5(freqs), label="EMRI background 4.5 yr")
+    plt.loglog(freqs, psd_nominal(freqs), label="Nominal")
+    plt.xlabel("Frequency [Hz]")
+    plt.ylabel("PSD [1/Hz]")
+    plt.legend()
+    plt.title("LISA TDI2 AE PSDs")
+    plt.grid()
+    plt.savefig("example_psds.png")
+    plt.show()
