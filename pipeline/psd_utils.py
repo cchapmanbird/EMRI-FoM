@@ -197,14 +197,39 @@ if __name__ == "__main__":
 
     # plot example
     import matplotlib.pyplot as plt
-    freqs = np.logspace(-5, 0.0, 1000)
-    plt.loglog(freqs, psd_emri_1p5(freqs), label="EMRI background 1.5 yr")
-    plt.loglog(freqs, psd_emri_4p5(freqs), label="EMRI background 4.5 yr")
-    plt.loglog(freqs, psd_nominal(freqs), label="Nominal")
+    import scienceplots
+
+    plt.style.use(['science'])
+
+    plot_params = {
+        "figure.dpi": "200",
+        "axes.labelsize": 20,
+        "axes.linewidth": 1.5,
+        "axes.titlesize": 20,
+        "xtick.labelsize": 16,
+        "ytick.labelsize": 16,
+        "legend.title_fontsize": 16,
+        "legend.fontsize": 16,
+        "xtick.major.size": 3.5,
+        "xtick.major.width": 1.5,
+        "xtick.minor.size": 2.5,
+        "xtick.minor.width": 1.5,
+        "ytick.major.size": 3.5,
+        "ytick.major.width": 1.5,
+        "ytick.minor.size": 2.5,
+        "ytick.minor.width": 1.5,
+    }
+    plt.rcParams.update(plot_params)
+    freqs = np.logspace(-4, 0.0, 1000)
+    plt.figure(figsize=(8,6))
+    plt.loglog(freqs, psd_nominal(freqs), label="Instrumental Only")
+    plt.loglog(freqs, psd_emri_1p5(freqs), "--", label="Mission Duration = 1.5 yr")
+    plt.loglog(freqs, psd_emri_4p5(freqs), ":",label="Mission Duration = 4.5 yr")
     plt.xlabel("Frequency [Hz]")
     plt.ylabel("PSD [1/Hz]")
     plt.legend()
     plt.title("LISA TDI2 AE PSDs")
     plt.grid()
-    plt.savefig("example_psds.png")
-    plt.show()
+    plt.tight_layout()
+    plt.savefig("tdi2AE_psd.pdf")
+    # plt.show()

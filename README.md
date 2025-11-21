@@ -98,7 +98,7 @@ singularity shell --writable --nv --fakeroot fom
 Then you can install your favorite packages:
 ```
 python3 -m pip install --upgrade pip
-python3 -m pip install --no-cache-dir nvidia-cuda-runtime-cu12 eryn fastemriwaveforms-cuda12x multiprocess optax matplotlib scipy jupyter interpax numba Cython
+python -m pip install --no-cache-dir nvidia-cuda-runtime-cu12 astropy eryn fastemriwaveforms-cuda12x multiprocess optax matplotlib scipy jupyter interpax numba Cython lisaanalysistools tabulate scienceplots
 python3 -c "import few; few.get_backend('cuda12x'); print('FEW installation successful')"
 
 # Set compilers explicitly and unset conda variables
