@@ -264,7 +264,7 @@ if __name__ == "__main__":
     test_2 = np.sum(np.abs(temp_model(*parameters, **waveform_kwargs)[0] - waveform_out[0]))
     print("Test 1: ", test_1 !=0.0, "\nTest 2: ", test_2 == 0.0)
     # update the model with the windowed and truncated waveform
-    fmin=1e-5
+    fmin=1e-4
     fmax=max_f
     model = temp_model # wave_windowed_truncated(temp_model, len(waveform_out[0]), args.dt, xp, window_fn=('tukey', 0.01), fmin=fmin, fmax=fmax)
     model(*parameters)
