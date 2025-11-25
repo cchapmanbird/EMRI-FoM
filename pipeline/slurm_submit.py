@@ -125,45 +125,46 @@ def generate_snr_sources(test_mode=False, repo_root="production_snr_", psd_file=
     sources = []
     m1_values = [31622776.60168379, 1e7, 3162277.6601683795, 1e6, 316227.7660168379, 
                  1e5, 31622.776601683792, 1e4, 3162.2776601683792, 1e3]
+
     m2 = 10.0
     a_values = [-0.99, 0.0, 0.99]
     e_f = 1e-8
     
     # Extract PSD identifier from filename (remove .npy extension)
-    psd_name = psd_file.replace('.npy', '').replace('TDI2_AE_psd', 'psd')
+    psd_name = psd_file.replace('.npy', '')
+    Tobs = float(psd_name.split('background_')[-1].split('_yr')[0])
     
     for redshift in np.logspace(-2, np.log10(1.5), 5):
-        for Tobs in [0.5]:  # , 1., 2.]:
-            for m1 in m1_values:
-                for a in a_values:
-                    source_name = repo_root + f"m1={m1}_m2={m2}_a={a}_e_f={e_f}_T={Tobs}_z={redshift}_{psd_name}"
-                    
-                    # Build extra_args
-                    extra_args = ""
-                    if include_foreground:
-                        extra_args += " --foreground"
-                    if esaorbits:
-                        extra_args += " --esaorbits"
-                    if tdi2:
-                        extra_args += " --tdi2"
-                    
-                    sources.append({
-                        "M": m1 * (1 + redshift),
-                        "mu": m2 * (1 + redshift),
-                        "a": a,
-                        "e_f": e_f,
-                        "T": Tobs,
-                        "z": redshift,
-                        "repo": source_name,
-                        "psd_file": psd_file,
-                        "model": model,
-                        "channels": channels,
-                        "dt": dt,
-                        "N_montecarlo": Nmonte,
-                        "device": dev,
-                        "pe": 0,
-                        "extra_args": extra_args.strip(),
-                    })
+        for m1 in m1_values:
+            for a in a_values:
+                source_name = repo_root + f"m1={m1}_m2={m2}_a={a}_e_f={e_f}_T={Tobs}_z={redshift}_{psd_name}"
+                
+                # Build extra_args
+                extra_args = ""
+                if include_foreground:
+                    extra_args += " --foreground"
+                if esaorbits:
+                    extra_args += " --esaorbits"
+                if tdi2:
+                    extra_args += " --tdi2"
+                
+                sources.append({
+                    "M": m1 * (1 + redshift),
+                    "mu": m2 * (1 + redshift),
+                    "a": a,
+                    "e_f": e_f,
+                    "T": Tobs,
+                    "z": redshift,
+                    "repo": source_name,
+                    "psd_file": psd_file,
+                    "model": model,
+                    "channels": channels,
+                    "dt": dt,
+                    "N_montecarlo": Nmonte,
+                    "device": dev,
+                    "pe": 0,
+                    "extra_args": extra_args.strip(),
+                })
     
     # if test_mode:
     #     sources = sources[:1]
@@ -197,7 +198,6 @@ def generate_pe_sources(test_mode=False, repo_root="production_inference_", psd_
     channels = 'AET'
     model = 'scirdv1'
     dt = 1.0
-    Tpl = 1.0
     include_foreground = True
     esaorbits = True
     tdi2 = True
@@ -205,7 +205,8 @@ def generate_pe_sources(test_mode=False, repo_root="production_inference_", psd_
     sources = []
     
     # Extract PSD identifier from filename (remove .npy extension)
-    psd_name = psd_file.replace('.npy', '').replace('TDI2_AE_psd', 'psd')
+    psd_name = psd_file.replace('.npy', '')
+    T = float(psd_name.split('background_')[-1].split('_yr')[0])
     
     # Load spin, m1, and redshift values from JSON file
     json_file = "requirements_results/snr_redshift_evaluation.json"
@@ -217,7 +218,7 @@ def generate_pe_sources(test_mode=False, repo_root="production_inference_", psd_
         z = 1.5
         
         for ef, m2 in [(0.01, 10), (0.01, 50.0), (0.05, 10.0), (0.05, 50.0)]:
-            source_name = repo_root + f"m1={m1}_m2={m2}_a={a}_e_f={ef}_T={Tpl}_z={z}_{psd_name}"
+            source_name = repo_root + f"m1={m1}_m2={m2}_a={a}_e_f={ef}_T={T}_z={z}_{psd_name}"
             
             # Build extra_args
             extra_args = ""
@@ -233,7 +234,7 @@ def generate_pe_sources(test_mode=False, repo_root="production_inference_", psd_
                 "mu": m2 * (1 + z),
                 "a": a,
                 "e_f": ef,
-                "T": Tpl,
+                "T": T,
                 "z": z,
                 "repo": source_name,
                 "psd_file": psd_file,
@@ -245,56 +246,9 @@ def generate_pe_sources(test_mode=False, repo_root="production_inference_", psd_
                 "pe": 1,
                 "extra_args": extra_args.strip(),
             })
-    else:
-        with open(json_file, "r") as jf:
-            source_data = json.load(jf)
-        
-        spin_values = ["0.0", "0.99", "-0.99"]
-        masses_to_select = [1e4, 1e5, 1e6, 1e7]
-        
-        for spin in spin_values:
-            m1_ = np.asarray(source_data[spin]["m1"])
-            spin_ = np.full_like(m1_, float(spin), dtype=float)
-            z_ = np.asarray(source_data[spin]["redshift"])
-            mask = np.isin(m1_, masses_to_select)
-            
-            for m1, a, z in zip(m1_[mask], spin_[mask], z_[mask]):
-                m1 = float(m1)
-                a = float(a)
-                z = float(z)
-                
-                for ef, m2 in [(0.01, 10), (0.01, 50.0), (0.05, 10.0), (0.05, 50.0)]:
-                    source_name = repo_root + f"m1={m1}_m2={m2}_a={a}_e_f={ef}_T={Tpl}_z={z}_{psd_name}"
-                    
-                    # Build extra_args
-                    extra_args = ""
-                    if include_foreground:
-                        extra_args += " --foreground"
-                    if esaorbits:
-                        extra_args += " --esaorbits"
-                    if tdi2:
-                        extra_args += " --tdi2"
-                    
-                    sources.append({
-                        "M": m1 * (1 + z),
-                        "mu": m2 * (1 + z),
-                        "a": a,
-                        "e_f": ef,
-                        "T": Tpl,
-                        "z": z,
-                        "repo": source_name,
-                        "psd_file": psd_file,
-                        "model": model,
-                        "channels": channels,
-                        "dt": dt,
-                        "N_montecarlo": Nmonte,
-                        "device": dev,
-                        "pe": 1,
-                        "extra_args": extra_args.strip(),
-                    })
     
-    if test_mode:
-        sources = sources[:1]
+    # if test_mode:
+    #     sources = sources[:1]
     
     # Save sources to file
     sources_file = repo_root + "sources_pe.txt"
@@ -349,8 +303,8 @@ Examples:
     parser.add_argument("--partition", type=str, default="gpu_a100_7c",
                        help="SLURM partition to use (default: gpu_a100_7c)")
     parser.add_argument("--psd", type=str, 
-                       choices=["TDI2_AE_psd.npy", "TDI2_AE_psd_emri_background_1.5_yr.npy", "TDI2_AE_psd_emri_background_4.5_yr.npy"],
-                       default="TDI2_AE_psd.npy",
+                       choices=["TDI2_AE_psd_emri_background_1.5_yr.npy", "TDI2_AE_psd_emri_background_4.5_yr.npy"],
+                       default="TDI2_AE_psd_emri_background_4.5_yr.npy",
                        help="PSD file to use (default: TDI2_AE_psd.npy)")
     
     args = parser.parse_args()
