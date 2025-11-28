@@ -73,22 +73,14 @@ from scipy.signal import get_window
 from matplotlib.colors import LogNorm
 
 class wave_windowed_truncated():
-    def __init__(self, wave_gen, N, dt, xp, window_fn=('tukey', 0.005), fmin=0.0, fmax=1.0):
+    def __init__(self, wave_gen, N, dt, xp, window_fn=('tukey', 0.1)):
         self.wave_gen = wave_gen
         self.window_fn = window_fn
         self.window = xp.asarray(get_window(self.window_fn, N))
-        self.frequency = xp.fft.rfftfreq(N, dt)
-        self.mask = (self.frequency > fmin) * (self.frequency < fmax)
         self.xp = xp
-        self.N = N
     
     def __call__(self, *args, **kwargs):
-        wave = xp.asarray(self.wave_gen(*args, **kwargs))
-        # take fft
-        wave_fft = self.xp.fft.rfft(wave,axis=1)
-        wave_fft[:,~self.mask] = 0.0 + 1j*0.0
-        # take ifft
-        wave = self.xp.fft.irfft(wave_fft,axis=1, n=self.N)
+        wave = self.xp.asarray(self.wave_gen(*args, **kwargs))
         # apply window
         wave = wave * self.window
         return wave
@@ -152,7 +144,10 @@ if __name__ == "__main__":
     else:
         popinds.append(14)
         popinds.append(15)
-                    
+    
+        if args.e_f == 1e-8:
+            popinds.append(4)
+        
     param_names = np.delete(param_names, popinds).tolist()
     
     # PSD
@@ -264,9 +259,9 @@ if __name__ == "__main__":
     test_2 = np.sum(np.abs(temp_model(*parameters, **waveform_kwargs)[0] - waveform_out[0]))
     print("Test 1: ", test_1 !=0.0, "\nTest 2: ", test_2 == 0.0)
     # update the model with the windowed and truncated waveform
-    fmin=1e-4
+    fmin=0.5e-4
     fmax=max_f
-    model = temp_model # wave_windowed_truncated(temp_model, len(waveform_out[0]), args.dt, xp, window_fn=('tukey', 0.01), fmin=fmin, fmax=fmax)
+    model = wave_windowed_truncated(temp_model, len(waveform_out[0]), args.dt, xp, window_fn=('tukey', 0.1))
     model(*parameters)
     tic = time.time()
     waveform_out = model(*parameters)
@@ -305,7 +300,7 @@ if __name__ == "__main__":
     plt.figure()
     plt.specgram(waveform_out[0].get(), NFFT=int(86400/args.dt), Fs=1/args.dt, noverlap=128, scale='dB', cmap='viridis')
     plt.yscale('log')
-    plt.ylim(1e-5, 1e-1)  # Adjust y-axis limits for better visibility
+    plt.ylim(5e-5, 0.0)  # Adjust y-axis limits for better visibility
     plt.xlabel("Time [s]")
     plt.ylabel("Frequency [Hz]")
     plt.title("Spectrogram (Real part)")
