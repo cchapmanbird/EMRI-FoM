@@ -117,7 +117,7 @@ def generate_snr_sources(test_mode=False, repo_root="production_snr_", psd_file=
     dev = 0
     channels = 'AET'
     model = 'scirdv1'
-    dt = 1.0
+    dt = 10.0
     include_foreground = True
     esaorbits = True
     tdi2 = True
@@ -193,11 +193,11 @@ def generate_pe_sources(test_mode=False, repo_root="production_inference_", psd_
         list: List of source parameter dictionaries
     """
     # Parameters
-    Nmonte = 1 if test_mode else 1000
+    Nmonte = 1 if test_mode else 100
     dev = 0
     channels = 'AET'
     model = 'scirdv1'
-    dt = 1.0
+    dt = 10.0
     include_foreground = True
     esaorbits = True
     tdi2 = True
@@ -207,45 +207,45 @@ def generate_pe_sources(test_mode=False, repo_root="production_inference_", psd_
     # Extract PSD identifier from filename (remove .npy extension)
     psd_name = psd_file.replace('.npy', '')
     T = float(psd_name.split('background_')[-1].split('_yr')[0])
-    
-    # Load spin, m1, and redshift values from JSON file
-    json_file = "requirements_results/snr_redshift_evaluation.json"
-    if not os.path.exists(json_file):
-        print(f"Warning: {json_file} not found. Using default parameters.")
-        # Use default parameters
-        m1 = 1e6
-        a = 0.99
-        z = 1.5
+    source_masses =  [(1e3, 1.0)]
+    source_masses += [(1e4, 1.0), (1e4, 10.0)]
+    source_masses += [(1e5, 1.0), (1e5, 10.0), (1e5, 100.0)]
+    source_masses += [(1e6, 1.0), (1e6, 10.0), (1e6, 100.0), (1e6, 1000.0)]
+    source_masses += [(1e7, 1.0), (1e7, 10.0), (1e7, 100.0), (1e7, 1000.0), (1e7, 10000.0)]
+
+    a = 0.99
+    z = 0.5
+    ef = 5e-3
         
-        for ef, m2 in [(0.01, 10), (0.01, 50.0), (0.05, 10.0), (0.05, 50.0)]:
-            source_name = repo_root + f"m1={m1}_m2={m2}_a={a}_e_f={ef}_T={T}_z={z}_{psd_name}"
-            
-            # Build extra_args
-            extra_args = ""
-            if include_foreground:
-                extra_args += " --foreground"
-            if esaorbits:
-                extra_args += " --esaorbits"
-            if tdi2:
-                extra_args += " --tdi2"
-            
-            sources.append({
-                "M": m1 * (1 + z),
-                "mu": m2 * (1 + z),
-                "a": a,
-                "e_f": ef,
-                "T": T,
-                "z": z,
-                "repo": source_name,
-                "psd_file": psd_file,
-                "model": model,
-                "channels": channels,
-                "dt": dt,
-                "N_montecarlo": Nmonte,
-                "device": dev,
-                "pe": 1,
-                "extra_args": extra_args.strip(),
-            })
+    for m1, m2 in source_masses:
+        source_name = repo_root + f"m1={m1}_m2={m2}_a={a}_e_f={ef}_T={T}_z={z}_{psd_name}"
+        
+        # Build extra_args
+        extra_args = ""
+        if include_foreground:
+            extra_args += " --foreground"
+        if esaorbits:
+            extra_args += " --esaorbits"
+        if tdi2:
+            extra_args += " --tdi2"
+        
+        sources.append({
+            "M": m1 * (1 + z),
+            "mu": m2 * (1 + z),
+            "a": a,
+            "e_f": ef,
+            "T": T,
+            "z": z,
+            "repo": source_name,
+            "psd_file": psd_file,
+            "model": model,
+            "channels": channels,
+            "dt": dt,
+            "N_montecarlo": Nmonte,
+            "device": dev,
+            "pe": 1,
+            "extra_args": extra_args.strip(),
+        })
     
     # if test_mode:
     #     sources = sources[:1]
@@ -291,6 +291,11 @@ Examples:
   
   # Use custom PSD file
   python slurm_submit.py --mode snr --psd TDI2_AE_psd_emri_background_1.5_yr.npy
+  
+  # Final production runs:
+  python slurm_submit.py --mode pe --psd TDI2_AE_psd_emri_background_1.5_yr.npy --partition gpu_a100_22c
+  python slurm_submit.py --mode snr --psd TDI2_AE_psd_emri_background_1.5_yr.npy --partition gpu_a100_22c
+  
         """
     )
     
@@ -301,7 +306,7 @@ Examples:
     parser.add_argument("--check-queue", action="store_true", 
                        help="Check current SLURM queue status")
     parser.add_argument("--partition", type=str, default="gpu_a100_7c",
-                       help="SLURM partition to use (default: gpu_a100_7c)")
+                       help="SLURM partition to use (default: gpu_a100_7c, optional: gpu_a100_22c)")
     parser.add_argument("--psd", type=str, 
                        choices=["TDI2_AE_psd_emri_background_1.5_yr.npy", "TDI2_AE_psd_emri_background_4.5_yr.npy"],
                        default="TDI2_AE_psd_emri_background_4.5_yr.npy",

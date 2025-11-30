@@ -187,7 +187,7 @@ def get_psd_smoothed_interpolant(freqs: Union[np.ndarray, Any],
     interp1d = interp1d_gpu if xp.__name__ == 'cupy' else interp1d_cpu
     interpolator = interp1d(bin_centers, binned_psd, k=1, axis=-1)
     
-    def wrap(x):
+    def wrap(x, **kwargs):
         return xp.squeeze(interpolator(x))
     return wrap
 
