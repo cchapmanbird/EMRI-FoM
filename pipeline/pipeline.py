@@ -144,8 +144,7 @@ if __name__ == "__main__":
     else:
         popinds.append(14)
         popinds.append(15)
-    
-        if args.e_f == 1e-8:
+        if args.e_f == 0.0:
             popinds.append(4)
         
     param_names = np.delete(param_names, popinds).tolist()
@@ -170,11 +169,15 @@ if __name__ == "__main__":
         e_f = 0.0
     else:
         e_f = args.e_f
+    
     x0_f = 1.0 * np.sign(args.a) if args.a != 0.0 else 1.0
-    if args.power_law:
-        p_f = KerrEccEqFluxPowerLaw().min_p(e=e_f, x=x0_f, a=a) + 0.5
-    else:
-        p_f = KerrEccEqFluxPowerLaw().min_p(e=e_f, x=x0_f, a=a) + 0.1
+    
+    traj = EMRIInspiral(func=KerrEccEqFluxPowerLaw)
+    # if args.power_law:
+    #     p_f = KerrEccEqFluxPowerLaw().min_p(e=e_f, x=x0_f, a=a) + 0.5
+    # else:
+    #     # p_f = KerrEccEqFluxPowerLaw().min_p(e=e_f, x=x0_f, a=a) + 0.1
+    p_f = traj.func.min_p(e_f, x0_f, a)
     dist = cosmo.get_luminosity_distance(args.z)
     print("Distance in Gpc", dist)
     # observation time
@@ -186,12 +189,13 @@ if __name__ == "__main__":
     T = args.T
 
     # initialize the trajectory
-    traj = EMRIInspiral(func=KerrEccEqFluxPowerLaw)
     print("Generating backward trajectory")
     t_forward, p_forward, e_forward, x_forward, Phi_phi_forward, Phi_r_forward, Phi_theta_forward = traj(M, mu, a, p_f, e_f, x0_f, A, nr, dt=1e-5, T=100.0, integrate_backwards=False)
     t_back, p_back, e_back, x_back, Phi_phi_back, Phi_r_back, Phi_theta_back = traj(M, mu, a, p_forward[-1], e_forward[-1], x_forward[-1], A, nr, dt=1e-5, T=Tpl, integrate_backwards=True)
     # and forward trajectory to check the evolution
     t_plot, p_plot, e_plot, x_plot, Phi_phi_plot, Phi_r_plot, Phi_theta_plot = traj(M, mu, a, p_back[-1], e_back[-1], x_back[-1], A, nr, dt=1e-5, T=T, integrate_backwards=False)
+    T = t_plot[-1]/YRSID_SI
+    print("Total observation time in years:", T)
     # Plot (t, p), (t, e), (p, e), (t, Phi_phi)
     fig, axs = plt.subplots(2, 2, figsize=(12, 8))
 
@@ -239,10 +243,10 @@ if __name__ == "__main__":
     qS, phiS, qK, phiK = np.pi/3, np.pi/3, np.pi/3, np.pi/3 # generate_random_sky_localization()
     parameters = np.asarray([M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0, A, nr])
     # evaluate waveform
-    temp_model(*parameters, mode_selection_threshold=1e-5)
+    temp_model(*parameters, mode_selection_threshold=1e-3)
 
     tic = time.time()
-    waveform_out = temp_model(*parameters, mode_selection_threshold=1e-5)
+    waveform_out = temp_model(*parameters, mode_selection_threshold=1e-3)
     toc = time.time()
     timing = toc - tic
     print("Time taken for one waveform generation: ", timing)
@@ -252,14 +256,16 @@ if __name__ == "__main__":
     ms = temp_model.waveform_gen.waveform_generator.ms
     ls = temp_model.waveform_gen.waveform_generator.ls
     max_f = float(np.max(np.abs(omegaPhi[None,:] * ms.get()[:,None] + omegaR[None,:] * ns.get()[:,None]))) * 1.01 # added a 1% safety factor
+    min_f = float(np.min(np.abs(omegaPhi[None,:] * ms.get()[:,None] + omegaR[None,:] * ns.get()[:,None]))) * 0.99 # added a 1% safety factor
     # define modes for waveform
     waveform_kwargs = {"mode_selection": [(ll,mm,nn) for ll,mm,nn in zip(ls.get(), ms.get(), ns.get())],}
+    print("Number of modes in the waveform:", len(waveform_kwargs["mode_selection"]))
     # create a waveform that is windowed and truncated 
     test_1 = np.sum(np.abs(temp_model(*parameters, **waveform_kwargs)[0] - temp_model(*parameters, mode_selection=[(2,2,0)])[0]))
     test_2 = np.sum(np.abs(temp_model(*parameters, **waveform_kwargs)[0] - waveform_out[0]))
     print("Test 1: ", test_1 !=0.0, "\nTest 2: ", test_2 == 0.0)
     # update the model with the windowed and truncated waveform
-    fmin=0.5e-4
+    fmin=np.max([0.5e-4, min_f])
     fmax=max_f
     model = wave_windowed_truncated(temp_model, len(waveform_out[0]), args.dt, xp, window_fn=('tukey', 0.1))
     model(*parameters)
@@ -277,14 +283,14 @@ if __name__ == "__main__":
 
     fft_waveform = xp.fft.rfft(waveform_out[0]).get() * args.dt
     freqs = np.fft.rfftfreq(len(waveform_out[0]), d=args.dt)
-    mask = (freqs>1e-5)
+    mask = (freqs>fmin) & (freqs<fmax)
     plt.figure()
-    plt.loglog(freqs[mask], np.abs(fft_waveform)[mask]**2)
+    plt.loglog(freqs[mask], np.abs(fft_waveform)[mask]**2 / (len(waveform_out[0]) * args.dt), label="Waveform")
     plt.loglog(freqs[mask], np.atleast_2d(psd_wrap(freqs[mask]).get())[0], label="PSD")
     plt.xlabel("Frequency [Hz]")
-    plt.ylabel(r"Amplitude $|\tilde h(f)|$")
+    plt.ylabel(r"Amplitude $|\tilde h(f)| df$")
     plt.legend()
-    plt.ylim(1e-45, 1e-35)
+    plt.ylim(1e-45, 1e-32)
     plt.savefig(os.path.join(args.repo, "waveform_frequency_domain.png"))
     # Plot waveform in time domain
     plt.figure()
@@ -315,7 +321,7 @@ if __name__ == "__main__":
     # source_frame_m2 = parameters[1] / (1 + redshift)
     # plt.figure(); plt.loglog(redshift, d_L); plt.xlabel("Redshift"); plt.grid(); plt.savefig(os.path.join(args.repo, "snr_vs_redshift.png"))
     # if low eccentricity, use the log_e transformation
-    if args.e_f < 1e-3:
+    if (args.e_f < 1e-3) and (args.e_f != 0.0):
         log_e = True
     else:
         log_e = False
@@ -349,8 +355,16 @@ if __name__ == "__main__":
             der_order = 4.0
 
 
-        fish = StableEMRIFisher(*parameters[:-2], add_param_args = {"A": A, "nr": nr}, fmin=fmin, fmax=fmax,
-                                dt=args.dt, T=T, EMRI_waveform_gen=EMRI_waveform_gen, noise_model=psd_wrap, noise_kwargs=dict(TDI="TDI2"), channels=["A", "E", "T"], param_names=param_names, stats_for_nerds=False, use_gpu=args.use_gpu, 
+        fish = StableEMRIFisher(*parameters[:-2], 
+                                add_param_args = {"A": A, "nr": nr}, 
+                                fmin=fmin, fmax=fmax,
+                                dt=args.dt, T=T, 
+                                EMRI_waveform_gen=EMRI_waveform_gen, 
+                                noise_model=psd_wrap, 
+                                noise_kwargs=dict(TDI="TDI2"), 
+                                channels=["A", "E", "T"], 
+                                param_names=param_names, 
+                                stats_for_nerds=False, use_gpu=args.use_gpu, 
                                 der_order=der_order, Ndelta=20, filename=current_folder,
                                 deltas = deltas,
                                 log_e = log_e, # useful for sources close to zero eccentricity
@@ -414,6 +428,179 @@ if __name__ == "__main__":
             print("*************************************")
             
 
+    # ============================================
+    # POSTPROCESSING: Aggregate all realizations
+    # ============================================
+    print("\n" + "="*50)
+    print("POSTPROCESSING: Aggregating all realizations")
+    print("="*50)
+    
+    import glob
+    import h5py
+    
+    # Create HDF5 file for aggregated results
+    h5_filename = os.path.join(args.repo, "aggregated_results.h5")
+    with h5py.File(h5_filename, "w") as h5f:
+        # Get list of realization folders
+        realization_folders = sorted([d for d in glob.glob(os.path.join(args.repo, "realization_*")) if os.path.isdir(d)])
+        print(f"Found {len(realization_folders)} realizations to process")
+        
+        # Load SNR data
+        snr_list = np.asarray([np.load(el)["snr"] for el in sorted(glob.glob(os.path.join(args.repo, "*/snr.npz")))])
+        detector_params = np.asarray([np.load(el)["parameters"] for el in sorted(glob.glob(os.path.join(args.repo, "*/snr.npz")))])
+        
+        redshift = np.load(sorted(glob.glob(os.path.join(args.repo, "*/snr.npz")))[0])["redshift"]
+        e_f_val = np.load(sorted(glob.glob(os.path.join(args.repo, "*/snr.npz")))[0])["e_f"]
+        Tpl_val = np.load(sorted(glob.glob(os.path.join(args.repo, "*/snr.npz")))[0])["Tplunge"]
+        
+        # Prepare source frame parameters
+        source_params = detector_params[0].copy()
+        source_params[0] = source_params[0] / (1 + redshift)
+        source_params[1] = source_params[1] / (1 + redshift)
+        
+        # Extract parameters
+        lum_dist = detector_params[:, 6]
+        sky_loc = detector_params[:, 7:9]
+        spin_loc = detector_params[:, 9:11]
+        detector_params_ref = detector_params[0]
+        
+        # Prepare result dictionary
+        result = {
+            "m1": source_params[0],
+            "m2": source_params[1],
+            "a": source_params[2] * source_params[5],
+            "p0": source_params[3],
+            "e0": source_params[4],
+            "DL": source_params[6],
+            "e_f": e_f_val,
+            "Tpl": Tpl_val,
+            "redshift": redshift,
+            "lum_dist": lum_dist,
+            "snr": snr_list,
+            "sky_loc": sky_loc,
+            "spin_loc": spin_loc,
+        }
+        
+        # Store SNR results in HDF5
+        grp = h5f.create_group("SNR_analysis")
+        for k, v in result.items():
+            grp.create_dataset(k, data=v)
+        
+        # SNR histogram
+        plt.figure(figsize=(8, 6))
+        plt.hist(snr_list, bins=30, edgecolor='black', alpha=0.7)
+        plt.xlabel('SNR')
+        plt.ylabel('Counts')
+        plt.title(f'SNR Distribution (N={len(snr_list)})')
+        plt.grid(True, alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(os.path.join(args.repo, "snr_histogram.png"), dpi=300)
+        plt.close()
+        print("Saved SNR histogram")
+        
+        # Check if Fisher matrix results exist
+        fisher_results = sorted(glob.glob(os.path.join(args.repo, "*/results.npz")))
+        
+        if len(fisher_results) > 0 and args.calculate_fisher:
+            print(f"\nProcessing Fisher matrix results ({len(fisher_results)} realizations)")
+            
+            # Load Fisher matrix data
+            source_cov = np.asarray([np.load(el)["source_frame_cov"] for el in fisher_results])
+            detector_cov = np.asarray([np.load(el)["cov"] for el in fisher_results])
+            fish_params = np.asarray([np.load(el)["fisher_params"] for el in fisher_results])
+            err_sky_loc = np.asarray([np.load(el)["err_sky_loc"] for el in fisher_results])
+            names = np.asarray([np.load(el)["names"] for el in fisher_results])[0]
+            
+            # Transform to source frame for masses
+            fish_params[:, 0] = fish_params[:, 0] / (1 + redshift)
+            fish_params[:, 1] = fish_params[:, 1] / (1 + redshift)
+            
+            # Calculate measurement precision
+            measurement_precision = np.asarray([np.sqrt(np.diag(source_cov[ii])) for ii in range(len(fish_params))])
+            detector_measurement_precision = np.asarray([np.sqrt(np.diag(detector_cov[ii])) for ii in range(len(fish_params))])
+            
+            # Prepare parameter names for Fisher analysis
+            fisher_names = names.copy()
+            fisher_names[6] = "Omega"  # Sky location
+            fisher_names[7] = "iota"   # Inclination
+            fisher_names = fisher_names[:8]  # Keep only up to inclination
+            
+            # Update sky location and inclination errors
+            measurement_precision[:, 6] = err_sky_loc
+            detector_measurement_precision[:, 6] = err_sky_loc
+            measurement_precision[:, 7] = measurement_precision[:, 8]
+            detector_measurement_precision[:, 7] = detector_measurement_precision[:, 8]
+            
+            # Create Fisher analysis group in HDF5
+            fisher_grp = h5f.create_group("Fisher_analysis")
+            fisher_grp.create_dataset("fisher_params", data=fish_params)
+            fisher_grp.create_dataset("measurement_precision_source", data=measurement_precision)
+            fisher_grp.create_dataset("measurement_precision_detector", data=detector_measurement_precision)
+            fisher_grp.create_dataset("param_names", data=np.asarray(fisher_names, dtype=h5py.string_dtype(encoding='utf-8')))
+            
+            # Generate plots for each parameter
+            for ii, param_name in enumerate(fisher_names):
+                error_source = measurement_precision[:, ii]
+                error_detector = detector_measurement_precision[:, ii]
+                
+                # Determine if relative or absolute error
+                if (param_name == "M") or (param_name == "mu"):
+                    error_source_plot = error_source / fish_params[:, ii]
+                    error_detector_plot = error_detector / detector_params_ref[ii]
+                    xlabel = f'Relative error {param_name}'
+                    group_name = f"relative_errors_{param_name}"
+                else:
+                    error_source_plot = error_source
+                    error_detector_plot = error_detector
+                    xlabel = f'Absolute error {param_name}'
+                    group_name = f"absolute_errors_{param_name}"
+                
+                # Create parameter group
+                param_grp = fisher_grp.create_group(group_name)
+                param_grp.create_dataset("error_source", data=error_source_plot)
+                param_grp.create_dataset("error_detector", data=error_detector_plot)
+                
+                # Histogram plot
+                plt.figure(figsize=(8, 6))
+                plt.hist(error_source_plot, bins=30, alpha=0.6, label='Source frame', edgecolor='black')
+                plt.hist(error_detector_plot, bins=30, alpha=0.6, label='Detector frame', edgecolor='black')
+                plt.xlabel(xlabel)
+                plt.ylabel('Counts')
+                plt.title(f'Error Distribution: {param_name}')
+                plt.legend()
+                plt.grid(True, alpha=0.3)
+                plt.tight_layout()
+                plt.savefig(os.path.join(args.repo, f"{param_name}_histogram.png"), dpi=300)
+                plt.close()
+                
+                # SNR vs error plot
+                plt.figure(figsize=(8, 6))
+                plt.plot(snr_list, error_source_plot, 'o', label='Source frame', alpha=0.6)
+                plt.plot(snr_list, error_detector_plot, 'x', label='Detector frame', alpha=0.6)
+                
+                # Add scaling reference lines
+                snr_vec = np.linspace(np.min(snr_list), np.max(snr_list), len(lum_dist))
+                if param_name == "DL":
+                    plt.plot(snr_vec, lum_dist / snr_vec, 'r--', label='d/SNR')
+                else:
+                    plt.plot(snr_vec, 1 / snr_vec, 'r--', label='1/SNR')
+                
+                plt.xlabel('SNR')
+                plt.ylabel(xlabel)
+                plt.title(f'SNR vs Error: {param_name}')
+                plt.legend()
+                plt.grid(True, alpha=0.3)
+                plt.xscale('log')
+                plt.yscale('log')
+                plt.tight_layout()
+                plt.savefig(os.path.join(args.repo, f"snr_{param_name}.png"), dpi=300)
+                plt.close()
+            
+            print(f"Saved Fisher matrix analysis plots for {len(fisher_names)} parameters")
+        else:
+            print("No Fisher matrix results found or calculate_fisher=False. Skipping Fisher analysis.")
+    
+    print(f"\nAggregated results saved to {h5_filename}")
     
     end_script = time.time()
     print("Total time taken for the script: ", end_script - start_script)

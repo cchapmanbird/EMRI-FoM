@@ -14,7 +14,7 @@ import json
 import numpy as np
 from pathlib import Path
 import argparse
-
+import json
 
 def submit_slurm_job(source_params, pipeline_script="pipeline.py", partition="gpu_a100_7c"):
     """
@@ -113,62 +113,64 @@ def generate_snr_sources(test_mode=False, repo_root="production_snr_", psd_file=
         list: List of source parameter dictionaries
     """
     # Parameters
-    Nmonte = 1 if test_mode else 1000
+    Nmonte = 1 if test_mode else 100
     dev = 0
     channels = 'AET'
     model = 'scirdv1'
-    dt = 10.0
     include_foreground = True
     esaorbits = True
     tdi2 = True
     
     sources = []
-    m1_values = [31622776.60168379, 1e7, 3162277.6601683795, 1e6, 316227.7660168379, 
-                 1e5, 31622.776601683792, 1e4, 3162.2776601683792, 1e3]
+    
+    with open("emri_pe_sources.json", "r") as f:
+        source_dict = json.load(f)
+    
+    for redshift in np.logspace(-2, np.log10(3.0), 5):
+        for key, params in source_dict.items():
+            
+            m1 = params["m1"]
+            m2 = params["m2"]
+            a = params["a"]
+            ef = params["e_f"]
+            Tobs = params["Tpl"]
+            dt = params["dt"]
+            
+            if Tobs != 1.5 and Tobs != 4.5:
+                psd_file = "TDI2_AE_psd_emri_background_1.5_yr.npy"
+            else:
+                psd_file = f"TDI2_AE_psd_emri_background_{Tobs}_yr.npy"
+            
+            psd_name = psd_file.replace('.npy', '')
+            source_name = repo_root + key + '/' + f"m1={m1}_m2={m2}_a={a}_e_f={ef}_T={Tobs}_z={redshift}_{psd_name}"
+            
+            # Build extra_args
+            extra_args = ""
+            if include_foreground:
+                extra_args += " --foreground"
+            if esaorbits:
+                extra_args += " --esaorbits"
+            if tdi2:
+                extra_args += " --tdi2"
+            
+            sources.append({
+                "M": m1 * (1 + redshift),
+                "mu": m2 * (1 + redshift),
+                "a": a,
+                "e_f": ef,
+                "T": Tobs,
+                "z": redshift,
+                "repo": source_name,
+                "psd_file": psd_file,
+                "model": model,
+                "channels": channels,
+                "dt": dt,
+                "N_montecarlo": Nmonte,
+                "device": dev,
+                "pe": 0,
+                "extra_args": extra_args.strip(),
+            })
 
-    m2 = 10.0
-    a_values = [-0.99, 0.0, 0.99]
-    e_f = 1e-8
-    
-    # Extract PSD identifier from filename (remove .npy extension)
-    psd_name = psd_file.replace('.npy', '')
-    Tobs = float(psd_name.split('background_')[-1].split('_yr')[0])
-    
-    for redshift in np.logspace(-2, np.log10(1.5), 5):
-        for m1 in m1_values:
-            for a in a_values:
-                source_name = repo_root + f"m1={m1}_m2={m2}_a={a}_e_f={e_f}_T={Tobs}_z={redshift}_{psd_name}"
-                
-                # Build extra_args
-                extra_args = ""
-                if include_foreground:
-                    extra_args += " --foreground"
-                if esaorbits:
-                    extra_args += " --esaorbits"
-                if tdi2:
-                    extra_args += " --tdi2"
-                
-                sources.append({
-                    "M": m1 * (1 + redshift),
-                    "mu": m2 * (1 + redshift),
-                    "a": a,
-                    "e_f": e_f,
-                    "T": Tobs,
-                    "z": redshift,
-                    "repo": source_name,
-                    "psd_file": psd_file,
-                    "model": model,
-                    "channels": channels,
-                    "dt": dt,
-                    "N_montecarlo": Nmonte,
-                    "device": dev,
-                    "pe": 0,
-                    "extra_args": extra_args.strip(),
-                })
-    
-    # if test_mode:
-    #     sources = sources[:1]
-    
     # Save sources to file
     sources_file = repo_root + "sources_snr.txt"
     with open(sources_file, "w") as f:
@@ -197,28 +199,32 @@ def generate_pe_sources(test_mode=False, repo_root="production_inference_", psd_
     dev = 0
     channels = 'AET'
     model = 'scirdv1'
-    dt = 10.0
     include_foreground = True
     esaorbits = True
     tdi2 = True
     
     sources = []
     
-    # Extract PSD identifier from filename (remove .npy extension)
-    psd_name = psd_file.replace('.npy', '')
-    T = float(psd_name.split('background_')[-1].split('_yr')[0])
-    source_masses =  [(1e3, 1.0)]
-    source_masses += [(1e4, 1.0), (1e4, 10.0)]
-    source_masses += [(1e5, 1.0), (1e5, 10.0), (1e5, 100.0)]
-    source_masses += [(1e6, 1.0), (1e6, 10.0), (1e6, 100.0), (1e6, 1000.0)]
-    source_masses += [(1e7, 1.0), (1e7, 10.0), (1e7, 100.0), (1e7, 1000.0), (1e7, 10000.0)]
-
-    a = 0.99
-    z = 0.5
-    ef = 5e-3
+    with open("emri_pe_sources.json", "r") as f:
+        source_dict = json.load(f)
+    
+    
+    for key, params in source_dict.items():
         
-    for m1, m2 in source_masses:
-        source_name = repo_root + f"m1={m1}_m2={m2}_a={a}_e_f={ef}_T={T}_z={z}_{psd_name}"
+        m1 = params["m1"]
+        m2 = params["m2"]
+        a = params["a"]
+        ef = params["e_f"]
+        Tobs = params["Tpl"]
+        dt = params["dt"]
+        
+        if Tobs != 1.5 and Tobs != 4.5:
+            psd_file = "TDI2_AE_psd_emri_background_1.5_yr.npy"
+        else:
+            psd_file = f"TDI2_AE_psd_emri_background_{Tobs}_yr.npy"
+        
+        psd_name = psd_file.replace('.npy', '')
+        source_name = repo_root + key + '/' + f"m1={m1}_m2={m2}_a={a}_e_f={ef}_T={Tobs}_z={z}_{psd_name}"
         
         # Build extra_args
         extra_args = ""
@@ -234,7 +240,7 @@ def generate_pe_sources(test_mode=False, repo_root="production_inference_", psd_
             "mu": m2 * (1 + z),
             "a": a,
             "e_f": ef,
-            "T": T,
+            "T": Tobs,
             "z": z,
             "repo": source_name,
             "psd_file": psd_file,
@@ -247,8 +253,8 @@ def generate_pe_sources(test_mode=False, repo_root="production_inference_", psd_
             "extra_args": extra_args.strip(),
         })
     
-    # if test_mode:
-    #     sources = sources[:1]
+    if test_mode:
+        sources = sources[:1]
     
     # Save sources to file
     sources_file = repo_root + "sources_pe.txt"
@@ -305,7 +311,7 @@ Examples:
                        help="Run in test mode (1 source, 1 Monte Carlo)")
     parser.add_argument("--check-queue", action="store_true", 
                        help="Check current SLURM queue status")
-    parser.add_argument("--partition", type=str, default="gpu_a100_7c",
+    parser.add_argument("--partition", type=str, default="gpu_a100_22c",
                        help="SLURM partition to use (default: gpu_a100_7c, optional: gpu_a100_22c)")
     parser.add_argument("--psd", type=str, 
                        choices=["TDI2_AE_psd_emri_background_1.5_yr.npy", "TDI2_AE_psd_emri_background_4.5_yr.npy"],
@@ -334,7 +340,8 @@ Examples:
         sources = generate_snr_sources(test_mode=args.test, repo_root=repo_root, psd_file=args.psd)
     else:  # pe mode
         repo_root = "test_pe_" if args.test else "production_inference_"
-        sources = generate_pe_sources(test_mode=args.test, repo_root=repo_root, psd_file=args.psd)
+        print("PSD set internally")
+        sources = generate_pe_sources(test_mode=args.test, repo_root=repo_root)
     
     print(f"\nSubmitting {len(sources)} jobs in {args.mode} mode...")
     print(f"Partition: {args.partition}")

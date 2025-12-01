@@ -4,7 +4,7 @@ From: ghcr.io/nvidia/jax:jax-2024-07-24
 
 %post
     python -m pip install --upgrade pip
-    python -m pip install --no-cache-dir nvidia-cuda-runtime-cu12 astropy eryn fastemriwaveforms-cuda12x multiprocess optax matplotlib scipy jupyter interpax numba Cython lisaanalysistools tabulate scienceplots
+    python -m pip install --no-cache-dir nvidia-cuda-runtime-cu12 astropy eryn fastemriwaveforms-cuda12x multiprocess optax matplotlib scipy jupyter interpax numba Cython lisaanalysistools tabulate scienceplots healpy
     python -c "import few; few.get_backend('cuda12x'); print('FEW installation successful')"
 
     # Set compilers explicitly and unset conda variables
