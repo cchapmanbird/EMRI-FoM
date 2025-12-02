@@ -97,9 +97,9 @@ singularity shell --writable --nv --fakeroot fom
 
 Then you can install your favorite packages:
 ```
-python3 -m pip install --upgrade pip
-python -m pip install --no-cache-dir nvidia-cuda-runtime-cu12 astropy eryn fastemriwaveforms-cuda12x multiprocess optax matplotlib scipy jupyter interpax numba Cython lisaanalysistools tabulate scienceplots healpy
-python3 -c "import few; few.get_backend('cuda12x'); print('FEW installation successful')"
+python -m pip install --upgrade pip
+python -m pip install --no-cache-dir nvidia-cuda-runtime-cu12 astropy eryn fastemriwaveforms-cuda12x multiprocess optax matplotlib scipy jupyter interpax numba Cython lisaanalysistools tabulate scienceplots healpy pandas
+python -c "import few; few.get_backend('cuda12x'); print('FEW installation successful')"
 
 # Set compilers explicitly and unset conda variables
 unset CC CXX CUDACXX
@@ -111,11 +111,11 @@ export NVCC_PREPEND_FLAGS='-ccbin /usr/bin/g++'
 # install lisa on gpu and StableEMRIFisher-package
 git clone https://github.com/cchapmanbird/EMRI-FoM.git emri_fom_temp
 cd emri_fom_temp/lisa-on-gpu/
-python3 setup.py install
+python setup.py install
 cd ../StableEMRIFisher-package/
 python -m pip install .
 cd ..
-python3 -m unittest test_waveform_and_response.py
+python -m unittest test_waveform_and_response.py
 ```
 
 Convert to editable container `fom` into a final image you can run
@@ -133,4 +133,15 @@ Use the final image
 ```
 cd pipeline
 singularity exec --nv ../fom_final.sif python pipeline.py --M 1e6 --mu 1e1 --a 0.5 --e_f 0.1 --T 4.0 --z 0.5 --psd_file TDI2_AE_psd.npy --dt 10.0 --use_gpu --N_montecarlo 1 --device 0 --power_law --repo test_acc --calculate_fisher 1
+```
+
+### Virtual environment
+```
+srun --partition=short --time=12:00:00 --pty bash -i -l
+python -m venv fom_venv/
+source fom_venv/bin/activate
+python -m pip install --upgrade pip
+python -m pip install --no-cache-dir nvidia-cuda-runtime-cu12 astropy eryn fastemriwaveforms-cuda12x multiprocess optax matplotlib scipy jupyter interpax numba Cython lisaanalysistools tabulate scienceplots healpy pandas
+jupyter lab --ip="*" --no-browser
+ssh -NL 8888:wn-la-01:8888 spider
 ```
