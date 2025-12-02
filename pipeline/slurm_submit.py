@@ -113,7 +113,7 @@ def generate_snr_sources(test_mode=False, repo_root="production_snr_", psd_file=
         list: List of source parameter dictionaries
     """
     # Parameters
-    Nmonte = 1 if test_mode else 100
+    Nmonte = 1 if test_mode else 1000
     dev = 0
     channels = 'AET'
     model = 'scirdv1'
@@ -126,8 +126,14 @@ def generate_snr_sources(test_mode=False, repo_root="production_snr_", psd_file=
     with open("emri_pe_sources.json", "r") as f:
         source_dict = json.load(f)
     
-    for redshift in np.logspace(-2, np.log10(3.0), 5):
+    # consider only a specific source for test mode
+    # if test_mode:
+    selected_source = 0
+
+    for redshift in np.logspace(-3, 1, 10):
         for key, params in source_dict.items():
+            # if int(key) != selected_source:
+            #     continue
             
             m1 = params["m1"]
             m2 = params["m2"]
@@ -195,7 +201,7 @@ def generate_pe_sources(test_mode=False, repo_root="production_inference_", psd_
         list: List of source parameter dictionaries
     """
     # Parameters
-    Nmonte = 1 if test_mode else 100
+    Nmonte = 1 if test_mode else 10
     dev = 0
     channels = 'AET'
     model = 'scirdv1'
@@ -205,7 +211,7 @@ def generate_pe_sources(test_mode=False, repo_root="production_inference_", psd_
     
     sources = []
     
-    with open("emri_pe_sources.json", "r") as f:
+    with open("emri_pe_sources_with_z_ref.json", "r") as f:
         source_dict = json.load(f)
     
     
@@ -217,6 +223,7 @@ def generate_pe_sources(test_mode=False, repo_root="production_inference_", psd_
         ef = params["e_f"]
         Tobs = params["Tpl"]
         dt = params["dt"]
+        z = params["z_ref_median"]
         
         if Tobs != 1.5 and Tobs != 4.5:
             psd_file = "TDI2_AE_psd_emri_background_1.5_yr.npy"
@@ -235,23 +242,24 @@ def generate_pe_sources(test_mode=False, repo_root="production_inference_", psd_
         if tdi2:
             extra_args += " --tdi2"
         
-        sources.append({
-            "M": m1 * (1 + z),
-            "mu": m2 * (1 + z),
-            "a": a,
-            "e_f": ef,
-            "T": Tobs,
-            "z": z,
-            "repo": source_name,
-            "psd_file": psd_file,
-            "model": model,
-            "channels": channels,
-            "dt": dt,
-            "N_montecarlo": Nmonte,
-            "device": dev,
-            "pe": 1,
-            "extra_args": extra_args.strip(),
-        })
+        if z != -1.0:
+            sources.append({
+                "M": m1 * (1 + z),
+                "mu": m2 * (1 + z),
+                "a": a,
+                "e_f": ef,
+                "T": Tobs,
+                "z": z,
+                "repo": source_name,
+                "psd_file": psd_file,
+                "model": model,
+                "channels": channels,
+                "dt": dt,
+                "N_montecarlo": Nmonte,
+                "device": dev,
+                "pe": 1,
+                "extra_args": extra_args.strip(),
+            })
     
     if test_mode:
         sources = sources[:1]

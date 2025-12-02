@@ -16,7 +16,7 @@ import h5py
 list_folders = sorted(glob.glob("./production_inference_*e_f=*")) + sorted(glob.glob("./production_snr_m*"))
 # print(list_folders)
 list_results = []
-h5_path = "so3_results.h5"
+h5_path = "new_so3_results.h5"
 # check if the HDF5 file already exists
 if os.path.exists(h5_path):
     print(f"HDF5 file {h5_path} already exists.")
