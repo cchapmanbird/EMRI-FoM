@@ -73,10 +73,16 @@ from scipy.signal import get_window
 from matplotlib.colors import LogNorm
 
 class wave_windowed_truncated():
-    def __init__(self, wave_gen, N, dt, xp, window_fn=('tukey', 0.1)):
+    def __init__(self, wave_gen, N, dt, xp):
         self.wave_gen = wave_gen
-        self.window_fn = window_fn
-        self.window = xp.asarray(get_window(self.window_fn, N))
+        # self.window = xp.asarray(get_window(self.window_fn, N))
+        taper_duration = 86400.0 * 2 # two days
+        taper_length = int(2 * taper_duration / dt)
+        hann = np.hanning(taper_length)
+        sig_tapered = np.ones_like(N)
+        sig_tapered[:int(taper_length/2)] *= hann[:int(taper_length/2)]
+        sig_tapered[-int(taper_length/2):] *= hann[-int(taper_length/2):]
+        self.window = xp.asarray(sig_tapered)
         self.xp = xp
     
     def __call__(self, *args, **kwargs):
