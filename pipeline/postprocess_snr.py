@@ -142,6 +142,13 @@ if __name__ == "__main__":
         snr_dict_loaded = load_snr_dict_from_h5("snr_dict_emri_pe_sources.h5")
         print("SNR dictionary loaded from snr_dict_emri_pe_sources.h5")
     
+    
+    unique_m1 = sorted(set([source_dict[i]['m1'] for i in source_dict]))
+    unique_m2 = sorted(set([source_dict[i]['m2'] for i in source_dict]))
+    unique_a = sorted(set([source_dict[i]['a'] for i in source_dict]))
+    unique_e0 = sorted(set([source_dict[i]['e_0'] for i in source_dict]))
+    unique_Tpl = sorted(set([source_dict[i]['Tpl'] for i in source_dict]))
+    # save z_ref_median in source_dict
     dict_out = get_results(snr_dict_loaded, {})
     for i, source_n in enumerate(dict_out["ind_s"]):
         if np.isnan(dict_out["redshift_ref_median"][i]):
@@ -164,6 +171,28 @@ if __name__ == "__main__":
     plt.ylabel("m2")
     plt.savefig("test_plot.png")
     
+    # https://arxiv.org/pdf/2404.00941
+    masses_qpe = np.asarray([1.2, 0.55, 0.55, 3.1, 42.5, 1.8, 5.5, 0.595, 6.55, 88.0, 5.8]) * 1e6
+    z_qpe     = np.asarray([0.0181, 0.0505, 0.0175, 0.024, 0.044, 0.0237, 0.042, 0.13, 0.0206, 0.0136, 0.0053])
+    # Data extracted from Table EM_measure arXiv-2501.03252v2
+    smbh_data = [
+        {"name": "UGC 01032", "mass": 1.1, "redshift": 0.01678, "alternate_names": "Mrk 359"},
+        {"name": "UGC 12163", "mass": 1.1, "redshift": 0.02468, "alternate_names": "Ark 564"},
+        {"name": "Swift J2127.4+5654", "mass": 1.5, "redshift": 0.01400, "alternate_names": ""},
+        {"name": "NGC 4253", "mass": 1.8, "redshift": 0.01293, "alternate_names": "UGC 07344, Mrk 766"},
+        {"name": "NGC 4051", "mass": 1.91, "redshift": 0.00234, "alternate_names": "UGC 07030"},
+        {"name": "NGC 1365", "mass": 2.0, "redshift": 0.00545, "alternate_names": ""},
+        {"name": "1H0707-495", "mass": 2.3, "redshift": 0.04056, "alternate_names": ""},
+        {"name": "MCG-6-30-15", "mass": 2.9, "redshift": 0.00749, "alternate_names": ""},
+        {"name": "NGC 5506", "mass": 5.0, "redshift": 0.00608, "alternate_names": "Mrk 1376"},
+        {"name": "IRAS13224-3809", "mass": 6.3, "redshift": 0.06579, "alternate_names": ""},
+        {"name": "Ton S180", "mass": 8.1, "redshift": 0.06198, "alternate_names": ""},
+    ]
+    
+    list_mass = np.asarray([item["mass"] for item in smbh_data]) * 1e6
+    list_redshift = np.asarray([item["redshift"] for item in smbh_data])
+    list_name = [item["name"] for item in smbh_data]
+
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 10), sharex=True)
     list_m2 = [1, 5, 10, 50, 100, 1000, 1e4]
     list_marker = ["o", "v", "P", "X", "*", "^", 'D']
@@ -176,6 +205,7 @@ if __name__ == "__main__":
                      yerr=[dict_out["snr_at_z_ref_median"] - dict_out["snr_at_z_ref_m_sigma"], 
                            dict_out["snr_at_z_ref_p_sigma"] - dict_out["snr_at_z_ref_median"]], 
                      linestyle='none', capsize=7, fmt=fmt, label=f'm2={m2_}')
+    ax1.set_xlabel("m1")
     ax1.set_ylabel("SNR")
     ax1.set_xscale('log')
     ax1.set_yscale('log')
@@ -201,9 +231,16 @@ if __name__ == "__main__":
     ax2.set_xlim(2e4, 2e7)
     plt.tight_layout()
     plt.savefig("snr_vs_m1.png")
+    plt.close('all')
+    #################################
+    import matplotlib.cm as cm
+    from matplotlib.colors import Normalize
+
+    # Create colormap and normalization
+    norm = Normalize(vmin=np.log10(1), vmax=np.log10(1e4))
+    cmap = cm.get_cmap('viridis')
     
-    
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 10), sharex=True)
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(6, 10), sharex=True)
     list_m2 = [1, 5, 10, 50, 100, 1000, 1e4]
     list_marker = ["o", "v", "P", "X", "*", "^", 'D']
     
@@ -211,41 +248,104 @@ if __name__ == "__main__":
     for m2_, fmt in zip(list_m2, list_marker):
         input_dict = {"Tpl": 0.25, "e_0": 0.0, "a": 0.99, "m2": m2_}
         dict_out = get_results(snr_dict_loaded, input_dict)
+        color = cmap(norm(np.log10(m2_)))
+
         ax1.errorbar(dict_out["m1"], dict_out["redshift_ref_median"], 
                      yerr=[dict_out["redshift_ref_median"] - dict_out["redshift_ref_m_sigma"], 
                            dict_out["redshift_ref_p_sigma"] - dict_out["redshift_ref_median"]], 
-                     linestyle='none', capsize=7, fmt=fmt, label=f'm2={m2_}')
+                     color=color,
+                     linestyle='none', capsize=7, fmt=fmt)#, label=f'm2={m2_}')
+    ax1.plot(masses_qpe, z_qpe, 'r*', markersize=12, label='QPE and QPO')
+    ax1.plot(list_mass, list_redshift, 's', color='C0', markersize=8, label='arXiv-2501.03252v2')
     ax1.set_ylabel("Redshift")
     ax1.set_xscale('log')
     ax1.set_yscale('log')
     ax1.grid()
     ax1.set_title("a = 0.99")
-    ax1.legend()
+    ax1.legend(loc='upper left', bbox_to_anchor=(1.05, 1))
     
     # Plot for a = -0.99
     for m2_, fmt in zip(list_m2, list_marker):
         input_dict = {"Tpl": 0.25, "e_0": 0.0, "a": -0.99, "m2": m2_}
         dict_out = get_results(snr_dict_loaded, input_dict)
+        color = cmap(norm(np.log10(m2_)))
         ax2.errorbar(dict_out["m1"], dict_out["redshift_ref_median"], 
                      yerr=[dict_out["redshift_ref_median"] - dict_out["redshift_ref_m_sigma"], 
                            dict_out["redshift_ref_p_sigma"] - dict_out["redshift_ref_median"]], 
-                     linestyle='none', capsize=7, fmt=fmt, label=f'm2={m2_}')
+                     color=color,
+                     linestyle='none', capsize=7, fmt=fmt)#, label=f'm2={m2_}')
     ax2.set_ylabel("Redshift")
+    ax2.plot(masses_qpe, z_qpe, 'r*', markersize=12)
+    ax2.plot(list_mass, list_redshift, 's', color='C0', markersize=8, label='arXiv-2501.03252v2')
     ax2.set_xlabel("m1")
     ax2.set_xscale('log')
     ax2.set_yscale('log')
     ax2.grid()
     ax2.set_title("a = -0.99")
-    ax2.legend()
+    # ax2.legend()
     ax2.set_xlim(2e4, 2e7)
+    
+    # Add colorbar
+    sm = cm.ScalarMappable(cmap=cmap, norm=norm)
+    sm.set_array([])
+    cbar = plt.colorbar(sm, ax=[ax1, ax2], label='log10(m2)', pad=-0.1, shrink=0.7)
+    
+    
+    with open("lvk_gw_events.json", "r") as f:
+        lvk_gw_events = json.load(f)
+        
+
+    min_lvk = np.min([min(lvk_gw_events['primary_mass']), min(lvk_gw_events['secondary_mass'])])
+    max_lvk = np.max([max(lvk_gw_events['primary_mass']), max(lvk_gw_events['secondary_mass'])])
+    # print(min_lvk, max_lvk)
+    # for el in lvk_gw_events['primary_mass']+lvk_gw_events['secondary_mass']:
+    #     plt.axhline(el, color='grey', alpha=0.1)
+
+    # Add ticks at the m2 values
+    list_ = lvk_gw_events['primary_mass'] + lvk_gw_events['secondary_mass']
+    for m_ in [min(list_), max(list_)]:
+        cbar.ax.axhline(norm(np.log10(m_)), color='grey', linewidth=2.0, alpha=0.7)
+    # for m_ in list_m2:
+    #     cbar.ax.axhline(norm(np.log10(m_)**0.999), color='k', linewidth=2.0, alpha=0.7)
+    
+    
     plt.tight_layout()
     plt.savefig("redshift_vs_m1.png")
+    plt.show()
+    breakpoint()
+    # plt.close('all')
     
-    input_dict = {"e_0": 0.0, "a": 0.99, "m2": 1.0, "m1": 1e6}
-    dict_out = get_results(snr_dict_loaded, input_dict)
     plt.figure()
-    plt.plot(dict_out["Tpl"], dict_out["snr"][:,2], color='k',alpha=0.1)
+    for m2 in [1, 10, 100, 1000]:
+        input_dict = {"e_0": 0.0, "a": 0.99, "m2": m2, "m1": 1e6}
+        dict_out = get_results(snr_dict_loaded, input_dict)
+        plt.semilogy(dict_out["Tpl"], dict_out["snr_at_z_ref_median"], '-o',alpha=0.9, label=f'{m2}')
     plt.xlabel('Tobs')
     plt.ylabel('SNR')
+    plt.legend()
     plt.savefig("snr_vs_Tobs.png")
     plt.show()
+    
+    
+    T_obs = 1/12
+    dt = 1.0
+    sig = np.ones(int(T_obs*86400*365/dt))
+    taper_duration = 3600 * 6.
+    taper_length = int(2 * taper_duration / dt)
+    hann = np.hanning(taper_length)
+    plt.figure()
+    plt.plot(sig)
+    sig_tapered = sig.copy()
+    sig_tapered[:int(taper_length/2)] *= hann[:int(taper_length/2)]
+    sig_tapered[-int(taper_length/2):] *= hann[-int(taper_length/2):]
+    plt.plot(sig_tapered)
+    plt.show()
+    
+    # input_dict = {"a": 0.99, "m2": 1.0, "m1": 1e6}
+    # dict_out = get_results(snr_dict_loaded, input_dict)
+    # plt.figure()
+    # plt.plot(dict_out["Tpl"], dict_out["snr"][:,2], color='k',alpha=0.1)
+    # plt.xlabel('Tobs')
+    # plt.ylabel('SNR')
+    # plt.savefig("snr_vs_Tobs.png")
+    # plt.show()
