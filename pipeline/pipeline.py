@@ -1,4 +1,5 @@
 # python pipeline.py --M 1e6 --mu 1e1 --a 0.5 --e_f 0.1 --T 4.0 --z 0.5 --psd_file TDI2_AE_psd.npy --dt 10.0 --use_gpu --N_montecarlo 1 --device 0 --power_law --repo test_acc --calculate_fisher 1
+# singularity exec --nv ../fom_final.sif python pipeline.py --M 50000.0 --mu 50.0 --a 0.5 --e_f 0.0 --T 0.25 --z 0.5 --psd_file TDI2_AE_psd.npy --dt 0.6 --use_gpu --N_montecarlo 1 --device 0 --repo test_ --calculate_fisher 1
 import os
 print("PID:",os.getpid())
 
@@ -17,11 +18,12 @@ from common import CosmoInterpolator
 import time
 import matplotlib.pyplot as plt
 from stableemrifisher.plot import CovEllipsePlot, StabilityPlot
-from waveform_utils import initialize_waveform_generator, transf_log_e_wave, generate_random_phases, generate_random_sky_localization
+from waveform_utils import initialize_waveform_generator, transf_log_e_wave, generate_random_phases, generate_random_sky_localization, wave_windowed_truncated
 from few.utils.geodesic import get_fundamental_frequencies
 from scipy.signal.windows import tukey
 #psd stuff
 from psd_utils import load_psd, get_psd_kwargs
+import h5py
 
 cosmo = CosmoInterpolator()
 
@@ -46,8 +48,7 @@ def parse_arguments():
     parser.add_argument('--foreground', action='store_true', default=False, help="Include the WD confusion foreground")
     parser.add_argument('--esaorbits', action='store_true', default=False, help="Use ESA trailing orbits. Default is equal arm length orbits.")
     parser.add_argument('--tdi2', action='store_true', default=False, help="Use 2nd generation TDI channels")
-    parser.add_argument('--channels', type=str, default="AET", help="TDI channels to use")
-    parser.add_argument('--model', type=str, default="scirdv1", help="Noise model to use") #TODO: is this used?
+    parser.add_argument('--channels', type=str, default="AE", help="TDI channels to use")
     parser.add_argument("--calculate_fisher", help="Calculate the Fisher matrix", type=int, default=0)
     # optional time to plunge
     parser.add_argument("--Tpl", help="Time to plunge", type=float, default=0.0)
@@ -71,29 +72,6 @@ def initialize_gpu(args):
 
 from scipy.signal import get_window
 from matplotlib.colors import LogNorm
-
-class wave_windowed_truncated():
-    def __init__(self, wave_gen, N, dt, xp):
-        self.wave_gen = wave_gen
-        # self.window = xp.asarray(get_window(self.window_fn, N))
-        taper_duration = 86400.0 * 2 # two days
-        taper_length = int(2 * taper_duration / dt)
-        hann = np.hanning(taper_length)
-        sig_tapered = np.ones_like(N)
-        sig_tapered[:int(taper_length/2)] *= hann[:int(taper_length/2)]
-        sig_tapered[-int(taper_length/2):] *= hann[-int(taper_length/2):]
-        self.window = xp.asarray(sig_tapered)
-        self.xp = xp
-    
-    def __call__(self, *args, **kwargs):
-        wave = self.xp.asarray(self.wave_gen(*args, **kwargs))
-        # apply window
-        wave = wave * self.window
-        return wave
-
-    def __getattr__(self, name):
-        # Forward attribute access to base_wave
-        return getattr(self.wave_gen, name)
     
 
 class KerrEccEqFluxPowerLaw(KerrEccEqFlux):
@@ -152,6 +130,7 @@ if __name__ == "__main__":
         popinds.append(15)
         if args.e_f == 0.0:
             popinds.append(4)
+            popinds.append(13)
         
     param_names = np.delete(param_names, popinds).tolist()
     
@@ -200,6 +179,16 @@ if __name__ == "__main__":
     t_back, p_back, e_back, x_back, Phi_phi_back, Phi_r_back, Phi_theta_back = traj(M, mu, a, p_forward[-1], e_forward[-1], x_forward[-1], A, nr, dt=1e-5, T=Tpl, integrate_backwards=True)
     # and forward trajectory to check the evolution
     t_plot, p_plot, e_plot, x_plot, Phi_phi_plot, Phi_r_plot, Phi_theta_plot = traj(M, mu, a, p_back[-1], e_back[-1], x_back[-1], A, nr, dt=1e-5, T=T, integrate_backwards=False)
+    # save information about the trajectory in h5 file
+    with h5py.File(os.path.join(args.repo, "trajectory.h5"), "w") as f:
+        f.create_dataset("t_plot", data=t_plot)
+        f.create_dataset("p_plot", data=p_plot)
+        f.create_dataset("e_plot", data=e_plot)
+        f.create_dataset("x_plot", data=x_plot)
+        f.create_dataset("Phi_phi_plot", data=Phi_phi_plot)
+        f.create_dataset("Phi_r_plot", data=Phi_r_plot)
+        f.create_dataset("Phi_theta_plot", data=Phi_theta_plot)
+    
     T = t_plot[-1]/YRSID_SI
     print("Total observation time in years:", T)
     # Plot (t, p), (t, e), (p, e), (t, Phi_phi)
@@ -243,21 +232,24 @@ if __name__ == "__main__":
     p0, e0, x0 = p_back[-1], e_back[-1], x_back[-1]
     print("p0, e0, x0", p0, e0, x0)
     # initialiaze the waveform generator
-    inspiral_kwargs_forward["err"] = 1e-10
+    # inspiral_kwargs_forward["err"] = 1e-10
     temp_model = initialize_waveform_generator(T, args, inspiral_kwargs_forward)
     # base waveform has always the same parameters for comparison
     Phi_phi0, Phi_r0, Phi_theta0 = 0.0, 0.0, 0.0# generate_random_phases()
     qS, phiS, qK, phiK = np.pi/3, np.pi/3, np.pi/3, np.pi/3 # generate_random_sky_localization()
+    phiS = (phiS + 2*np.pi*T/1.0)%(2*np.pi)
+    phiK = (phiK + 2*np.pi*T/1.0)%(2*np.pi)
     parameters = np.asarray([M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0, A, nr])
     # evaluate waveform
-    temp_model(*parameters, mode_selection_threshold=1e-3)
+    temp_model(*parameters, mode_selection_threshold=1e-5)
 
     tic = time.time()
-    waveform_out = temp_model(*parameters, mode_selection_threshold=1e-3)
+    waveform_out = temp_model(*parameters, mode_selection_threshold=1e-5)
     toc = time.time()
     timing = toc - tic
     print("Time taken for one waveform generation: ", timing)
     print("\n")
+    
     # define frequency ranges for inner product
     ns = temp_model.waveform_gen.waveform_generator.ns
     ms = temp_model.waveform_gen.waveform_generator.ms
@@ -272,10 +264,9 @@ if __name__ == "__main__":
     test_2 = np.sum(np.abs(temp_model(*parameters, **waveform_kwargs)[0] - waveform_out[0]))
     print("Test 1: ", test_1 !=0.0, "\nTest 2: ", test_2 == 0.0)
     # update the model with the windowed and truncated waveform
-    fmin=np.max([0.5e-4, min_f])
-    fmax=max_f
-    model = wave_windowed_truncated(temp_model, len(waveform_out[0]), args.dt, xp, window_fn=('tukey', 0.1))
-    model(*parameters)
+    fmin = np.max([0.5e-4, min_f])
+    fmax = np.min([1.0, 1/(args.dt*2), max_f])
+    model = wave_windowed_truncated(temp_model, xp, t0=100000.0)
     tic = time.time()
     waveform_out = model(*parameters)
     toc = time.time()
@@ -292,6 +283,7 @@ if __name__ == "__main__":
     freqs = np.fft.rfftfreq(len(waveform_out[0]), d=args.dt)
     mask = (freqs>fmin) & (freqs<fmax)
     plt.figure()
+    
     plt.loglog(freqs[mask], np.abs(fft_waveform)[mask]**2 / (len(waveform_out[0]) * args.dt), label="Waveform")
     plt.loglog(freqs[mask], np.atleast_2d(psd_wrap(freqs[mask]).get())[0], label="PSD")
     plt.xlabel("Frequency [Hz]")
@@ -299,7 +291,21 @@ if __name__ == "__main__":
     plt.legend()
     plt.ylim(1e-45, 1e-32)
     plt.savefig(os.path.join(args.repo, "waveform_frequency_domain.png"))
+    
     # Plot waveform in time domain
+    N = len(waveform_out[0])
+    plt.figure()
+    for ii in np.arange(N//20,len(waveform_out[0]), N//20,dtype=int):
+        snr_partial = inner_product(waveform_out[:,:ii],waveform_out[:,:ii], psd_wrap(np.fft.rfftfreq(len(waveform_out[0][:ii]), d=args.dt)[1:]), args.dt, fmin = fmin, fmax = fmax, use_gpu=args.use_gpu)**0.5
+        print(f"Partial SNR up to index {ii}: {snr_partial}")
+        plt.plot(len(waveform_out[0][:ii]) * args.dt, snr_partial, 'o')
+    plt.xlabel('t')
+    plt.ylabel('SNR(t)')
+    plt.title('Accumulated SNR over time')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(args.repo, "accumulated_snr.png"))
+    
     plt.figure()
     plt.plot(np.arange(len(waveform_out[0].get())) * args.dt, waveform_out[0].get(), label="A")
     plt.plot(np.arange(len(waveform_out[0].get())) * args.dt, waveform_out[1].get(), label="E", alpha=0.7)
@@ -320,6 +326,7 @@ if __name__ == "__main__":
     plt.colorbar(label='Intensity [dB]')
     plt.tight_layout()
     plt.savefig(os.path.join(args.repo, "waveform_spectrogram.png"))
+    
     # plt.close("all")
     # check horizon d_L
     # d_L = inner_product(waveform_out, waveform_out, psd_wrap(freqs[1:]), dt=args.dt, use_gpu=args.use_gpu)**0.5/20.
@@ -347,6 +354,8 @@ if __name__ == "__main__":
         # generate random parameters
         Phi_phi0, Phi_r0, Phi_theta0 = generate_random_phases()
         qS, phiS, qK, phiK = generate_random_sky_localization()
+        phiS = (phiS + 2*np.pi*T/1.0)%(2*np.pi)
+        phiK = (phiK + 2*np.pi*T/1.0)%(2*np.pi)
         # update the parameters
         parameters = np.asarray([M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0, A, nr])
 
@@ -369,7 +378,7 @@ if __name__ == "__main__":
                                 EMRI_waveform_gen=EMRI_waveform_gen, 
                                 noise_model=psd_wrap, 
                                 noise_kwargs=dict(TDI="TDI2"), 
-                                channels=["A", "E", "T"], 
+                                channels=["A", "E"], 
                                 param_names=param_names, 
                                 stats_for_nerds=False, use_gpu=args.use_gpu, 
                                 der_order=der_order, Ndelta=20, filename=current_folder,
@@ -382,6 +391,7 @@ if __name__ == "__main__":
                                 )
         # calculate the SNR
         SNR = fish.SNRcalc_SEF()
+        
         np.savez(os.path.join(current_folder, "snr.npz"), snr=SNR, parameters=parameters, redshift=args.z, e_f=args.e_f, Tplunge=T)
         
         calculate_fisher = bool(args.calculate_fisher)

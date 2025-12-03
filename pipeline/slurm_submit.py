@@ -41,7 +41,6 @@ def submit_slurm_job(source_params, pipeline_script="pipeline.py", partition="gp
     python_cmd += f"    --z {source_params['z']} \\\n"
     python_cmd += f"    --repo {source_params['repo']} \\\n"
     python_cmd += f"    --psd_file {source_params['psd_file']} \\\n"
-    python_cmd += f"    --model {source_params['model']} \\\n"
     python_cmd += f"    --channels {source_params['channels']} \\\n"
     python_cmd += f"    --dt {source_params['dt']} \\\n"
     python_cmd += f"    --use_gpu \\\n"
@@ -115,8 +114,7 @@ def generate_snr_sources(test_mode=False, repo_root="production_snr_", psd_file=
     # Parameters
     Nmonte = 1 if test_mode else 1000
     dev = 0
-    channels = 'AET'
-    model = 'scirdv1'
+    channels = 'AE'
     include_foreground = True
     esaorbits = True
     tdi2 = True
@@ -132,8 +130,8 @@ def generate_snr_sources(test_mode=False, repo_root="production_snr_", psd_file=
 
     for redshift in np.logspace(-3, 1, 10):
         for key, params in source_dict.items():
-            # if int(key) != selected_source:
-            #     continue
+            if int(key) != selected_source:
+                continue
             
             m1 = params["m1"]
             m2 = params["m2"]
@@ -168,7 +166,6 @@ def generate_snr_sources(test_mode=False, repo_root="production_snr_", psd_file=
                 "z": redshift,
                 "repo": source_name,
                 "psd_file": psd_file,
-                "model": model,
                 "channels": channels,
                 "dt": dt,
                 "N_montecarlo": Nmonte,
@@ -176,7 +173,9 @@ def generate_snr_sources(test_mode=False, repo_root="production_snr_", psd_file=
                 "pe": 0,
                 "extra_args": extra_args.strip(),
             })
-
+    if test_mode:
+        sources = sources[:1]
+        
     # Save sources to file
     sources_file = repo_root + "sources_snr.txt"
     with open(sources_file, "w") as f:
@@ -203,8 +202,7 @@ def generate_pe_sources(test_mode=False, repo_root="production_inference_", psd_
     # Parameters
     Nmonte = 1 if test_mode else 10
     dev = 0
-    channels = 'AET'
-    model = 'scirdv1'
+    channels = 'AE'
     include_foreground = True
     esaorbits = True
     tdi2 = True
@@ -252,7 +250,6 @@ def generate_pe_sources(test_mode=False, repo_root="production_inference_", psd_
                 "z": z,
                 "repo": source_name,
                 "psd_file": psd_file,
-                "model": model,
                 "channels": channels,
                 "dt": dt,
                 "N_montecarlo": Nmonte,

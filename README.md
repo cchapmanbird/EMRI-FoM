@@ -82,7 +82,9 @@ python pipeline.py --M 1e6 --mu 1e1 --a 0.5 --e_f 0.1 --T 4.0 --z 0.5 --psd_file
 
 ### Instructions for container on Spider
 
-Connect to GPU partition ```srun -p gpu_a100_22c --pty bash -i -l``` or ```srun -p gpu_a100_7c --gpus=a100:1 --pty bash -i -l```. 
+Connect to GPU partition `srun -p gpu_a100_22c --mem 64G -G a100:1 -c 2 --pty bash` or `srun -p gpu_a100_7c --gpus=a100:1 --pty bash -i -l` or `srun --partition gpu_a100_mig --gpus 1 -c 1 --pty bash`.
+
+The `--pty` flag allocates a pseudo-terminal, enabling interactive shell sessions with proper terminal behavior (like command editing and job control). 
 
 #### Container Construction
 Build a container using `singularity build --nv --fakeroot fom_final.sif fom.def` or an editable container with:
