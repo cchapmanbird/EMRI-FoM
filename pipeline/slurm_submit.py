@@ -70,7 +70,7 @@ cd $HOME/GitHub/EMRI-FoM/pipeline/
 # Run the pipeline with parameters using Singularity container
 singularity exec --nv ../fom_final.sif {python_cmd}
 
-echo "Job completed successfully"
+echo "Job ended."
 """
     
     # Write script to file

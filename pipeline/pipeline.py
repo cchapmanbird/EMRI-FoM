@@ -220,7 +220,7 @@ if __name__ == "__main__":
 
     plt.tight_layout()
     plt.savefig(os.path.join(args.repo, "trajectory_subplots.png"))
-    plt.close(fig)
+    plt.close('all')
     print("Found initial conditions", p_back[-1], e_back[-1], x_back[-1])
     omegaPhi, omegaTheta, omegaR = get_fundamental_frequencies(a, p_back, e_back, x_back)
     dimension_factor = 2.0 * np.pi * M * MTSUN_SI
@@ -237,8 +237,9 @@ if __name__ == "__main__":
     # base waveform has always the same parameters for comparison
     Phi_phi0, Phi_r0, Phi_theta0 = 0.0, 0.0, 0.0# generate_random_phases()
     qS, phiS, qK, phiK = np.pi/3, np.pi/3, np.pi/3, np.pi/3 # generate_random_sky_localization()
-    phiS = (phiS + 2*np.pi*T/1.0)%(2*np.pi)
-    phiK = (phiK + 2*np.pi*T/1.0)%(2*np.pi)
+    phiS = (phiS - 2*np.pi*T/1.0)%(2*np.pi)
+    phiK = (phiK - 2*np.pi*T/1.0)%(2*np.pi)
+    print(phiK,phiS)
     parameters = np.asarray([M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0, A, nr])
     # evaluate waveform
     temp_model(*parameters, mode_selection_threshold=1e-5)
@@ -292,20 +293,6 @@ if __name__ == "__main__":
     plt.ylim(1e-45, 1e-32)
     plt.savefig(os.path.join(args.repo, "waveform_frequency_domain.png"))
     
-    # Plot waveform in time domain
-    N = len(waveform_out[0])
-    plt.figure()
-    for ii in np.arange(N//20,len(waveform_out[0]), N//20,dtype=int):
-        snr_partial = inner_product(waveform_out[:,:ii],waveform_out[:,:ii], psd_wrap(np.fft.rfftfreq(len(waveform_out[0][:ii]), d=args.dt)[1:]), args.dt, fmin = fmin, fmax = fmax, use_gpu=args.use_gpu)**0.5
-        print(f"Partial SNR up to index {ii}: {snr_partial}")
-        plt.plot(len(waveform_out[0][:ii]) * args.dt, snr_partial, 'o')
-    plt.xlabel('t')
-    plt.ylabel('SNR(t)')
-    plt.title('Accumulated SNR over time')
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(os.path.join(args.repo, "accumulated_snr.png"))
-    
     plt.figure()
     plt.plot(np.arange(len(waveform_out[0].get())) * args.dt, waveform_out[0].get(), label="A")
     plt.plot(np.arange(len(waveform_out[0].get())) * args.dt, waveform_out[1].get(), label="E", alpha=0.7)
@@ -326,8 +313,8 @@ if __name__ == "__main__":
     plt.colorbar(label='Intensity [dB]')
     plt.tight_layout()
     plt.savefig(os.path.join(args.repo, "waveform_spectrogram.png"))
+    plt.close("all")
     
-    # plt.close("all")
     # check horizon d_L
     # d_L = inner_product(waveform_out, waveform_out, psd_wrap(freqs[1:]), dt=args.dt, use_gpu=args.use_gpu)**0.5/20.
     # redshift = get_redshift(d_L)
@@ -354,8 +341,9 @@ if __name__ == "__main__":
         # generate random parameters
         Phi_phi0, Phi_r0, Phi_theta0 = generate_random_phases()
         qS, phiS, qK, phiK = generate_random_sky_localization()
-        phiS = (phiS + 2*np.pi*T/1.0)%(2*np.pi)
-        phiK = (phiK + 2*np.pi*T/1.0)%(2*np.pi)
+        phiS = (phiS - 2*np.pi*T/1.0)%(2*np.pi)
+        phiK = (phiK - 2*np.pi*T/1.0)%(2*np.pi)
+        print(phiK,phiS)
         # update the parameters
         parameters = np.asarray([M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0, A, nr])
 
@@ -392,6 +380,8 @@ if __name__ == "__main__":
         # calculate the SNR
         SNR = fish.SNRcalc_SEF()
         
+        accumulation_index = np.arange(len(waveform_out[0])//20,len(waveform_out[0]),len(waveform_out[0])//20, dtype=int)
+
         np.savez(os.path.join(current_folder, "snr.npz"), snr=SNR, parameters=parameters, redshift=args.z, e_f=args.e_f, Tplunge=T)
         
         calculate_fisher = bool(args.calculate_fisher)
@@ -445,6 +435,22 @@ if __name__ == "__main__":
             print("*************************************")
             
 
+    # Plot waveform in time domain
+    N = len(waveform_out[0])
+    accumulation_index = np.arange(N//20,len(waveform_out[0]), N//20, dtype=int)
+    accumulation_time = accumulation_index * args.dt
+    snr_accumation = [inner_product(waveform_out[:,:ii],waveform_out[:,:ii], psd_wrap(np.fft.rfftfreq(len(waveform_out[0][:ii]), d=args.dt)[1:]), args.dt, fmin = fmin, fmax = fmax, use_gpu=args.use_gpu)**0.5for ii in accumulation_index]
+    snr_accumation = np.array(snr_accumation)
+    
+    plt.figure()
+    plt.plot(accumulation_time, snr_accumation, 'o')
+    plt.xlabel('t')
+    plt.ylabel('SNR(t)')
+    plt.title('Accumulated SNR over time')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(args.repo, "accumulated_snr.png"))
+    plt.close("all")
     # ============================================
     # POSTPROCESSING: Aggregate all realizations
     # ============================================
@@ -496,6 +502,8 @@ if __name__ == "__main__":
             "snr": snr_list,
             "sky_loc": sky_loc,
             "spin_loc": spin_loc,
+            "accumulation_time": accumulation_time,
+            "snr_accumation": snr_accumation,
         }
         
         # Store SNR results in HDF5
