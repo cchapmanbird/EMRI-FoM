@@ -44,7 +44,12 @@ def get_results(snr_dict, input_dict, quantile = 0.68, snr_ref_value = 30.0, z_r
     Tpl = np.asarray([snr_dict[source_n]['Tpl'] for source_n in ind_s])
     e0 = np.asarray([snr_dict[source_n]['e0'] for source_n in ind_s])
     ef = np.asarray([snr_dict[source_n]['e_f'] for source_n in ind_s])
+    snr_shape = np.asarray([snr_dict[source_n]['snr'].shape for source_n in ind_s])
+    if np.all(snr_shape == (10, 100)) == False:
+        raise ValueError("SNR shape mismatch. Expected (10, 100) for all sources.")
     snr = np.asarray([snr_dict[source_n]['snr'] for source_n in ind_s])
+    if np.isnan(snr).sum() > 0:
+        print("Warning: NaN values found in SNR data.")
     snr_median = np.median(snr, axis=-1)
     snr_m_sigma = np.quantile(snr, (1-quantile)/2, axis=-1)
     snr_p_sigma = np.quantile(snr, 1-(1-quantile)/2, axis=-1)
@@ -53,9 +58,17 @@ def get_results(snr_dict, input_dict, quantile = 0.68, snr_ref_value = 30.0, z_r
     sky_loc =  snr_dict[0]['sky_loc']
     spin_loc =  snr_dict[0]['spin_loc']
     
+    if snr_ref_value < snr_median.min() or snr_ref_value > snr_median.max():
+        print("Warning: z_ref_value is out of bounds of the redshift array.")
+        print(f"snr_ref_value {snr_ref_value} is out of bounds ({snr_median.min()}, {snr_median.max()})")
+    
     z_ref_median = np.exp(np.asarray([np.interp(np.log(snr_ref_value), np.log(snr_[np.argsort(snr_)]), np.log(redshift[np.argsort(snr_)]), left=np.nan, right=np.nan) for snr_ in snr_median]))
     z_ref_p_sigma = np.exp(np.asarray([np.interp(np.log(snr_ref_value), np.log(snr_[np.argsort(snr_)]), np.log(redshift[np.argsort(snr_)]), left=np.nan, right=np.nan) for snr_ in snr_p_sigma]))
     z_ref_m_sigma = np.exp(np.asarray([np.interp(np.log(snr_ref_value), np.log(snr_[np.argsort(snr_)]), np.log(redshift[np.argsort(snr_)]), left=np.nan, right=np.nan) for snr_ in snr_m_sigma]))
+    
+    if z_ref_value < redshift.min() or z_ref_value > redshift.max():
+        print("Warning: z_ref_value is out of bounds of the redshift array.")
+        print(f"z_ref_value {z_ref_value} is out of bounds ({redshift.min()}, {redshift.max()})")
     
     snr_at_z_ref_median = np.exp(np.asarray([np.interp(np.log(z_ref_value), np.log(redshift[np.argsort(redshift)]), np.log(snr_[np.argsort(redshift)]), left=np.nan, right=np.nan) for snr_ in snr_median]))
     snr_at_z_ref_p_sigma = np.exp(np.asarray([np.interp(np.log(z_ref_value), np.log(redshift[np.argsort(redshift)]), np.log(snr_[np.argsort(redshift)]), left=np.nan, right=np.nan) for snr_ in snr_p_sigma]))
@@ -107,8 +120,10 @@ if __name__ == "__main__":
         snr_dict = {source_n: {} for source_n in range(0, 100)}
         source_n = 0
         for source_n in range(0, 100):
-            folders = glob.glob(f"production_snr_{source_n}/m1*/*.h5")
+            folders = glob.glob(f"new_production_snr_{source_n}/m1*/aggregated_results.h5")
+            print(f"Found {len(folders)} files for source {source_n}.")
             for i,fold in enumerate(folders):
+                print(f"Processing source {source_n}, file {i+1}/{len(folders)}: {fold}")
                 results = h5py.File(fold, "r")['SNR_analysis']
                 if i == 0:
                     snr_dict[source_n]['snr'] = []
@@ -124,6 +139,7 @@ if __name__ == "__main__":
                 snr_dict[source_n]['DL'].append(results['DL'][...])
             
             ind_sort = np.argsort(snr_dict[source_n]['redshift'])
+            print("Length of redshift array before sorting:", len(snr_dict[source_n]['redshift']))
             for key, item in snr_dict[source_n].items():
                 if (key != 'snr') and (key != 'redshift') and (key != 'DL'):
                     continue
@@ -312,7 +328,6 @@ if __name__ == "__main__":
     plt.tight_layout()
     plt.savefig("redshift_vs_m1.png")
     plt.show()
-    breakpoint()
     # plt.close('all')
     
     plt.figure()

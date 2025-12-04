@@ -5,6 +5,7 @@ Python script to submit SLURM jobs for EMRI FoM pipeline.
 Usage: 
     python slurm_submit.py --mode snr [--test]
     python slurm_submit.py --mode pe [--test]
+    python slurm_submit.py --resubmit "new_production_snr_5/m1=100000.0_m2=100.0_..."
 """
 
 import os
@@ -112,7 +113,7 @@ def generate_snr_sources(test_mode=False, repo_root="production_snr_", psd_file=
         list: List of source parameter dictionaries
     """
     # Parameters
-    Nmonte = 1 if test_mode else 1000
+    Nmonte = 1 if test_mode else 100
     dev = 0
     channels = 'AE'
     include_foreground = True
@@ -126,12 +127,12 @@ def generate_snr_sources(test_mode=False, repo_root="production_snr_", psd_file=
     
     # consider only a specific source for test mode
     # if test_mode:
-    selected_source = 0
-
-    for redshift in np.logspace(-3, 1, 10):
-        for key, params in source_dict.items():
-            if int(key) != selected_source:
-                continue
+    # selected_source = 0
+    
+    for key, params in source_dict.items():
+        for redshift in np.logspace(-3, 1, 10):
+            # if int(key) != selected_source:
+            #     continue
             
             m1 = params["m1"]
             m2 = params["m2"]
@@ -173,6 +174,7 @@ def generate_snr_sources(test_mode=False, repo_root="production_snr_", psd_file=
                 "pe": 0,
                 "extra_args": extra_args.strip(),
             })
+
     if test_mode:
         sources = sources[:1]
         
@@ -271,13 +273,117 @@ def generate_pe_sources(test_mode=False, repo_root="production_inference_", psd_
     return sources
 
 
+def submit_single_job(folder_path, partition="gpu_a100_22c", psd_file=None):
+    """
+    Submit a single failed job by parsing the folder path.
+    
+    Args:
+        folder_path (str): Path to the failed job folder, e.g.,
+                          "new_production_snr_5/m1=100000.0_m2=100.0_a=0.99_e_f=0.005_T=0.25_z=1.29_TDI2_AE_psd_emri_background_1.5_yr"
+        partition (str): SLURM partition to use
+        psd_file (str): Optional PSD file override
+    
+    Returns:
+        dict: Source parameters dictionary
+    """
+    import re
+    
+    # Extract source number from folder path
+    # Format: new_production_snr_X/m1=...
+    match = re.search(r'new_production_snr_(\d+)/', folder_path)
+    if not match:
+        print(f"✗ Could not extract source number from path: {folder_path}")
+        return None
+    
+    source_n = int(match.group(1))
+    
+    # Extract parameters from folder name
+    folder_name = os.path.basename(folder_path)
+    
+    # Parse parameters using regex
+    params = {}
+    patterns = {
+        'm1': r'm1=([\d.e+-]+)',
+        'm2': r'm2=([\d.e+-]+)',
+        'a': r'a=([\d.e+-]+)',
+        'e_f': r'e_f=([\d.e+-]+)',
+        'T': r'T=([\d.e+-]+)',
+        'z': r'z=([\d.e+-]+)',
+    }
+    
+    for key, pattern in patterns.items():
+        match = re.search(pattern, folder_name)
+        if match:
+            try:
+                params[key] = float(match.group(1))
+            except:
+                params[key] = match.group(1)
+    
+    # Verify we have all required parameters
+    required = ['m1', 'm2', 'a', 'e_f', 'T', 'z']
+    if not all(key in params for key in required):
+        print(f"✗ Could not parse all required parameters from: {folder_name}")
+        print(f"  Found: {params}")
+        return None
+    
+    # Extract PSD file from folder name if not provided
+    if psd_file is None:
+        if 'TDI2_AE_psd_emri_background_1.5_yr' in folder_name:
+            psd_file = "TDI2_AE_psd_emri_background_1.5_yr.npy"
+        elif 'TDI2_AE_psd_emri_background_4.5_yr' in folder_name:
+            psd_file = "TDI2_AE_psd_emri_background_4.5_yr.npy"
+        else:
+            psd_file = "TDI2_AE_psd.npy"
+    
+    # Build source parameters dictionary
+    redshift = params['z']
+    source_params = {
+        "M": params['m1'] * (1 + redshift),
+        "mu": params['m2'] * (1 + redshift),
+        "a": params['a'],
+        "e_f": params['e_f'],
+        "T": params['T'],
+        "z": redshift,
+        "repo": folder_path,
+        "psd_file": psd_file,
+        "channels": "AE",
+        "dt": 1.0,  # Default value
+        "N_montecarlo": 100,  # Default for production
+        "device": 0,
+        "pe": 0,  # SNR calculation
+        "extra_args": "--foreground --esaorbits --tdi2",
+    }
+    
+    print(f"\n{'='*60}")
+    print(f"Submitting single failed job from: {folder_path}")
+    print(f"Parameters:")
+    print(f"  m1={params['m1']}, m2={params['m2']}, a={params['a']}")
+    print(f"  e_f={params['e_f']}, T={params['T']}, z={params['z']}")
+    print(f"  PSD file: {psd_file}")
+    print(f"  Partition: {partition}")
+    print(f"{'='*60}\n")
+    
+    # Submit the job
+    result = submit_slurm_job(source_params, partition=partition)
+    
+    return result
+
+
 def check_queue():
     """Check SLURM queue status"""
     try:
         result = subprocess.run(["squeue", "-u", os.getenv("USER")], 
-                              capture_output=True, text=True, check=True)
+                      capture_output=True, text=True, check=True)
         print("Current queue status:")
         print(result.stdout)
+        
+        # Count running EMRI jobs
+        count_result = subprocess.run(
+            ["bash", "-c", f"squeue -u {os.getenv('USER')} | grep -c 'EMRI_new' || true"],
+            capture_output=True, text=True
+        )
+        num_jobs = count_result.stdout.strip()
+        print(f"\nNumber of running EMRI_new jobs: {num_jobs}")
     except subprocess.CalledProcessError as e:
         print(f"Failed to check queue: {e}")
 
@@ -322,8 +428,24 @@ Examples:
                        choices=["TDI2_AE_psd_emri_background_1.5_yr.npy", "TDI2_AE_psd_emri_background_4.5_yr.npy"],
                        default="TDI2_AE_psd_emri_background_4.5_yr.npy",
                        help="PSD file to use (default: TDI2_AE_psd.npy)")
+    parser.add_argument("--resubmit", type=str,
+                       help="Resubmit a single failed job by folder path, e.g., 'new_production_snr_5/m1=100000.0_m2=100.0_...'")
     
     args = parser.parse_args()
+    
+    # Handle resubmit single job
+    if args.resubmit:
+        # Change to pipeline directory first
+        pipeline_dir = Path(__file__).parent
+        os.chdir(pipeline_dir)
+        print(f"Working directory: {os.getcwd()}")
+        
+        result = submit_single_job(args.resubmit, partition=args.partition, psd_file=args.psd if args.psd else None)
+        if result:
+            print("✓ Job resubmitted successfully")
+        else:
+            print("✗ Failed to resubmit job")
+        return
     
     # Check queue status if requested
     if args.check_queue:
@@ -332,7 +454,7 @@ Examples:
     
     # Validate mode is specified
     if not args.mode:
-        parser.error("--mode is required unless using --check-queue")
+        parser.error("--mode is required unless using --check-queue or --resubmit")
     
     # Change to pipeline directory
     pipeline_dir = Path(__file__).parent
@@ -341,10 +463,10 @@ Examples:
     
     # Generate sources based on mode
     if args.mode == "snr":
-        repo_root = "test_snr_" if args.test else "production_snr_"
+        repo_root = "test_snr_" if args.test else "new_production_snr_"
         sources = generate_snr_sources(test_mode=args.test, repo_root=repo_root, psd_file=args.psd)
     else:  # pe mode
-        repo_root = "test_pe_" if args.test else "production_inference_"
+        repo_root = "test_pe_" if args.test else "new_production_inference_"
         print("PSD set internally")
         sources = generate_pe_sources(test_mode=args.test, repo_root=repo_root)
     

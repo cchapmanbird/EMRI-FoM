@@ -154,6 +154,7 @@ if __name__ == "__main__":
         e_f = 0.0
     else:
         e_f = args.e_f
+        inspiral_kwargs_forward["err"] = 1e-10
     
     x0_f = 1.0 * np.sign(args.a) if args.a != 0.0 else 1.0
     
@@ -232,7 +233,6 @@ if __name__ == "__main__":
     p0, e0, x0 = p_back[-1], e_back[-1], x_back[-1]
     print("p0, e0, x0", p0, e0, x0)
     # initialiaze the waveform generator
-    # inspiral_kwargs_forward["err"] = 1e-10
     temp_model = initialize_waveform_generator(T, args, inspiral_kwargs_forward)
     # base waveform has always the same parameters for comparison
     Phi_phi0, Phi_r0, Phi_theta0 = 0.0, 0.0, 0.0# generate_random_phases()
