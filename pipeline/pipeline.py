@@ -237,8 +237,6 @@ if __name__ == "__main__":
     # base waveform has always the same parameters for comparison
     Phi_phi0, Phi_r0, Phi_theta0 = 0.0, 0.0, 0.0# generate_random_phases()
     qS, phiS, qK, phiK = np.pi/3, np.pi/3, np.pi/3, np.pi/3 # generate_random_sky_localization()
-    phiS = (phiS - 2*np.pi*T/1.0)%(2*np.pi)
-    phiK = (phiK - 2*np.pi*T/1.0)%(2*np.pi)
     print(phiK,phiS)
     parameters = np.asarray([M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0, A, nr])
     # evaluate waveform
@@ -341,8 +339,6 @@ if __name__ == "__main__":
         # generate random parameters
         Phi_phi0, Phi_r0, Phi_theta0 = generate_random_phases()
         qS, phiS, qK, phiK = generate_random_sky_localization()
-        phiS = (phiS - 2*np.pi*T/1.0)%(2*np.pi)
-        phiK = (phiK - 2*np.pi*T/1.0)%(2*np.pi)
         print(phiK,phiS)
         # update the parameters
         parameters = np.asarray([M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0, A, nr])
