@@ -2,12 +2,32 @@ import numpy as np
 import os
 from fastlisaresponse import ResponseWrapper
 from few.waveform import GenerateEMRIWaveform
+from few.trajectory.ode import KerrEccEqFlux
 from scipy.signal import get_window
 from few.utils.constants import *
 try:
     import cupy as xp
 except:
     import numpy as xp
+
+class KerrEccEqFluxPowerLaw(KerrEccEqFlux):
+    def modify_rhs(self, ydot, y):
+        # in-place modification of the derivatives
+        LdotAcc = (
+            self.additional_args[0]
+            * pow(y[0] / 10.0, self.additional_args[1])
+            * 32.0
+            / 5.0
+            * pow(y[0], -7.0 / 2.0)
+        )
+        dL_dp = (
+            -3 * pow(self.a, 3)
+            + pow(self.a, 2) * (8 - 3 * y[0]) * np.sqrt(y[0])
+            + (-6 + y[0]) * pow(y[0], 2.5)
+            + 3 * self.a * y[0] * (-2 + 3 * y[0])
+        ) / (2.0 * pow(2 * self.a + (-3 + y[0]) * np.sqrt(y[0]), 1.5) * pow(y[0], 1.75))
+        # transform back to pdot from Ldot and add GW contribution
+        ydot[0] = ydot[0] + LdotAcc / dL_dp
 
 
 class wave_windowed_truncated():
@@ -55,15 +75,15 @@ class wave_windowed_truncated():
         # Forward attribute access to base_wave
         return getattr(self.wave_gen, name)
 
-def initialize_waveform_generator(T, args, inspiral_kwargs_forward, t0=100000.0):
-    backend = 'gpu' if args.use_gpu else 'cpu'
-    temp_wave = GenerateEMRIWaveform("FastKerrEccentricEquatorialFlux", inspiral_kwargs=inspiral_kwargs_forward, force_backend=backend, sum_kwargs=dict(pad_output=True))
-    orbits = "esa-trailing-orbits.h5" if args.esaorbits else "equalarmlength-orbits.h5"
+def initialize_waveform_generator(T, dt, esaorbits=True, use_gpu=True, inspiral_kwargs={}, t0=100000.0):
+    backend = 'gpu' if use_gpu else 'cpu'
+    temp_wave = GenerateEMRIWaveform("FastKerrEccentricEquatorialFlux", inspiral_kwargs=inspiral_kwargs, force_backend=backend, sum_kwargs=dict(pad_output=True))
+    orbits = "esa-trailing-orbits.h5" if esaorbits else "equalarmlength-orbits.h5"
     orbit_file = os.path.join(os.path.dirname(__file__), '..', 'lisa-on-gpu', 'orbit_files', orbits)
     orbit_kwargs = dict(orbit_file=orbit_file)
     tdi_kwargs_esa = dict(orbit_kwargs=orbit_kwargs, order=25, tdi="2nd generation", tdi_chan="AE")
     model = ResponseWrapper(
-            temp_wave, T, args.dt, 8, 7, t0=t0, flip_hx=True, use_gpu=args.use_gpu,
+            temp_wave, T, dt, 8, 7, t0=t0, flip_hx=True, use_gpu=use_gpu,
             remove_sky_coords=False, is_ecliptic_latitude=False, remove_garbage="zero", **tdi_kwargs_esa
         )
     # base_wave = wave_windowed_truncated(model, xp, t0)
