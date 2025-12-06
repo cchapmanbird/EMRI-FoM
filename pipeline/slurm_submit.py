@@ -383,11 +383,11 @@ def check_queue():
         
         # Count running EMRI jobs
         count_result = subprocess.run(
-            ["bash", "-c", f"squeue -u {os.getenv('USER')} | grep -c 'EMRI_new' || true"],
+            ["bash", "-c", f"squeue -u {os.getenv('USER')} | grep -c 'EMRI' || true"],
             capture_output=True, text=True
         )
         num_jobs = count_result.stdout.strip()
-        print(f"\nNumber of running EMRI_new jobs: {num_jobs}")
+        print(f"\nNumber of running jobs: {num_jobs}")
     except subprocess.CalledProcessError as e:
         print(f"Failed to check queue: {e}")
 
