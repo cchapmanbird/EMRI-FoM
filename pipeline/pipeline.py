@@ -1,5 +1,5 @@
 # python pipeline.py --M 1e6 --mu 1e1 --a 0.5 --e_f 0.1 --T 4.0 --z 0.5 --psd_file TDI2_AE_psd.npy --dt 10.0 --use_gpu --N_montecarlo 1 --device 0 --power_law --repo test_acc --calculate_fisher 1
-# singularity exec --nv ../fom_final.sif python pipeline.py --M 50000.0 --mu 50.0 --a 0.5 --e_f 0.0 --T 0.25 --z 0.5 --psd_file TDI2_AE_psd.npy --dt 0.6 --use_gpu --N_montecarlo 1 --device 0 --repo test_ --calculate_fisher 1
+# singularity exec --nv ../fom_final.sif python pipeline.py --M 50000.0 --mu 50.0 --a 0.5 --e_f 0.0 --T 0.25 --z 0.5898912629902194 --psd_file ./TDI2_AE_psd_emri_background_1.5_yr.npy --dt 0.6 --use_gpu --N_montecarlo 1 --device 0 --repo test_ --calculate_fisher 1
 import os
 print("PID:",os.getpid())
 
@@ -117,17 +117,17 @@ if __name__ == "__main__":
     param_names = np.array(['M','mu','a','p0','e0','xI0','dist','qS','phiS','qK','phiK','Phi_phi0','Phi_theta0','Phi_r0', 'A', 'nr'])
     
     popinds = []
-    popinds.append(5)
-    popinds.append(12)
+    popinds.append(5) # xI0
+    popinds.append(12) # Phi_theta0
     
     if args.power_law:
-        popinds.append(4)
-        popinds.append(13)
-        popinds.append(15)
+        popinds.append(4) # eccentricity
+        popinds.append(13) # Phi_r0
+        popinds.append(15) # nr
     
     else:
-        popinds.append(14)
-        popinds.append(15)
+        popinds.append(14) # A
+        popinds.append(15) # nr
         if args.e_f == 0.0:
             popinds.append(4)
             popinds.append(13)
@@ -154,7 +154,6 @@ if __name__ == "__main__":
         e_f = 0.0
     else:
         e_f = args.e_f
-        inspiral_kwargs_forward["err"] = 1e-10
     
     x0_f = 1.0 * np.sign(args.a) if args.a != 0.0 else 1.0
     
@@ -233,7 +232,7 @@ if __name__ == "__main__":
     p0, e0, x0 = p_back[-1], e_back[-1], x_back[-1]
     print("p0, e0, x0", p0, e0, x0)
     # initialiaze the waveform generator
-    temp_model = initialize_waveform_generator(T, args, inspiral_kwargs_forward)
+    temp_model = initialize_waveform_generator(T, args.dt, inspiral_kwargs_forward)
     # base waveform has always the same parameters for comparison
     Phi_phi0, Phi_r0, Phi_theta0 = 0.0, 0.0, 0.0# generate_random_phases()
     qS, phiS, qK, phiK = np.pi/3, np.pi/3, np.pi/3, np.pi/3 # generate_random_sky_localization()
@@ -403,7 +402,11 @@ if __name__ == "__main__":
             if args.power_law:
                 J = cosmo.jacobian_powerlaw(M / (1 + args.z), mu / (1 + args.z), args.z)
             else:
-                J = cosmo.jacobian(M / (1 + args.z), mu / (1 + args.z), args.z)
+                if e_f == 0.0:
+                    # remove last row and column corresponding to amplitude of powerlaw
+                    J = cosmo.jacobian_powerlaw(M / (1 + args.z), mu / (1 + args.z), args.z)[:-1,:-1]
+                else:
+                    J = cosmo.jacobian(M / (1 + args.z), mu / (1 + args.z), args.z)
             source_frame_cov = J @ cov @ J.T
 
             if j == 0:
@@ -433,9 +436,9 @@ if __name__ == "__main__":
 
     # Plot waveform in time domain
     N = len(waveform_out[0])
-    accumulation_index = np.arange(N//20,len(waveform_out[0]), N//20, dtype=int)
+    accumulation_index = np.arange(N//10,len(waveform_out[0]), N//10, dtype=int)
     accumulation_time = accumulation_index * args.dt
-    snr_accumation = [inner_product(waveform_out[:,:ii],waveform_out[:,:ii], psd_wrap(np.fft.rfftfreq(len(waveform_out[0][:ii]), d=args.dt)[1:]), args.dt, fmin = fmin, fmax = fmax, use_gpu=args.use_gpu)**0.5for ii in accumulation_index]
+    snr_accumation = [inner_product(waveform_out[:,:ii],waveform_out[:,:ii], psd_wrap(np.fft.rfftfreq(len(waveform_out[0][:ii]), d=args.dt)[1:]), args.dt, fmin = fmin, fmax = fmax, use_gpu=args.use_gpu)**0.5 for ii in accumulation_index]
     snr_accumation = np.array(snr_accumation)
     
     plt.figure()
