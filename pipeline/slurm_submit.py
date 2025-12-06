@@ -5,7 +5,7 @@ Python script to submit SLURM jobs for EMRI FoM pipeline.
 Usage: 
     python slurm_submit.py --mode snr [--test]
     python slurm_submit.py --mode pe [--test]
-    python slurm_submit.py --resubmit "new_production_snr_5/m1=100000.0_m2=100.0_..."
+    python slurm_submit.py --resubmit "production_snr_5/m1=100000.0_m2=100.0_..."
 """
 
 import os
@@ -122,7 +122,7 @@ def generate_snr_sources(test_mode=False, repo_root="production_snr_", psd_file=
     
     sources = []
     
-    with open("emri_pe_sources.json", "r") as f:
+    with open("so3_snr_sources.json", "r") as f:
         source_dict = json.load(f)
     
     # consider only a specific source for test mode
@@ -140,6 +140,10 @@ def generate_snr_sources(test_mode=False, repo_root="production_snr_", psd_file=
             ef = params["e_f"]
             Tobs = params["Tpl"]
             dt = params["dt"]
+            
+            if ef != 0.0:
+                continue
+                
             
             if Tobs != 1.5 and Tobs != 4.5:
                 psd_file = "TDI2_AE_psd_emri_background_1.5_yr.npy"
@@ -211,7 +215,7 @@ def generate_pe_sources(test_mode=False, repo_root="production_inference_", psd_
     
     sources = []
     
-    with open("emri_pe_sources_with_z_ref.json", "r") as f:
+    with open("so3_inference_sources_with_z_ref.json", "r") as f:
         source_dict = json.load(f)
     
     
@@ -279,7 +283,7 @@ def submit_single_job(folder_path, partition="gpu_a100_22c", psd_file=None):
     
     Args:
         folder_path (str): Path to the failed job folder, e.g.,
-                          "new_production_snr_5/m1=100000.0_m2=100.0_a=0.99_e_f=0.005_T=0.25_z=1.29_TDI2_AE_psd_emri_background_1.5_yr"
+                          "production_snr_5/m1=100000.0_m2=100.0_a=0.99_e_f=0.005_T=0.25_z=1.29_TDI2_AE_psd_emri_background_1.5_yr"
         partition (str): SLURM partition to use
         psd_file (str): Optional PSD file override
     
@@ -289,8 +293,8 @@ def submit_single_job(folder_path, partition="gpu_a100_22c", psd_file=None):
     import re
     
     # Extract source number from folder path
-    # Format: new_production_snr_X/m1=...
-    match = re.search(r'new_production_snr_(\d+)/', folder_path)
+    # Format: production_snr_X/m1=...
+    match = re.search(r'production_snr_(\d+)/', folder_path)
     if not match:
         print(f"✗ Could not extract source number from path: {folder_path}")
         return None
@@ -429,7 +433,7 @@ Examples:
                        default="TDI2_AE_psd_emri_background_4.5_yr.npy",
                        help="PSD file to use (default: TDI2_AE_psd.npy)")
     parser.add_argument("--resubmit", type=str,
-                       help="Resubmit a single failed job by folder path, e.g., 'new_production_snr_5/m1=100000.0_m2=100.0_...'")
+                       help="Resubmit a single failed job by folder path, e.g., 'production_snr_5/m1=100000.0_m2=100.0_...'")
     
     args = parser.parse_args()
     
@@ -463,10 +467,10 @@ Examples:
     
     # Generate sources based on mode
     if args.mode == "snr":
-        repo_root = "test_snr_" if args.test else "new_production_snr_"
+        repo_root = "test_snr_" if args.test else "production_snr_"
         sources = generate_snr_sources(test_mode=args.test, repo_root=repo_root, psd_file=args.psd)
     else:  # pe mode
-        repo_root = "test_pe_" if args.test else "new_production_inference_"
+        repo_root = "test_pe_" if args.test else "production_inference_"
         print("PSD set internally")
         sources = generate_pe_sources(test_mode=args.test, repo_root=repo_root)
     

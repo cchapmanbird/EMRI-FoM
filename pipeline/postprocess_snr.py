@@ -5,16 +5,12 @@ import json
 import os
 from scipy.interpolate import interp1d
 
-with open("emri_pe_sources.json", "r") as f:
-    source_dict = json.load(f)
-
-
-def find_matching_sources(input_params):
+def find_matching_sources(input_params, source_dict):
     """
     Finds all source numbers that match the given input parameters.
     
     :param input_params: dict of parameters to match (e.g., {"m1": 50000.0, "a": 0.99})
-    :param snr_dict: dict of sources
+    :param source_dict: dict of sources
     :return: list of matching source numbers
     """
     matches = []
@@ -25,7 +21,7 @@ def find_matching_sources(input_params):
     return np.asarray(matches,dtype=int)
 
 
-def get_results(snr_dict, input_dict, quantile = 0.68, snr_ref_value = 30.0, z_ref_value = 0.1):
+def get_results(snr_dict, input_dict, quantile = 0.68, snr_ref_value = 30.0, z_ref_value = 0.001):
     """Get results for matching sources from snr_dict.
     Args:
         snr_dict (dict): Dictionary containing SNR data for sources.
@@ -36,8 +32,7 @@ def get_results(snr_dict, input_dict, quantile = 0.68, snr_ref_value = 30.0, z_r
     Returns:
         dict: Dictionary containing results for matching sources.
     """
-    
-    ind_s = find_matching_sources(input_dict)
+    ind_s = find_matching_sources(input_dict, snr_dict)
     m1 = np.asarray([snr_dict[source_n]['m1'] for source_n in ind_s])
     m2 = np.asarray([snr_dict[source_n]['m2'] for source_n in ind_s])
     a =  np.asarray([snr_dict[source_n]['a'] for source_n in ind_s])
@@ -76,7 +71,7 @@ def get_results(snr_dict, input_dict, quantile = 0.68, snr_ref_value = 30.0, z_r
     
     # lum_d = cosmo.get_luminosity_distance(z)
 
-    return_dict = {"m1": m1, "m2": m2, "a": a, "Tpl": Tpl, "e_0": e0 , "e_f": ef, 
+    return_dict = {"m1": m1, "m2": m2, "a": a, "Tpl": Tpl, "e0": e0 , "e_f": ef, 
                    "snr": snr,
                    "redshift_ref_median": z_ref_median, "redshift_ref_m_sigma": z_ref_m_sigma, "redshift_ref_p_sigma": z_ref_p_sigma,
                    "snr_at_z_ref_median": snr_at_z_ref_median, "snr_at_z_ref_m_sigma": snr_at_z_ref_m_sigma, "snr_at_z_ref_p_sigma": snr_at_z_ref_p_sigma,
@@ -86,7 +81,7 @@ def get_results(snr_dict, input_dict, quantile = 0.68, snr_ref_value = 30.0, z_r
                   }
     return return_dict
 
-def load_snr_dict_from_h5(filename="snr_dict_emri_pe_sources.h5"):
+def load_snr_dict_from_h5(filename="snr_sources.h5"):
     """Load snr_dict from HDF5 file.
     
     Args:
@@ -111,27 +106,27 @@ if __name__ == "__main__":
     import matplotlib.cm as cm
     from matplotlib.colors import Normalize
     plt.style.use('science')
-    
-    input_params = {}
-    matching_sources = find_matching_sources(input_params)
-    print("Matching source numbers:", len(matching_sources))
 
-    if os.path.exists("snr_dict_emri_pe_sources.h5"):
+
+    if os.path.exists("snr_sources.h5"):
         print("Loading existing SNR dictionary from file...")
-        snr_dict_loaded = load_snr_dict_from_h5("snr_dict_emri_pe_sources.h5")
+        snr_dict_loaded = load_snr_dict_from_h5("snr_sources.h5")
         print("SNR dictionary loaded successfully.")
     else:
         print("SNR dictionary file not found. Processing SNR data...")
         
-        snr_dict = {source_n: {} for source_n in range(0, 100)}
-        source_n = 0
-        for source_n in range(0, 100):
-            folders = glob.glob(f"new_production_snr_{source_n}/m1*/aggregated_results.h5")
+        snr_dict = {}
+        source_folders = sorted([d for d in glob.glob(f"production_snr_*") if os.path.isdir(d)])
+        for source_f in source_folders:
+            print(f"Processing source folder: {source_f}")
+            source_n = source_f.split('_')[2]
+            folders = glob.glob(f"{source_f}/m1*/aggregated_results.h5")
             print(f"Found {len(folders)} files for source {source_n}.")
             for i,fold in enumerate(folders):
                 print(f"Processing source {source_n}, file {i+1}/{len(folders)}: {fold}")
                 results = h5py.File(fold, "r")['SNR_analysis']
                 if i == 0:
+                    snr_dict[source_n] = {}
                     snr_dict[source_n]['snr'] = []
                     snr_dict[source_n]['redshift'] = []
                     snr_dict[source_n]['DL'] = []
@@ -154,16 +149,24 @@ if __name__ == "__main__":
         print("Finished processing SNR data for all sources.")
     
         # Save snr_dict to HDF5 file
-        with h5py.File("snr_dict_emri_pe_sources.h5", "w") as f:
+        with h5py.File("snr_sources.h5", "w") as f:
             for source_n, source_data in snr_dict.items():
                 grp = f.create_group(f"source_{source_n}")
                 for key, value in source_data.items():
                     grp.create_dataset(key, data=value)
         
-        print("SNR dictionary saved to snr_dict_emri_pe_sources.h5")
-        snr_dict_loaded = load_snr_dict_from_h5("snr_dict_emri_pe_sources.h5")
-        print("SNR dictionary loaded from snr_dict_emri_pe_sources.h5")
+        print("SNR dictionary saved to snr_sources.h5")
+        snr_dict_loaded = load_snr_dict_from_h5("snr_sources.h5")
+        print("SNR dictionary loaded from snr_sources.h5")
     
+    
+    input_params = {}
+    matching_sources = find_matching_sources(input_params, snr_dict_loaded)
+    print("Matching source numbers:", len(matching_sources))
+    
+    # open    
+    with open("so3_snr_sources.json", "r") as f:
+        source_dict = json.load(f)
     
     unique_m1 = sorted(set([source_dict[i]['m1'] for i in source_dict]))
     unique_m2 = sorted(set([source_dict[i]['m2'] for i in source_dict]))
@@ -171,18 +174,28 @@ if __name__ == "__main__":
     unique_e0 = sorted(set([source_dict[i]['e_0'] for i in source_dict]))
     unique_Tpl = sorted(set([source_dict[i]['Tpl'] for i in source_dict]))
     
-    # save z_ref_median in source_dict
-    dict_out = get_results(snr_dict_loaded, {})
-    for i, source_n in enumerate(dict_out["ind_s"]):
-        if np.isnan(dict_out["redshift_ref_median"][i]):
-            source_dict[str(source_n)]["z_ref_median"] = -1.0
+    # # save z_ref_median in source_dict
+    temp_dict = get_results(snr_dict_loaded, {})
+    
+    out_dict = source_dict.copy()
+    number_included = 0
+    for key in source_dict.keys():
+        # print("Processing source", key)
+        mask = np.prod(np.asarray([(np.abs(1-temp_dict[load_key] / source_dict[key][load_key])<1e-6) for load_key in ['m1', 'm2', 'a', 'Tpl']]),axis=0, dtype=bool)
+        if len(temp_dict['redshift_ref_median'][mask]) != 1:
+            print("No matching source found for source", key)
+            breakpoint()
+        if np.isnan(temp_dict['redshift_ref_median'][mask][0]) == False:
+            print("Mask", len(temp_dict['redshift_ref_median'][mask]), temp_dict['redshift_ref_median'][mask])
+            out_dict[key]['z_ref_median'] = temp_dict['redshift_ref_median'][mask][0]
+            number_included += 1
         else:
-            source_dict[str(source_n)]["z_ref_median"] = dict_out["redshift_ref_median"][i]
-    # save updated source_dict with z_ref_median
-    with open("emri_pe_sources_with_z_ref.json", "w") as f:
-        json.dump(source_dict, f, indent=4)
-
-    print("Eccentricities", dict_out["e_0"], dict_out["e_f"])
+            print("No valid z_ref_median for source", key, "removing from output.")
+            del out_dict[key]
+    print(f"Included {number_included} sources with valid z_ref_median out of {len(source_dict)} total sources.")
+    with open("so3_inference_sources_with_z_ref.json", "w") as f:
+        json.dump(out_dict, f, indent=4)
+    
     # https://arxiv.org/pdf/2404.00941
     masses_qpe = np.asarray([1.2, 0.55, 0.55, 3.1, 42.5, 1.8, 5.5, 0.595, 6.55, 88.0, 5.8]) * 1e6
     z_qpe     = np.asarray([0.0181, 0.0505, 0.0175, 0.024, 0.044, 0.0237, 0.042, 0.13, 0.0206, 0.0136, 0.0053])
@@ -213,7 +226,7 @@ if __name__ == "__main__":
     
     # Plot for a = 0.99
     for m2_, fmt in zip(list_m2, list_marker):
-        input_dict = {"Tpl": 0.25, "e_0": 0.0, "a": 0.99, "m2": m2_}
+        input_dict = {"Tpl": 0.25, "e0": 0.0, "a": 0.99, "m2": m2_}
         dict_out = get_results(snr_dict_loaded, input_dict)
         ax1.errorbar(dict_out["m1"], dict_out["snr_at_z_ref_median"], 
                      yerr=[dict_out["snr_at_z_ref_median"] - dict_out["snr_at_z_ref_m_sigma"], 
@@ -229,7 +242,7 @@ if __name__ == "__main__":
     
     # Plot for a = -0.99
     for m2_, fmt in zip(list_m2, list_marker):
-        input_dict = {"Tpl": 0.25, "e_0": 0.0, "a": -0.99, "m2": m2_}
+        input_dict = {"Tpl": 0.25, "e0": 0.0, "a": -0.99, "m2": m2_}
         dict_out = get_results(snr_dict_loaded, input_dict)
         ax2.errorbar(dict_out["m1"], dict_out["snr_at_z_ref_median"], 
                      yerr=[dict_out["snr_at_z_ref_median"] - dict_out["snr_at_z_ref_m_sigma"], 
@@ -258,7 +271,7 @@ if __name__ == "__main__":
     
     # Plot for a = 0.99
     for m2_, fmt in zip(list_m2, list_marker):
-        input_dict = {"Tpl": 0.25, "e_0": 0.0, "a": 0.99, "m2": m2_}
+        input_dict = {"Tpl": 0.25, "e0": 0.0, "a": 0.99, "m2": m2_}
         dict_out = get_results(snr_dict_loaded, input_dict)
         color = cmap(norm(np.log10(m2_)))
 
@@ -278,7 +291,7 @@ if __name__ == "__main__":
     
     # Plot for a = -0.99
     for m2_, fmt in zip(list_m2, list_marker):
-        input_dict = {"Tpl": 0.25, "e_0": 0.0, "a": -0.99, "m2": m2_}
+        input_dict = {"Tpl": 0.25, "e0": 0.0, "a": -0.99, "m2": m2_}
         dict_out = get_results(snr_dict_loaded, input_dict)
         color = cmap(norm(np.log10(m2_)))
         ax2.errorbar(dict_out["m1"], dict_out["redshift_ref_median"], 
@@ -301,7 +314,6 @@ if __name__ == "__main__":
     sm = cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
     cbar = plt.colorbar(sm, ax=[ax1, ax2], label='log10(m2)', pad=-0.1, shrink=0.7)
-    
     
     with open("lvk_gw_events.json", "r") as f:
         lvk_gw_events = json.load(f)
@@ -327,30 +339,28 @@ if __name__ == "__main__":
     #######################################
     # Plot SNR vs Tobs for different m2 values
     plt.figure()
-    for m2 in [1, 10, 100, 1000]:
-        input_dict = {"e_0": 0.0, "a": 0.99, "m2": m2, "m1": 1e6}
+    for m2, marker in zip([1, 10, 100, 1000], ['o', 's', '^', 'd']):
+        input_dict = {"e0": 0.0, "a": 0.99, "m2": m2, "m1": 1e7}
         dict_out = get_results(snr_dict_loaded, input_dict)
-        plt.errorbar(dict_out["Tpl"], dict_out["snr_at_z_ref_median"], 
-                 yerr=[dict_out["snr_at_z_ref_median"] - dict_out["snr_at_z_ref_m_sigma"], 
-                   dict_out["snr_at_z_ref_p_sigma"] - dict_out["snr_at_z_ref_median"]], 
-                 linestyle='-', marker='o', capsize=5, alpha=0.9, label=f'{m2}')
-        plt.yscale('log')
-    plt.xlabel('Tobs')
-    plt.ylabel('SNR')
-    plt.legend()
+        final_snr = dict_out["snr_at_z_ref_median"][-1]
+        plt.plot(dict_out["Tpl"], dict_out["snr_at_z_ref_median"]/final_snr, '-'+marker, label=f'm2={m2}')
+    
+    plt.xlabel('T [yr]')
+    plt.ylabel('SNR(T)/SNR(T=4yr)')
+    plt.legend(ncols=1)
     plt.savefig("snr_vs_Tobs.png")
     plt.show()
     
-    #######################################
-    # Plot SNR vs eccentricity for different m2 values
-    plt.figure()
-    input_dict = {"a": 0.99, "m2": 10.0, "m1": 1e6, "Tpl": 0.25}
-    dict_out = get_results(snr_dict_loaded, input_dict)
-    for ecc_i in range(len(dict_out["e_0"])):
-        plt.hist(dict_out["snr"][ecc_i,0], bins=20, label=f'e_0={dict_out["e_0"][ecc_i]}', alpha=0.5)
-    plt.xlabel('eccentricity')
-    plt.ylabel('SNR')
-    plt.legend()
-    plt.savefig("snr_vs_eccentricity.png")
-    plt.show()
+    # #######################################
+    # # Plot SNR vs eccentricity for different m2 values
+    # plt.figure()
+    # input_dict = {"a": 0.99, "m2": 10.0, "m1": 1e6, "Tpl": 0.25}
+    # dict_out = get_results(snr_dict_loaded, input_dict)
+    # for ecc_i in range(len(dict_out["e_0"])):
+    #     plt.hist(dict_out["snr"][ecc_i,0], bins=20, label=f'e_0={dict_out["e_0"][ecc_i]}', alpha=0.5)
+    # plt.xlabel('eccentricity')
+    # plt.ylabel('SNR')
+    # plt.legend()
+    # plt.savefig("snr_vs_eccentricity.png")
+    # plt.show()
     
