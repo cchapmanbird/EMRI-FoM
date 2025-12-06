@@ -202,7 +202,7 @@ def generate_pe_sources(test_mode=False, repo_root="production_inference_", psd_
         list: List of source parameter dictionaries
     """
     # Parameters
-    Nmonte = 1 if test_mode else 10
+    Nmonte = 1 if test_mode else 100
     dev = 0
     channels = 'AE'
     include_foreground = True

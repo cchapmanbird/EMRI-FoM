@@ -25,7 +25,7 @@ def find_matching_sources(input_params):
     return np.asarray(matches,dtype=int)
 
 
-def get_results(snr_dict, input_dict, quantile = 0.68, snr_ref_value = 30.0, z_ref_value = 1.0):
+def get_results(snr_dict, input_dict, quantile = 0.68, snr_ref_value = 30.0, z_ref_value = 0.1):
     """Get results for matching sources from snr_dict.
     Args:
         snr_dict (dict): Dictionary containing SNR data for sources.
@@ -106,6 +106,12 @@ def load_snr_dict_from_h5(filename="snr_dict_emri_pe_sources.h5"):
     return snr_dict
 
 if __name__ == "__main__":
+    import matplotlib.pyplot as plt
+    import scienceplots
+    import matplotlib.cm as cm
+    from matplotlib.colors import Normalize
+    plt.style.use('science')
+    
     input_params = {}
     matching_sources = find_matching_sources(input_params)
     print("Matching source numbers:", len(matching_sources))
@@ -164,6 +170,7 @@ if __name__ == "__main__":
     unique_a = sorted(set([source_dict[i]['a'] for i in source_dict]))
     unique_e0 = sorted(set([source_dict[i]['e_0'] for i in source_dict]))
     unique_Tpl = sorted(set([source_dict[i]['Tpl'] for i in source_dict]))
+    
     # save z_ref_median in source_dict
     dict_out = get_results(snr_dict_loaded, {})
     for i, source_n in enumerate(dict_out["ind_s"]):
@@ -174,19 +181,8 @@ if __name__ == "__main__":
     # save updated source_dict with z_ref_median
     with open("emri_pe_sources_with_z_ref.json", "w") as f:
         json.dump(source_dict, f, indent=4)
-    
-    import matplotlib.pyplot as plt
-    import scienceplots
 
-    plt.style.use('science')
-
-    input_dict = {"Tpl": 0.25, "e_0": 0.0}
-    plt.figure()
-    plt.loglog(get_results(snr_dict_loaded, input_dict)["m1"],get_results(snr_dict_loaded, input_dict)["m2"], 'o')
-    plt.xlabel("m1")
-    plt.ylabel("m2")
-    plt.savefig("test_plot.png")
-    
+    print("Eccentricities", dict_out["e_0"], dict_out["e_f"])
     # https://arxiv.org/pdf/2404.00941
     masses_qpe = np.asarray([1.2, 0.55, 0.55, 3.1, 42.5, 1.8, 5.5, 0.595, 6.55, 88.0, 5.8]) * 1e6
     z_qpe     = np.asarray([0.0181, 0.0505, 0.0175, 0.024, 0.044, 0.0237, 0.042, 0.13, 0.0206, 0.0136, 0.0053])
@@ -209,6 +205,8 @@ if __name__ == "__main__":
     list_redshift = np.asarray([item["redshift"] for item in smbh_data])
     list_name = [item["name"] for item in smbh_data]
 
+    #################################
+    # Plot SNR vs m1 for different m2 values
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 10), sharex=True)
     list_m2 = [1, 5, 10, 50, 100, 1000, 1e4]
     list_marker = ["o", "v", "P", "X", "*", "^", 'D']
@@ -249,8 +247,6 @@ if __name__ == "__main__":
     plt.savefig("snr_vs_m1.png")
     plt.close('all')
     #################################
-    import matplotlib.cm as cm
-    from matplotlib.colors import Normalize
 
     # Create colormap and normalization
     norm = Normalize(vmin=np.log10(1), vmax=np.log10(1e4))
@@ -324,43 +320,37 @@ if __name__ == "__main__":
     # for m_ in list_m2:
     #     cbar.ax.axhline(norm(np.log10(m_)**0.999), color='k', linewidth=2.0, alpha=0.7)
     
-    
     plt.tight_layout()
     plt.savefig("redshift_vs_m1.png")
     plt.show()
-    # plt.close('all')
-    
+    plt.close('all')
+    #######################################
+    # Plot SNR vs Tobs for different m2 values
     plt.figure()
     for m2 in [1, 10, 100, 1000]:
         input_dict = {"e_0": 0.0, "a": 0.99, "m2": m2, "m1": 1e6}
         dict_out = get_results(snr_dict_loaded, input_dict)
-        plt.semilogy(dict_out["Tpl"], dict_out["snr_at_z_ref_median"], '-o',alpha=0.9, label=f'{m2}')
+        plt.errorbar(dict_out["Tpl"], dict_out["snr_at_z_ref_median"], 
+                 yerr=[dict_out["snr_at_z_ref_median"] - dict_out["snr_at_z_ref_m_sigma"], 
+                   dict_out["snr_at_z_ref_p_sigma"] - dict_out["snr_at_z_ref_median"]], 
+                 linestyle='-', marker='o', capsize=5, alpha=0.9, label=f'{m2}')
+        plt.yscale('log')
     plt.xlabel('Tobs')
     plt.ylabel('SNR')
     plt.legend()
     plt.savefig("snr_vs_Tobs.png")
     plt.show()
     
-    
-    T_obs = 1/12
-    dt = 1.0
-    sig = np.ones(int(T_obs*86400*365/dt))
-    taper_duration = 3600 * 6.
-    taper_length = int(2 * taper_duration / dt)
-    hann = np.hanning(taper_length)
+    #######################################
+    # Plot SNR vs eccentricity for different m2 values
     plt.figure()
-    plt.plot(sig)
-    sig_tapered = sig.copy()
-    sig_tapered[:int(taper_length/2)] *= hann[:int(taper_length/2)]
-    sig_tapered[-int(taper_length/2):] *= hann[-int(taper_length/2):]
-    plt.plot(sig_tapered)
+    input_dict = {"a": 0.99, "m2": 10.0, "m1": 1e6, "Tpl": 0.25}
+    dict_out = get_results(snr_dict_loaded, input_dict)
+    for ecc_i in range(len(dict_out["e_0"])):
+        plt.hist(dict_out["snr"][ecc_i,0], bins=20, label=f'e_0={dict_out["e_0"][ecc_i]}', alpha=0.5)
+    plt.xlabel('eccentricity')
+    plt.ylabel('SNR')
+    plt.legend()
+    plt.savefig("snr_vs_eccentricity.png")
     plt.show()
     
-    # input_dict = {"a": 0.99, "m2": 1.0, "m1": 1e6}
-    # dict_out = get_results(snr_dict_loaded, input_dict)
-    # plt.figure()
-    # plt.plot(dict_out["Tpl"], dict_out["snr"][:,2], color='k',alpha=0.1)
-    # plt.xlabel('Tobs')
-    # plt.ylabel('SNR')
-    # plt.savefig("snr_vs_Tobs.png")
-    # plt.show()
