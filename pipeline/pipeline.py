@@ -377,7 +377,7 @@ if __name__ == "__main__":
         
         accumulation_index = np.arange(len(waveform_out[0])//20,len(waveform_out[0]),len(waveform_out[0])//20, dtype=int)
 
-        np.savez(os.path.join(current_folder, "snr.npz"), snr=SNR, parameters=parameters, redshift=args.z, e_f=args.e_f, Tplunge=T)
+        np.savez(os.path.join(current_folder, "snr.npz"), snr=SNR, parameters=parameters, redshift=args.z, e_f=args.e_f, Tplunge=T, names=param_names)
         
         calculate_fisher = bool(args.calculate_fisher)
         if args.calculate_fisher:
@@ -427,14 +427,14 @@ if __name__ == "__main__":
             errors_df = pd.DataFrame(errors_df)
             errors_df.to_markdown(os.path.join(current_folder, "summary.md"), floatfmt=".10e")
             # save the covariance matrix and the SNR to npz file
-            Sigma = cov[6:8, 6:8]
+            ind_sky = [param_names.index('qS'), param_names.index('phiS')]
+            Sigma = cov[ind_sky[0]:ind_sky[1]+1, ind_sky[0]:ind_sky[1]+1]
             err_sky_loc = 2 * np.pi * np.sin(qS) * np.sqrt(np.linalg.det(Sigma)) * (180.0 / np.pi) ** 2
             np.savez(os.path.join(current_folder, "results.npz"), gamma=fim, cov=cov, snr=SNR, fisher_params=fisher_params, errors=errors, relative_errors=relative_errors, names=param_names, source_frame_cov=source_frame_cov, err_sky_loc=err_sky_loc, redshift=args.z, e_f=args.e_f)
             print("Saved results to", current_folder)
             print("*************************************")
             
-
-    # Plot waveform in time domain
+    # Plot waveform snr accumulation over time
     N = len(waveform_out[0])
     accumulation_index = np.arange(N//10,len(waveform_out[0]), N//10, dtype=int)
     accumulation_time = accumulation_index * args.dt
@@ -450,181 +450,6 @@ if __name__ == "__main__":
     plt.tight_layout()
     plt.savefig(os.path.join(args.repo, "accumulated_snr.png"))
     plt.close("all")
-    # ============================================
-    # POSTPROCESSING: Aggregate all realizations
-    # ============================================
-    print("\n" + "="*50)
-    print("POSTPROCESSING: Aggregating all realizations")
-    print("="*50)
-    
-    import glob
-    import h5py
-    
-    # Create HDF5 file for aggregated results
-    h5_filename = os.path.join(args.repo, "aggregated_results.h5")
-    with h5py.File(h5_filename, "w") as h5f:
-        # Get list of realization folders
-        realization_folders = sorted([d for d in glob.glob(os.path.join(args.repo, "realization_*")) if os.path.isdir(d)])
-        print(f"Found {len(realization_folders)} realizations to process")
-        
-        # Load SNR data
-        snr_list = np.asarray([np.load(el)["snr"] for el in sorted(glob.glob(os.path.join(args.repo, "*/snr.npz")))])
-        detector_params = np.asarray([np.load(el)["parameters"] for el in sorted(glob.glob(os.path.join(args.repo, "*/snr.npz")))])
-        
-        redshift = np.load(sorted(glob.glob(os.path.join(args.repo, "*/snr.npz")))[0])["redshift"]
-        e_f_val = np.load(sorted(glob.glob(os.path.join(args.repo, "*/snr.npz")))[0])["e_f"]
-        Tpl_val = np.load(sorted(glob.glob(os.path.join(args.repo, "*/snr.npz")))[0])["Tplunge"]
-        
-        # Prepare source frame parameters
-        source_params = detector_params[0].copy()
-        source_params[0] = source_params[0] / (1 + redshift)
-        source_params[1] = source_params[1] / (1 + redshift)
-        
-        # Extract parameters
-        lum_dist = detector_params[:, 6]
-        sky_loc = detector_params[:, 7:9]
-        spin_loc = detector_params[:, 9:11]
-        detector_params_ref = detector_params[0]
-        
-        # Prepare result dictionary
-        result = {
-            "m1": source_params[0],
-            "m2": source_params[1],
-            "a": source_params[2] * source_params[5],
-            "p0": source_params[3],
-            "e0": source_params[4],
-            "DL": source_params[6],
-            "e_f": e_f_val,
-            "Tpl": Tpl_val,
-            "redshift": redshift,
-            "lum_dist": lum_dist,
-            "snr": snr_list,
-            "sky_loc": sky_loc,
-            "spin_loc": spin_loc,
-            "accumulation_time": accumulation_time,
-            "snr_accumation": snr_accumation,
-        }
-        
-        # Store SNR results in HDF5
-        grp = h5f.create_group("SNR_analysis")
-        for k, v in result.items():
-            grp.create_dataset(k, data=v)
-        
-        # SNR histogram
-        plt.figure(figsize=(8, 6))
-        plt.hist(snr_list, bins=30, edgecolor='black', alpha=0.7)
-        plt.xlabel('SNR')
-        plt.ylabel('Counts')
-        plt.title(f'SNR Distribution (N={len(snr_list)})')
-        plt.grid(True, alpha=0.3)
-        plt.tight_layout()
-        plt.savefig(os.path.join(args.repo, "snr_histogram.png"), dpi=300)
-        plt.close()
-        print("Saved SNR histogram")
-        
-        # Check if Fisher matrix results exist
-        fisher_results = sorted(glob.glob(os.path.join(args.repo, "*/results.npz")))
-        
-        if len(fisher_results) > 0 and args.calculate_fisher:
-            print(f"\nProcessing Fisher matrix results ({len(fisher_results)} realizations)")
-            
-            # Load Fisher matrix data
-            source_cov = np.asarray([np.load(el)["source_frame_cov"] for el in fisher_results])
-            detector_cov = np.asarray([np.load(el)["cov"] for el in fisher_results])
-            fish_params = np.asarray([np.load(el)["fisher_params"] for el in fisher_results])
-            err_sky_loc = np.asarray([np.load(el)["err_sky_loc"] for el in fisher_results])
-            names = np.asarray([np.load(el)["names"] for el in fisher_results])[0]
-            
-            # Transform to source frame for masses
-            fish_params[:, 0] = fish_params[:, 0] / (1 + redshift)
-            fish_params[:, 1] = fish_params[:, 1] / (1 + redshift)
-            
-            # Calculate measurement precision
-            measurement_precision = np.asarray([np.sqrt(np.diag(source_cov[ii])) for ii in range(len(fish_params))])
-            detector_measurement_precision = np.asarray([np.sqrt(np.diag(detector_cov[ii])) for ii in range(len(fish_params))])
-            
-            # Prepare parameter names for Fisher analysis
-            fisher_names = names.copy()
-            fisher_names[6] = "Omega"  # Sky location
-            fisher_names[7] = "iota"   # Inclination
-            fisher_names = fisher_names[:8]  # Keep only up to inclination
-            
-            # Update sky location and inclination errors
-            measurement_precision[:, 6] = err_sky_loc
-            detector_measurement_precision[:, 6] = err_sky_loc
-            measurement_precision[:, 7] = measurement_precision[:, 8]
-            detector_measurement_precision[:, 7] = detector_measurement_precision[:, 8]
-            
-            # Create Fisher analysis group in HDF5
-            fisher_grp = h5f.create_group("Fisher_analysis")
-            fisher_grp.create_dataset("fisher_params", data=fish_params)
-            fisher_grp.create_dataset("measurement_precision_source", data=measurement_precision)
-            fisher_grp.create_dataset("measurement_precision_detector", data=detector_measurement_precision)
-            fisher_grp.create_dataset("param_names", data=np.asarray(fisher_names, dtype=h5py.string_dtype(encoding='utf-8')))
-            
-            # Generate plots for each parameter
-            for ii, param_name in enumerate(fisher_names):
-                error_source = measurement_precision[:, ii]
-                error_detector = detector_measurement_precision[:, ii]
-                
-                # Determine if relative or absolute error
-                if (param_name == "M") or (param_name == "mu"):
-                    error_source_plot = error_source / fish_params[:, ii]
-                    error_detector_plot = error_detector / detector_params_ref[ii]
-                    xlabel = f'Relative error {param_name}'
-                    group_name = f"relative_errors_{param_name}"
-                else:
-                    error_source_plot = error_source
-                    error_detector_plot = error_detector
-                    xlabel = f'Absolute error {param_name}'
-                    group_name = f"absolute_errors_{param_name}"
-                
-                # Create parameter group
-                param_grp = fisher_grp.create_group(group_name)
-                param_grp.create_dataset("error_source", data=error_source_plot)
-                param_grp.create_dataset("error_detector", data=error_detector_plot)
-                
-                # Histogram plot
-                plt.figure(figsize=(8, 6))
-                plt.hist(error_source_plot, bins=30, alpha=0.6, label='Source frame', edgecolor='black')
-                plt.hist(error_detector_plot, bins=30, alpha=0.6, label='Detector frame', edgecolor='black')
-                plt.xlabel(xlabel)
-                plt.ylabel('Counts')
-                plt.title(f'Error Distribution: {param_name}')
-                plt.legend()
-                plt.grid(True, alpha=0.3)
-                plt.tight_layout()
-                plt.savefig(os.path.join(args.repo, f"{param_name}_histogram.png"), dpi=300)
-                plt.close()
-                
-                # SNR vs error plot
-                plt.figure(figsize=(8, 6))
-                plt.plot(snr_list, error_source_plot, 'o', label='Source frame', alpha=0.6)
-                plt.plot(snr_list, error_detector_plot, 'x', label='Detector frame', alpha=0.6)
-                
-                # Add scaling reference lines
-                snr_vec = np.linspace(np.min(snr_list), np.max(snr_list), len(lum_dist))
-                if param_name == "DL":
-                    plt.plot(snr_vec, lum_dist / snr_vec, 'r--', label='d/SNR')
-                else:
-                    plt.plot(snr_vec, 1 / snr_vec, 'r--', label='1/SNR')
-                
-                plt.xlabel('SNR')
-                plt.ylabel(xlabel)
-                plt.title(f'SNR vs Error: {param_name}')
-                plt.legend()
-                plt.grid(True, alpha=0.3)
-                plt.xscale('log')
-                plt.yscale('log')
-                plt.tight_layout()
-                plt.savefig(os.path.join(args.repo, f"snr_{param_name}.png"), dpi=300)
-                plt.close()
-            
-            print(f"Saved Fisher matrix analysis plots for {len(fisher_names)} parameters")
-        else:
-            print("No Fisher matrix results found or calculate_fisher=False. Skipping Fisher analysis.")
-    
-    print(f"\nAggregated results saved to {h5_filename}")
     
     end_script = time.time()
     print("Total time taken for the script: ", end_script - start_script)

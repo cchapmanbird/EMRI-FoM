@@ -100,7 +100,7 @@ singularity shell --writable --nv --fakeroot fom
 Then you can install your favorite packages:
 ```
 python -m pip install --upgrade pip
-python -m pip install --no-cache-dir nvidia-cuda-runtime-cu12 astropy eryn fastemriwaveforms-cuda12x multiprocess optax matplotlib scipy jupyter interpax numba Cython lisaanalysistools tabulate scienceplots healpy pandas
+python -m pip install --no-cache-dir nvidia-cuda-runtime-cu12 astropy eryn fastemriwaveforms-cuda12x multiprocess optax matplotlib scipy jupyter interpax numba Cython lisaanalysistools tabulate scienceplots healpy pandas filelock
 python -c "import few; few.get_backend('cuda12x'); print('FEW installation successful')"
 
 # Set compilers explicitly and unset conda variables
@@ -143,7 +143,7 @@ srun --partition=short --time=12:00:00 --pty bash -i -l
 python -m venv fom_venv/
 source fom_venv/bin/activate
 python -m pip install --upgrade pip
-python -m pip install --no-cache-dir nvidia-cuda-runtime-cu12 astropy eryn fastemriwaveforms-cuda12x multiprocess optax matplotlib scipy jupyter interpax numba Cython lisaanalysistools tabulate scienceplots healpy pandas
+python -m pip install --no-cache-dir nvidia-cuda-runtime-cu12 astropy eryn fastemriwaveforms-cuda12x multiprocess optax matplotlib scipy jupyter interpax numba Cython lisaanalysistools tabulate scienceplots healpy pandas filelock
 jupyter lab --ip="*" --no-browser
 ssh -NL 8888:wn-la-01:8888 spider
 ```
