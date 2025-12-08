@@ -6,7 +6,7 @@ import numpy as np
 
 import astropy.units as u
 from astropy.cosmology import Planck18, z_at_value, FlatLambdaCDM
-ref_cosmo = FlatLambdaCDM(H0=70, Om0=0.3)
+ref_cosmo = Planck18
 
 def get_redshift(distance):
     return (z_at_value(ref_cosmo.luminosity_distance, distance * u.Gpc )).value

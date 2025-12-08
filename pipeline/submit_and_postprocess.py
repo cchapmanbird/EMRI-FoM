@@ -10,11 +10,14 @@ Usage:
     # Submit PE jobs
     python submit_and_postprocess.py --mode pe [--test]
     
-    # Postprocess collected results
-    python submit_and_postprocess.py --mode postprocess --parallel --num-jobs 128 --h5-output retry_so3_results.h5
+    # Postprocess collected results sequentially
+    python submit_and_postprocess.py --mode postprocess
     
-    # Combined: Submit jobs then postprocess
-    python submit_and_postprocess.py --mode snr --postprocess-after
+    # Submit postprocessing job to SLURM
+    python submit_and_postprocess.py --mode postprocess --submit
+    
+    # Postprocess with parallel SLURM jobs
+    python submit_and_postprocess.py --mode postprocess --parallel --num-jobs 32
 """
 
 import os
@@ -117,7 +120,7 @@ echo "Job ended."
         return None
 
 
-def generate_snr_sources(test_mode=False, repo_root="production_snr_", psd_file="TDI2_AE_psd.npy"):
+def generate_snr_sources(test_mode=False, repo_root="snr_", psd_file="TDI2_AE_psd.npy"):
     """
     Generate source parameters for SNR calculations.
     Based on pipeline_snr.py logic.
@@ -131,7 +134,7 @@ def generate_snr_sources(test_mode=False, repo_root="production_snr_", psd_file=
     
     sources = []
     
-    with open("so3_snr_sources.json", "r") as f:
+    with open("so3_sources_Dec8.json", "r") as f:
         source_dict = json.load(f)
     
     for key, params in source_dict.items():
@@ -552,6 +555,54 @@ echo "Postprocess job {job_num} completed"
     return job_ids
 
 
+def submit_postprocess_job(h5_output="so3_results.h5", partition="normal"):
+    """
+    Submit a single SLURM job that runs postprocess_snr_inference_so3.py
+    
+    Args:
+        h5_output (str): Output HDF5 file path
+        partition (str): SLURM partition to use
+    """
+    job_script = "slurm_postprocess_main.sh"
+    
+    script_content = f"""#!/bin/bash
+#SBATCH -p {partition}
+#SBATCH --mem=64G
+#SBATCH -c 8
+#SBATCH -e postprocess_main.err
+#SBATCH -o postprocess_main.out
+#SBATCH --job-name=EMRI_postprocess_main
+#SBATCH -t 24:00:00
+
+cd $HOME/GitHub/EMRI-FoM/pipeline/
+
+# Run the full postprocessing script
+python postprocess_snr_inference_so3.py
+
+echo "Postprocessing job completed"
+"""
+    
+    with open(job_script, 'w') as f:
+        f.write(script_content)
+    
+    os.chmod(job_script, 0o755)
+    
+    try:
+        result = subprocess.run(["sbatch", job_script], capture_output=True, text=True, check=True)
+        job_id_slurm = result.stdout.strip().split()[-1]
+        print(f"✓ Submitted postprocessing job: {job_id_slurm}")
+        print(f"  Script: postprocess_snr_inference_so3.py")
+        print(f"  Output file: postprocess_main.out")
+        print(f"  Error file: postprocess_main.err")
+        os.remove(job_script)
+        return job_id_slurm
+    except subprocess.CalledProcessError as e:
+        print(f"✗ Failed to submit postprocessing job: {e}")
+        print(f"  STDOUT: {e.stdout}")
+        print(f"  STDERR: {e.stderr}")
+        return None
+
+
 def postprocess_sequential(h5_output="so3_results.h5"):
     """
     Postprocess results sequentially (in current process).
@@ -566,11 +617,11 @@ def postprocess_sequential(h5_output="so3_results.h5"):
     print(f"\nStarting sequential postprocessing of {len(list_folders)} sources...")
     
     # Check if HDF5 file already exists
-    if os.path.exists(h5_path):
-        print(f"HDF5 file {h5_path} already exists. Appending...")
+    if os.path.exists(h5_output):
+        print(f"HDF5 file {h5_output} already exists. Appending...")
         mode = "a"
     else:
-        print(f"Creating new HDF5 file {h5_path}...")
+        print(f"Creating new HDF5 file {h5_output}...")
         mode = "w"
     
     processed = 0
@@ -624,11 +675,14 @@ Examples:
   # Submit PE calculation jobs (test mode)
   python submit_and_postprocess.py --mode pe --test
   
-  # Postprocess results sequentially
+  # Postprocess results sequentially in current process
   python submit_and_postprocess.py --mode postprocess
   
-  # Postprocess results with parallel SLURM jobs
-  python submit_and_postprocess.py --mode postprocess --parallel --num-jobs 4
+  # Submit postprocessing as a single SLURM job
+  python submit_and_postprocess.py --mode postprocess --submit
+  
+  # Postprocess results with parallel SLURM jobs (32 jobs)
+  python submit_and_postprocess.py --mode postprocess --parallel --num-jobs 32
   
   # Check current queue status
   python submit_and_postprocess.py --check-queue
@@ -648,6 +702,8 @@ Examples:
     
     parser.add_argument("--parallel", action="store_true",
                        help="Use parallel SLURM jobs for postprocessing (with --mode postprocess)")
+    parser.add_argument("--submit", action="store_true",
+                       help="Submit postprocessing as a SLURM job instead of running sequentially (with --mode postprocess)")
     parser.add_argument("--num-jobs", type=int, default=4,
                        help="Number of parallel postprocessing jobs (default: 4)")
     parser.add_argument("--h5-output", type=str, default="so3_results.h5",
@@ -682,6 +738,11 @@ Examples:
             print(f"\nSubmitted {len(job_ids)} postprocessing jobs")
             if job_ids:
                 print(f"Monitor with: squeue -j {','.join(job_ids)}")
+        elif args.submit:
+            print(f"Submitting postprocessing job (postprocess_snr_inference_so3.py)...")
+            job_id = submit_postprocess_job(h5_output=args.h5_output, partition=args.partition)
+            if job_id:
+                print(f"Monitor with: squeue -j {job_id}")
         else:
             postprocess_sequential(h5_output=args.h5_output)
         return
@@ -692,10 +753,10 @@ Examples:
     
     # Generate sources based on mode
     if args.mode == "snr":
-        repo_root = "test_snr_" if args.test else "production_snr_"
+        repo_root = "test_snr_" if args.test else "snr_"
         sources = generate_snr_sources(test_mode=args.test, repo_root=repo_root, psd_file=args.psd)
     else:  # pe mode
-        repo_root = "test_pe_" if args.test else "production_inference_"
+        repo_root = "test_pe_" if args.test else "inference_"
         sources = generate_pe_sources(test_mode=args.test, repo_root=repo_root)
     
     print(f"\nSubmitting {len(sources)} jobs in {args.mode} mode...")

@@ -319,7 +319,7 @@ if __name__ == "__main__":
     # source_frame_m2 = parameters[1] / (1 + redshift)
     # plt.figure(); plt.loglog(redshift, d_L); plt.xlabel("Redshift"); plt.grid(); plt.savefig(os.path.join(args.repo, "snr_vs_redshift.png"))
     # if low eccentricity, use the log_e transformation
-    if (args.e_f < 1e-3) and (args.e_f != 0.0):
+    if (args.e_f != 0.0):
         log_e = True
     else:
         log_e = False
@@ -378,6 +378,14 @@ if __name__ == "__main__":
         accumulation_index = np.arange(len(waveform_out[0])//20,len(waveform_out[0]),len(waveform_out[0])//20, dtype=int)
 
         np.savez(os.path.join(current_folder, "snr.npz"), snr=SNR, parameters=parameters, redshift=args.z, e_f=args.e_f, Tplunge=T, names=param_names)
+        # save to h5 file
+        with h5py.File(os.path.join(current_folder, "snr.h5"), "w") as f:
+            f.create_dataset("snr", data=SNR)
+            f.create_dataset("parameters", data=parameters)
+            f.create_dataset("param_names", data=param_names)
+            f.create_dataset("redshift", data=args.z)
+            f.create_dataset("e_f", data=args.e_f)
+            f.create_dataset("T", data=T)
         
         calculate_fisher = bool(args.calculate_fisher)
         if args.calculate_fisher:
@@ -431,6 +439,15 @@ if __name__ == "__main__":
             Sigma = cov[ind_sky[0]:ind_sky[1]+1, ind_sky[0]:ind_sky[1]+1]
             err_sky_loc = 2 * np.pi * np.sin(qS) * np.sqrt(np.linalg.det(Sigma)) * (180.0 / np.pi) ** 2
             np.savez(os.path.join(current_folder, "results.npz"), gamma=fim, cov=cov, snr=SNR, fisher_params=fisher_params, errors=errors, relative_errors=relative_errors, names=param_names, source_frame_cov=source_frame_cov, err_sky_loc=err_sky_loc, redshift=args.z, e_f=args.e_f)
+            # save to h5 file
+            with h5py.File(os.path.join(current_folder, "results.h5"), "w") as f:
+                f.create_dataset("gamma", data=fim)
+                f.create_dataset("cov", data=cov)
+                f.create_dataset("snr", data=SNR)
+                f.create_dataset("fisher_params", data=fisher_params)
+                f.create_dataset("relative_errors", data=relative_errors)
+                f.create_dataset("errors", data=errors)
+            
             print("Saved results to", current_folder)
             print("*************************************")
             
