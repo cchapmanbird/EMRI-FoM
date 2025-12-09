@@ -4,10 +4,10 @@ Submit postprocessing jobs to SLURM for SNR folders.
 
 Usage:
     # Submit postprocessing jobs for snr_0 to snr_57
-    python submit_and_postprocess.py --num-jobs 58
+    python submit_postprocess_snr.py --num-jobs 58
     
     # Check current queue status
-    python submit_and_postprocess.py --check-queue
+    python submit_postprocess_snr.py --check-queue
 """
 
 import os
@@ -69,13 +69,13 @@ def main():
         epilog="""
 Examples:
   # Submit postprocessing jobs for all 58 SNR folders
-  python submit_and_postprocess.py --num-jobs 58
+  python submit_postprocess_snr.py --num-jobs 58
   
   # Check current queue status
-  python submit_and_postprocess.py --check-queue
+  python submit_postprocess_snr.py --check-queue
   
   # Submit for specific range (e.g., snr_0 to snr_10)
-  python submit_and_postprocess.py --num-jobs 11
+  python submit_postprocess_snr.py --num-jobs 11
         """
     )
     

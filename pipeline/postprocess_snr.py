@@ -60,7 +60,8 @@ if __name__ == "__main__":
     print("Finished processing SNR data.")
     snr_dict['m1'] = snr_dict['source_params'][0,0,0]
     snr_dict['m2'] = snr_dict['source_params'][0,0,1]
-    snr_dict['a'] = snr_dict['source_params'][0,0,2]
+    # add the sign to the spin
+    snr_dict['a'] = snr_dict['source_params'][0,0,2] * snr_dict['source_params'][0,0,5]
     snr_dict['p0'] = snr_dict['source_params'][0,0,3]
     snr_dict['e0'] = snr_dict['source_params'][0,0,4]
     snr_dict['dist'] = snr_dict['dist'][:,0]
