@@ -11,12 +11,12 @@ from scipy.interpolate import griddata
 from matplotlib.colors import ListedColormap
 import os
 import h5py
-
+import time 
 full_names = np.array(['m1','m2','a','p0','e0','xI0','dist','qS','phiS','qK','phiK','Phi_phi0','Phi_theta0','Phi_r0', 'A', 'nr'])
-list_folders = sorted(glob.glob("./production_inference*/*/")) + sorted(glob.glob("./production_snr*/*/"))
+list_folders = sorted(glob.glob("./snr*/*/")) # sorted(glob.glob("./inference*/*/")) + 
 # print(list_folders)
 list_results = []
-h5_path = "so3_results.h5"
+h5_path = "so3_snr_sources_Dec8.h5"
 # check if the HDF5 file already exists
 if os.path.exists(h5_path):
     print(f"HDF5 file {h5_path} already exists.")
@@ -27,10 +27,16 @@ else:
             if os.path.isdir(source) is False:
                 continue
             print(f"Processing {source}")
-            Tpl = float(source.split("T=")[-1].split("_")[0])
-            redshift = np.load(sorted(glob.glob(f"{source}/*/snr.npz"))[0])["redshift"]
-            detector_params = np.asarray([np.load(el)["parameters"] for el in sorted(glob.glob(f"{source}/*/snr.npz"))])
-            e_f = np.load(sorted(glob.glob(f"{source}/*/snr.npz"))[0])["e_f"]
+            tic = time.time()
+            # Tpl = float(source.split("T=")[-1].split("_")[0])
+            # redshift = np.load(sorted(glob.glob(f"{source}/*/snr.npz"))[0])["redshift"]
+            # detector_params = np.asarray([np.load(el)["parameters"] for el in sorted(glob.glob(f"{source}/*/snr.npz"))])
+            # e_f = np.load(sorted(glob.glob(f"{source}/*/snr.npz"))[0])["e_f"]
+            redshift = h5py.File(sorted(glob.glob(f"{source}/*/snr.h5"))[0], "r")["redshift"][()]
+            detector_params = np.asarray([h5py.File(el, "r")["parameters"][()] for el in sorted(glob.glob(f"{source}/*/snr.h5"))])
+            e_f = h5py.File(sorted(glob.glob(f"{source}/*/snr.h5"))[0], "r")["e_f"][()]
+            Tpl = h5py.File(sorted(glob.glob(f"{source}/*/snr.h5"))[0], "r")["T"][()]
+            
             source_params = detector_params[0].copy()
             source_params[0] = source_params[0] / (1 + redshift)
             source_params[1] = source_params[1] / (1 + redshift)
@@ -38,8 +44,15 @@ else:
             sky_loc = detector_params[:,7:9]
             spin_loc = detector_params[:, 9:11]
             detector_params = detector_params[0]
-            snr_list = np.asarray([np.load(el)["snr"] for el in sorted(glob.glob(f"{source}/*/snr.npz"))])
-            
+            toc = time.time()
+            print(f"Loaded source parameters in {toc - tic:.2f} seconds.")
+            tic = time.time()
+            # Load SNRs
+            snr_list = np.asarray([h5py.File(el, "r")["snr"][()] for el in sorted(glob.glob(f"{source}/*/snr.h5"))])
+            # snr_list = np.asarray([np.load(el)["snr"] for el in sorted(glob.glob(f"{source}/*/snr.npz"))])
+            toc = time.time()
+            print(f"Loaded SNRs in {toc - tic:.2f} seconds.")
+            tic = time.time()
             # Prepare result for snr
             result = {}
             result["source_params"] = source_params
@@ -65,15 +78,20 @@ else:
             grp = h5f.create_group(source)
             for k, v in result.items():
                 grp.create_dataset(k, data=v)
-
-            # SNR plot
-            plt.figure()
-            plt.hist(snr_list, bins=30)
-            plt.xlabel('SNR')
-            plt.ylabel('Counts')
-            plt.savefig(f"{source}/snr_histogram.png",dpi=300)
-            plt.figure()
-
+            toc = time.time()
+            print(f"Stored results in {toc - tic:.2f} seconds.")
+            # tic = time.time()
+            # # SNR plot
+            # plt.figure()
+            # plt.hist(snr_list, bins=30)
+            # plt.xlabel('SNR')
+            # plt.ylabel('Counts')
+            # plt.savefig(f"{source}/snr_histogram.png",dpi=300)
+            # plt.figure()
+            # toc = time.time()
+            # print(f"Plotted SNR histogram in {toc - tic:.2f} seconds.")
+            # plt.close('all')
+            
             if "inference" in source:
                 # Fisher matrices and covariances
                 param_names = np.asarray([np.load(el)["names"] for el in sorted(glob.glob(f"{source}/*/results.npz"))])

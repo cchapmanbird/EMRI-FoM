@@ -111,7 +111,10 @@ if __name__ == "__main__":
     for key in source_dict.keys():
         if key == update_key:
             out_dict[key] = source_dict[key].copy()
-            out_dict[key]['z_ref_median'] = snr_dict['redshift_ref_median']
+            out_z = snr_dict['redshift_ref_median']
+            if np.isnan(out_z):
+                out_z = -1.0
+            out_dict[key]['z_ref_median'] = out_z
     
     with open(source_f + "inference_so3_sources_Dec8.json", "w") as f:
         json.dump(out_dict, f, indent=4)
