@@ -1,7 +1,12 @@
 # EMRI Figures of Merit (FoMs) Computation
 
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/cchapmanbird/EMRI-FoM/main?filepath=pipeline/degradation_analysis.ipynb)
+
 This repository contains codes for computing Figures of Merit (FoMs) related to Extreme Mass Ratio Inspirals (EMRIs) and Intermediat Mass Ratio Inspirals (IMRIs). The codes contained in this repository are meant to be run on GPUs and a singularity image can be found [here](https://public.spider.surfsara.nl/project/lisa_nlddpc/emri_fom_container/).
 
+## Interactive Notebooks
+
+Try the **[Detector Degradation Analysis](pipeline/degradation_analysis.ipynb)** notebook interactively in Binder (no installation required) by clicking the badge above, or view it with better rendering on [nbviewer](https://nbviewer.jupyter.org/github/cchapmanbird/EMRI-FoM/blob/main/pipeline/degradation_analysis.ipynb).
 
 ![SNR Figure of Merit Example](pipeline/requirements_results/error_distribution_absolute_errors_a.png)
 ![PE Figure of Merit Example](pipeline/requirements_results/snr_redshift_requirement_allspins.png)
