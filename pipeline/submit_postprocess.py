@@ -4,13 +4,13 @@ Submit postprocessing jobs to SLURM for SNR folders.
 
 Usage:
     # Submit SNR postprocessing jobs for snr_0 to snr_57
-    python submit_postprocess_snr.py snr --num-jobs 58
+    python submit_postprocess.py snr --num-jobs 58
     
     # Submit inference postprocessing jobs for snr_0 to snr_57
-    python submit_postprocess_snr.py inference --num-jobs 58
+    python submit_postprocess.py inference --num-jobs 58
     
     # Check current queue status
-    python submit_postprocess_snr.py snr --check-queue
+    python submit_postprocess.py snr --check-queue
 """
 
 import os
@@ -70,9 +70,9 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python submit_postprocess_snr.py snr --num-jobs 58
-  python submit_postprocess_snr.py inference --num-jobs 58
-  python submit_postprocess_snr.py snr --check-queue
+  python submit_postprocess.py snr --num-jobs 58
+  python submit_postprocess.py inference --num-jobs 58
+  python submit_postprocess.py snr --check-queue
         """
     )
     
