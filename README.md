@@ -1,17 +1,16 @@
 # EMRI Figures of Merit (FoMs) Computation
 
-This repository contains codes for computing Figures of Merit (FoMs) related to Extreme Mass Ratio Inspirals (EMRIs) and Intermediat Mass Ratio Inspirals (IMRIs). The codes contained in this repository are meant to be run on GPUs and a singularity image can be found [here](https://public.spider.surfsara.nl/project/lisa_nlddpc/emri_fom_container/).
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/cchapmanbird/EMRI-FoM/main?filepath=pipeline/degradation_analysis.ipynb)
 
+This repository contains codes for computing Figures of Merit (FoMs) related to Extreme Mass Ratio Inspirals (EMRIs) and Intermediat Mass Ratio Inspirals (IMRIs) for the LISA mission. The codes contained in this repository are meant to be run on GPUs. We provide below information on the installation and how to create a singularity image. An already prepared singularity image can be found at [here](https://public.spider.surfsara.nl/project/lisa_nlddpc/emri_fom_container/).
 
-![SNR Figure of Merit Example](pipeline/requirements_results/error_distribution_absolute_errors_a.png)
-![PE Figure of Merit Example](pipeline/requirements_results/snr_redshift_requirement_allspins.png)
+## Interactive Notebooks
 
-TODO:
-- Create requirements for parameter estimation and upload everything in SO3 https://gitlab.in2p3.fr/LISA/lisa-fom/-/tree/develop?ref_type=heads
-- Quadrupole moment https://arxiv.org/abs/gr-qc/0612029 , mapping in eq 43 of https://arxiv.org/pdf/gr-qc/0510129
-- Check Fisher Information Stability and update with Shubham folder
-- Update response to newest one (Maybe? we can also keep the old response)
-- Check installation instructions
+Try the **[FOM Analysis](pipeline/degradation_analysis.ipynb)** notebook interactively in Binder (no installation required) by clicking the badge above, or view it with better rendering on [nbviewer](https://nbviewer.jupyter.org/github/cchapmanbird/EMRI-FoM/blob/main/pipeline/degradation_analysis.ipynb).
+
+![SNR Figure of Merit Example](pipeline/snr_redshift_vs_m1.png)
+
+![PE Figure of Merit Example](pipeline/precision_vs_m1_relative_precision_m1.png)
 
 ## Installation Instructions
 
