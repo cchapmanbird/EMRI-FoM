@@ -75,8 +75,9 @@ class wave_windowed_truncated():
         # Forward attribute access to base_wave
         return getattr(self.wave_gen, name)
 
-def initialize_waveform_generator(T, dt, esaorbits=True, use_gpu=True, inspiral_kwargs={}, t0=100000.0):
+def initialize_waveform_generator(T, dt, inspiral_kwargs, esaorbits=True, use_gpu=True, t0=100000.0):
     backend = 'gpu' if use_gpu else 'cpu'
+    print("inspiral_kwargs:",inspiral_kwargs)
     temp_wave = GenerateEMRIWaveform("FastKerrEccentricEquatorialFlux", inspiral_kwargs=inspiral_kwargs, force_backend=backend, sum_kwargs=dict(pad_output=True))
     orbits = "esa-trailing-orbits.h5" if esaorbits else "equalarmlength-orbits.h5"
     orbit_file = os.path.join(os.path.dirname(__file__), '..', 'lisa-on-gpu', 'orbit_files', orbits)

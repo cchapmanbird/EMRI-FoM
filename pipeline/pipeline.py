@@ -18,7 +18,7 @@ from common import CosmoInterpolator
 import time
 import matplotlib.pyplot as plt
 from stableemrifisher.plot import CovEllipsePlot, StabilityPlot
-from waveform_utils import initialize_waveform_generator, transf_log_e_wave, generate_random_phases, generate_random_sky_localization, wave_windowed_truncated
+from waveform_utils import *
 from few.utils.geodesic import get_fundamental_frequencies
 from scipy.signal.windows import tukey
 #psd stuff
@@ -72,30 +72,8 @@ def initialize_gpu(args):
 
 from scipy.signal import get_window
 from matplotlib.colors import LogNorm
+
     
-
-class KerrEccEqFluxPowerLaw(KerrEccEqFlux):
-    def modify_rhs(self, ydot, y):
-        # in-place modification of the derivatives
-        LdotAcc = (
-            self.additional_args[0]
-            * pow(y[0] / 10.0, self.additional_args[1])
-            * 32.0
-            / 5.0
-            * pow(y[0], -7.0 / 2.0)
-        )
-        dL_dp = (
-            -3 * pow(a, 3)
-            + pow(a, 2) * (8 - 3 * y[0]) * np.sqrt(y[0])
-            + (-6 + y[0]) * pow(y[0], 2.5)
-            + 3 * a * y[0] * (-2 + 3 * y[0])
-        ) / (2.0 * pow(2 * a + (-3 + y[0]) * np.sqrt(y[0]), 1.5) * pow(y[0], 1.75))
-        # transform back to pdot from Ldot and add GW contribution
-        ydot[0] = ydot[0] + LdotAcc / dL_dp
-
-
-        
-
 
 if __name__ == "__main__":
     start_script = time.time()
@@ -109,7 +87,7 @@ if __name__ == "__main__":
 
     A = 0
     nr = args.nr
-    KerrEccEqFluxPowerLaw().additional_args = (A, nr)  # A is the power-law coefficient, nr is the power-law exponent
+    # KerrEccEqFluxPowerLaw().additional_args = (A, nr)  # A is the power-law coefficient, nr is the power-law exponent
 
     inspiral_kwargs_back = {"err": 1e-13,"integrate_backwards": True, "func":  KerrEccEqFluxPowerLaw}
     inspiral_kwargs_forward = {"err": 1e-13,"integrate_backwards": False, "func":  KerrEccEqFluxPowerLaw}     
@@ -311,6 +289,16 @@ if __name__ == "__main__":
     plt.tight_layout()
     plt.savefig(os.path.join(args.repo, "waveform_spectrogram.png"))
     plt.close("all")
+
+    # test with and without Amplitude environment
+    if args.power_law:
+        test_parameters = np.asarray([M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0, 1e-5, 8.0])
+        test_waveform_1 = model(*test_parameters)
+        test_parameters = np.asarray([M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0, 0.0, 8.0])
+        test_waveform_2 = model(*test_parameters)
+        fft_waveform = [xp.fft.rfft(el[0]) * args.dt for el in [test_waveform_2, test_waveform_1]]
+        olap = xp.sum(fft_waveform[0] * fft_waveform[1].conj())/(xp.sum(xp.abs(fft_waveform[0])**2) * xp.sum(xp.abs(fft_waveform[1])**2))**0.5
+        print("Overlap between GR and beyond-GR waveform with A=0.1:", olap.get())
     
     # check horizon d_L
     # d_L = inner_product(waveform_out, waveform_out, psd_wrap(freqs[1:]), dt=args.dt, use_gpu=args.use_gpu)**0.5/20.
