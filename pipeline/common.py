@@ -167,46 +167,101 @@ if __name__ == "__main__":
     z = 0.1
     l = cosmo.get_luminosity_distance(z)
     print("Luminosity distance [Gpc]: ", l, "Redshift", z)
-    # z = 1.0
-    # l = cosmo.get_luminosity_distance(z)
-    # print("Luminosity distance [Gpc]: ", l, "Redshift", z)
+
+    # ===========================================
+    # Correct 2x2 Jacobian test (isolated M, dL)
+    # ===========================================
+    print("\n--- 2x2 Jacobian Test (M_det, d_L) -> (M_source, d_L) ---")
+    m_det = 1.e6  # detector frame mass
+    m_source_test = m_det / (1 + z)
+    dz_dl = cosmo.get_dz_dl_interp(z)
+
+    sigma_m_det = 1e-3 * m_det
+    sigma_l_test = 0.1 * l
+
+    # 2x2 Jacobian: rows are detector params, cols are source params
+    # theta_d = (M_d, d_L), theta_s = (M_s, d_L)
+    # M_d = M_s * (1+z(d_L))
+    # dM_d/dM_s = (1+z), dM_d/dd_L = M_s * dz/dd_L
+    J_2x2 = np.array([
+        [(1 + z), m_source_test * dz_dl],
+        [0.0,     1.0]
+    ])
+
+    # Fisher matrix in detector frame
+    Gamma_2x2 = np.diag([1/sigma_m_det**2, 1/sigma_l_test**2])
+
+    # Transform to source frame: Gamma_s = J^T @ Gamma_d @ J
+    Gamma_source_2x2 = J_2x2.T @ Gamma_2x2 @ J_2x2
+    Cov_source_2x2 = np.linalg.inv(Gamma_source_2x2)
+    sigma_m_source_jacobian = np.sqrt(Cov_source_2x2[0, 0])
+
+    # Analytical formula for comparison
+    sigma_z = np.abs(dz_dl) * sigma_l_test
+    sigma_m_source_analytical = np.sqrt((sigma_m_det / (1+z))**2 + (m_source_test / (1+z) * sigma_z)**2)
+
     
-    m = 1.e6
-    msource = m / (1+z)
-    sigma_m_values = np.logspace(-5, -2, 4) * m
+    print(f"Jacobian method: σ_M_source = {sigma_m_source_jacobian:.6e}")
+    print(f"Implemented:     σ_M_source = {cosmo.transform_mass_uncertainty(m_det, sigma_m_det, z, sigma_l_test):.6e}")
+    print(f"Analytical:      σ_M_source = {sigma_m_source_analytical:.6e}")
+    print(f"Relative diff:   {np.abs(1 - sigma_m_source_jacobian/sigma_m_source_analytical):.2e}")
+    print("--- End 2x2 Test ---\n")
+    
+    # ===========================================
+    # Full 12x12 Jacobian test (with other params fixed)
+    # ===========================================
+    Gamma = np.diag(np.ones(12)) * 1e30
+    Gamma[0,0] = 1 / sigma_m_det**2
+    Gamma[5,5] = 1 / sigma_l_test**2
+    J = cosmo.jacobian(m_source_test, 0.0, z)
+    Cov = np.linalg.inv(J.T @ Gamma @ J)
+    new_sigma_m = np.sqrt(Cov[0, 0])
+    print(f"12x12:      σ_M_source = {new_sigma_m:.6e}")
+
+    msource = m_det / (1+z)
+    sigma_m_values = np.logspace(-5, -2, 4) * m_det
     sigma_l_values = np.logspace(-3, -0.5, 20) * l
     sigma_msource_values = np.zeros((len(sigma_m_values), len(sigma_l_values)))
     print("of order one = ",np.abs(cosmo.get_dz_dlum(cosmo.get_luminosity_distance(z)))/ z * l)
     for i, sigma_m in enumerate(sigma_m_values):
         for j, sigma_l in enumerate(sigma_l_values):
-            Gamma = np.eye(12)
-            Gamma[0,0] = Gamma[0,0] / sigma_m**2
-            Gamma[5,5] = Gamma[5,5] / sigma_l**2
-            J = cosmo.jacobian(msource, 10.0, z)
+            # Set other parameters to very large Fisher info (perfectly known)
+            Gamma = np.diag(np.ones(12)) * 1e30
+            Gamma[0,0] = 1 / sigma_m**2
+            Gamma[5,5] = 1 / sigma_l**2
+            J = cosmo.jacobian(msource, 0.0, z)
             Cov = np.linalg.inv(J.T @ Gamma @ J)
             new_sigma_m = np.sqrt(Cov[0, 0])
-            sigma_msource_values[i, j] = new_sigma_m # 
-    print("check jacobian transformation: ", np.abs(1-new_sigma_m/cosmo.transform_mass_uncertainty(m, sigma_m, z, sigma_l)))
+            sigma_msource_values[i, j] = new_sigma_m
+    print("check jacobian transformation: ", np.abs(1-new_sigma_m/cosmo.transform_mass_uncertainty(m_det, sigma_m, z, sigma_l)))
 
     plt.figure(figsize=(12, 6))
+
+    # Compute the correct asymptotic slope when sigma_L dominates
+    # sigma_Ms/Ms = |dz/dL| * L / (1+z) * sigma_L/L
+    asymptotic_slope = np.abs(dz_dl) * l / (1 + z)
+    print(f"Asymptotic slope when sigma_L dominates: {asymptotic_slope:.4f}")
 
     # First subplot: Relative uncertainty in source mass
     plt.subplot(1, 2, 1)
     for i, sigma_m in enumerate(sigma_m_values):
-        plt.plot(sigma_l_values / l, sigma_msource_values[i, :] / msource, label=f'Sigma_m/m={sigma_m/m:.1e}')
+        plt.plot(sigma_l_values / l, sigma_msource_values[i, :] / msource, label=f'sigma_m/m_det={sigma_m/m_det:.1e}')
+    # Correct asymptote (not diagonal)
+    plt.plot(sigma_l_values / l, asymptotic_slope * (sigma_l_values / l), 'k--', 
+             label=rf'$|dz/dL| \cdot L / (1+z) \cdot \sigma_L/L$ (slope={asymptotic_slope:.3f})')
     plt.xscale('log')
     plt.yscale('log')
     plt.xlabel('Relative uncertainty in luminosity distance')
     plt.ylabel('Relative uncertainty in source mass')
     plt.legend()
     plt.grid(True)
-    plt.title('Relative uncertainty in source mass')
+    plt.title(f'Relative uncertainty in source mass (z={z})')
 
     # Second subplot: Ratio of relative precision
     plt.subplot(1, 2, 2)
     for i, sigma_m in enumerate(sigma_m_values):
-        ratio = (sigma_msource_values[i, :] / msource) / (sigma_m / m)
-        plt.plot(sigma_l_values / l, ratio, label=f'Sigma_m/m={sigma_m/m:.1e}')
+        ratio = (sigma_msource_values[i, :] / msource) / (sigma_m / m_det)
+        plt.plot(sigma_l_values / l, ratio, label=f'sigma_m/m_det={sigma_m/m_det:.1e}')
     plt.xscale('log')
     plt.yscale('log')
     plt.xlabel('Relative uncertainty in luminosity distance')
