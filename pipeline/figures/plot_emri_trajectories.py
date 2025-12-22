@@ -242,8 +242,7 @@ cmap_discrete = ListedColormap(colors)
 # PLOT 1: Time-Frequency Space
 # -----------------------------------------------------------------------------
 print("\nGenerating time-frequency plot...")
-
-fig1 = plt.figure()
+fig1 = plt.figure(figsize=(3.25, 2*1.5))
 
 sm = cm.ScalarMappable(cmap=cmap_discrete, norm=plt.Normalize(vmin=0, vmax=len(m1_values_unique) - 1))
 sm.set_array([])
@@ -274,7 +273,7 @@ lab = [f'$10^{int(np.log10(m))}$' for m in m1_values_unique]
 if m1_values_unique[0] == 5e4:
     lab[0] = r'$5\times 10^{4}$'
 cbar.ax.set_yticklabels(lab)
-cbar.set_label(r'Primary Mass $M_1$ [$M_\odot$]')
+cbar.set_label(r'$m_1$ [$M_\odot$]',labelpad=-6)
 plt.ylim(1e-4, 1.0)
 
 # Add Nyquist frequency lines
@@ -284,7 +283,15 @@ linestyles = ['-', '-.', ':']
 for ff, ls in zip(nyquist_f, linestyles[:len(nyquist_f)]):
     plt.axhline(ff, color='r', linestyle=ls, label=f'$\\Delta t={1/(2*ff):.1f}$ s')
 
-plt.legend(title='Nyquist Frequencies', bbox_to_anchor=(0.5, 1.05), loc='lower center', ncol=3)
+# Legends
+nyquist_legend = plt.legend(title='Nyquist Frequencies', bbox_to_anchor=(0.5, 1.01), loc='lower center', ncol=3, frameon=False)
+plt.gca().add_artist(nyquist_legend)
+line_legend_elements = [
+    Line2D([0], [0], color='k', linestyle='-', linewidth=2, label='Prograde $a = +0.99$'),
+    Line2D([0], [0], color='k', linestyle='--', linewidth=2, label='Retrograde $a = -0.99$'),
+]
+plt.legend(handles=line_legend_elements, bbox_to_anchor=(0.5, 1.18), loc='lower center', ncol=2, frameon=False)
+
 plt.tight_layout()
 
 plt.savefig(os.path.join(script_dir, "emri_trajectories_time_frequency.png"), dpi=300, bbox_inches='tight')
@@ -316,13 +323,13 @@ for key, values in store_results.items():
     linestyle = '-' if a > 0 else '--'
     
     if (Tpl == 0.25)and(e_f == 0.01):
-        plt.plot(frequency_gw_2phi, e_back, linestyle, color=color, alpha=0.7, linewidth=4)
+        plt.plot(frequency_gw_2phi, e_back, linestyle, color=color, alpha=0.7, linewidth=2)
     
-    # Add markers for starting points
-    if a > 0.0:
-        plt.scatter(frequency_gw_2phi[0], e_back[0], color=color, marker='^', s=80)
-    else:
-        plt.scatter(frequency_gw_2phi[0], e_back[0], color=color, marker='v', s=80)
+    # # Add markers for starting points
+    # if a > 0.0:
+    #     plt.scatter(frequency_gw_2phi[0], e_back[0], color=color, marker='^', s=80)
+    # else:
+    #     plt.scatter(frequency_gw_2phi[0], e_back[0], color=color, marker='v', s=80)
 
 plt.xlabel("GW Frequency [Hz]")
 plt.ylabel("Eccentricity")
@@ -333,22 +340,125 @@ lab2 = [f'$10^{int(np.log10(m))}$' for m in m1_values_unique]
 if m1_values_unique[0] == 5e4:
     lab2[0] = r'$5\times 10^{4}$'
 cbar2.ax.set_yticklabels(lab2)
-cbar2.set_label(r'Primary Mass $M_1$ [$M_\odot$]')
+cbar2.set_label(r'$m_1$ [$M_\odot$]', labelpad=-4)
 
 plt.xscale('log')
 plt.yscale('log')
 plt.xlim(1e-4, 1.0)
 
 legend_elements = [
-    Line2D([0], [0], color='k', marker='^', linestyle='None', markersize=8, label='Prograde $a = +0.99$'),
-    Line2D([0], [0], color='k', marker='v', linestyle='None', markersize=8, label='Retrograde $a = -0.99$'),
+    Line2D([0], [0], color='k', linestyle='-', linewidth=2, label='Prograde $a = +0.99$'),
+    Line2D([0], [0], color='k', linestyle='--', linewidth=2, label='Retrograde $a = -0.99$'),
 ]
-plt.legend(handles=legend_elements, ncols=1, loc='upper right')
+plt.legend(handles=legend_elements, ncols=1, bbox_to_anchor=(0.5, 1.05), loc='lower center')
 
 plt.tight_layout()
 
 plt.savefig(os.path.join(script_dir, "emri_trajectories_frequency_eccentricity.png"), dpi=300, bbox_inches='tight')
 print("Saved: figures/emri_trajectories_frequency_eccentricity.png")
+
+
+# -----------------------------------------------------------------------------
+# PLOT 1 and 2: Combined Time-Frequency and Frequency-Eccentricity Space
+# -----------------------------------------------------------------------------
+print("\nGenerating combined time-frequency and frequency-eccentricity plot...")
+
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(3.25*2, 2*1.1), sharey=True)
+
+sm = cm.ScalarMappable(cmap=cmap_discrete, norm=plt.Normalize(vmin=0, vmax=len(m1_values_unique) - 1))
+sm.set_array([])
+
+# Subplot 1: Time-Frequency Space
+for key, values in store_results.items():
+    t_back, p_back, e_back, _, frequency_gw_2phi = values["results"]
+    a = values["a"]
+    e_f = values["e_f"]
+    m_1 = values["m1"]
+    m_2 = values["m2"]
+    
+    color = color_dict[m_1]
+    linestyle = '-' if a > 0 else '--'
+    
+    # Only plot sources with mass ratio ~1e-3 and zero eccentricity
+    mass_ratio = m_2 / m_1
+    if np.isclose(mass_ratio, 1e-3, rtol=0.1) and e_f == 0.0:
+        ax1.plot((t_back[0] - t_back + t_back[-1]) / YRSID_SI, frequency_gw_2phi,
+                 color=color, alpha=0.9, linestyle=linestyle, linewidth=2)
+
+ax1.set_xlabel("Time [years]")
+ax1.set_ylabel("GW Frequency [Hz]")
+ax1.grid(True, alpha=0.3)
+ax1.set_yscale('log')
+ax1.set_ylim(1e-4, 1.0)
+
+# Add Nyquist frequency lines to ax1
+dt_values = sorted(set([v["dt"] for v in store_results.values()]))
+nyquist_f = 1 / (2 * np.array(dt_values))
+linestyles = ['-', '-.', ':']
+for ff, ls in zip(nyquist_f, linestyles[:len(nyquist_f)]):
+    ax1.axhline(ff, color='r', linestyle=ls, label=f'$\\Delta t={1/(2*ff):.1f}$ s')
+
+ax1.legend(title='Nyquist Frequencies', bbox_to_anchor=(0.5, 1.05), loc='lower center', ncol=3)
+
+# # Colorbar for ax1
+# cbar1 = plt.colorbar(sm, ax=ax1, pad=0.02, ticks=range(len(m1_values_unique)))
+# lab = [f'$10^{int(np.log10(m))}$' for m in m1_values_unique]
+# if m1_values_unique[0] == 5e4:
+#     lab[0] = r'$5\times 10^{4}$'
+# cbar1.ax.set_yticklabels(lab)
+# cbar1.set_label(r'Primary Mass $M_1$ [$M_\odot$]')
+
+# Subplot 2: Frequency-Eccentricity Space (with y-axis as GW Frequency, x-axis as Eccentricity)
+sm2 = cm.ScalarMappable(cmap=cmap_discrete, norm=plt.Normalize(vmin=0, vmax=len(m1_values_unique) - 1))
+sm2.set_array([])
+
+for key, values in store_results.items():
+    t_back, _, e_back, _, frequency_gw_2phi = values["results"]
+    a = values["a"]
+    e_f = values["e_f"]
+    m_1 = values["m1"]
+    m_2 = values["m2"]
+    Tpl = values["Tpl"]
+    
+    mass_ratio = m_2 / m_1
+    if not np.isclose(mass_ratio, 1e-3, rtol=0.1):
+        continue
+    
+    color = color_dict.get(m_1, 'gray')
+    linestyle = '-' if a > 0 else '--'
+    
+    if (Tpl == 0.25) and (e_f == 0.01):
+        ax2.plot(e_back, frequency_gw_2phi, linestyle, color=color, alpha=0.7, linewidth=2)
+
+ax2.set_xlabel("Eccentricity")
+# ax2.set_ylabel("GW Frequency [Hz]")  # Shared y-axis
+ax2.grid(True, alpha=0.3, which='both')
+ax2.set_yscale('log')
+ax2.set_xscale('log')
+ax2.set_xlim(4e-3, 1.0)  # Assuming similar range, adjust if needed
+
+legend_elements = [
+    Line2D([0], [0], color='k', linestyle='-', linewidth=2, label='Prograde $a = +0.99$'),
+    Line2D([0], [0], color='k', linestyle='--', linewidth=2, label='Retrograde $a = -0.99$'),
+]
+ax2.legend(handles=legend_elements, ncols=1, bbox_to_anchor=(0.5, 1.05), loc='lower center')
+
+# Colorbar for ax2 (optional, since shared y, but keeping for consistency)
+cbar2 = plt.colorbar(sm2, ax=ax2, pad=0.02, ticks=range(len(m1_values_unique)))
+lab2 = [f'$10^{int(np.log10(m))}$' for m in m1_values_unique]
+if m1_values_unique[0] == 5e4:
+    lab2[0] = r'$5\times 10^{4}$'
+cbar2.ax.set_yticklabels(lab2)
+cbar2.set_label(r'$m_1$ [$M_\odot$]', labelpad=-4)
+
+plt.tight_layout()
+
+plt.savefig(os.path.join(script_dir, "emri_trajectories_combined.png"), dpi=300, bbox_inches='tight')
+print("Saved: figures/emri_trajectories_combined.png")
+
+print("\n" + "=" * 60)
+print("Combined plot generated successfully!")
+print("=" * 60)
 
 print("\n" + "=" * 60)
 print("All plots generated successfully!")

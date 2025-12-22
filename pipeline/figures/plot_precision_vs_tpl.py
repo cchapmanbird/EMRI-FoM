@@ -196,7 +196,7 @@ for precision_metric in list(ylabel_map.keys()):
     if not precision_data:
         continue
 
-    fig, ax = plt.subplots(1, 1, figsize=(3.25, 2*2.0))
+    fig, ax = plt.subplots(1, 1, figsize=(3.25, 2.0))
     
     colors = plt.cm.tab20(np.linspace(0, 1, len(precision_data)))
     

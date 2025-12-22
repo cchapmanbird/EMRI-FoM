@@ -61,7 +61,9 @@ def format_sigfigs(v, n=2):
     if v == 0:
         return '0'
     magnitude = floor(log10(abs(v)))
-    str_out = f'{v/(10**(magnitude)):.1f}' + rf'$\times 10^{{{magnitude}}}$'
+    str_out = f'{v/(10**(magnitude)):.0f}' + rf'$\times 10^{{{magnitude}}}$'
+    if v/(10**(magnitude)) == 1.0:
+        str_out = rf'$10^{{{magnitude}}}$'
     return str_out
 
 # -----------------------------------------------------------------------------
@@ -203,6 +205,9 @@ fig, ax = plt.subplots(1, 1, figsize=(3.25, 1.5*2.0))
 q_keys = sorted(set(k[0] for k in data_by_q_m1.keys()))
 m1_keys = sorted(set(k[1] for k in data_by_q_m1.keys()))
 
+# Filter out mass ratio 2e-5
+q_keys = [q for q in q_keys if not np.isclose(q, 2e-5, rtol=1e-2)]
+
 # Create colormap for mass ratios
 colors = plt.cm.tab10(np.linspace(0, 1, len(q_keys)))
 q_to_color = {q: colors[idx] for idx, q in enumerate(q_keys)}
@@ -248,7 +253,9 @@ for (q_key, m1), data in sorted(data_by_q_m1.items()):
     yerr_lower = np.maximum(0.0, prec_arr - p2p5_arr)
     yerr_upper = np.maximum(0.0, p97p5_arr - prec_arr)
     yerr = np.vstack([yerr_lower, yerr_upper])
-
+    
+    if q_key not in q_to_color:
+        continue
     color = q_to_color[q_key]
     marker = m1_to_marker[m1]
     
@@ -263,10 +270,7 @@ ax.set_ylabel(ylabel_map.get(precision_metric, precision_metric))
 ax.set_yscale('log')
 ax.set_xscale('log')
 ax.grid(True, alpha=0.3)
-ax.set_title(
-    rf'$a={spin_target:.2f},\; T_{{pl}}={tpl_target}$ yr',
-    fontsize=12
-)
+# ax.set_title(rf'$a={spin_target:.2f},\; T_{{pl}}={tpl_target}$ yr')
 
 # First legend for mass ratio (colors) - uses the lines
 leg1 = ax.legend(frameon=False, loc='upper right', ncol=1, title=r'$m_2/m_1$')

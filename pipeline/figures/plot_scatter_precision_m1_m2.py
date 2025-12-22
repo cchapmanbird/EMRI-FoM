@@ -189,10 +189,14 @@ for precision_metric in list(ylabel_map.keys()):
     prec_max = float(precision_arr.max())
     vmin_decade = prec_min * 0.7
     vmax_decade = prec_max * 1.5
-
+    if 'dist' in precision_metric:
+        norm = plt.matplotlib.colors.Normalize(vmin=vmin_decade, vmax=vmax_decade)
+    else:
+        norm = plt.matplotlib.colors.LogNorm(vmin=vmin_decade, vmax=vmax_decade)
+        
     scatter = ax.scatter(m1_arr, m2_arr, c=precision_arr, s=200, cmap='cividis',
                          alpha=0.7, edgecolors='black', linewidth=0.5,
-                         norm=plt.matplotlib.colors.LogNorm(vmin=vmin_decade, vmax=vmax_decade))
+                         norm=norm)
     
     ax.set_xlabel(r'Primary mass $m_1 [M_\odot]$')
     ax.set_ylabel(r'Secondary mass $m_2 [M_\odot]$')
@@ -203,7 +207,7 @@ for precision_metric in list(ylabel_map.keys()):
     
     # Add colorbar above the plot
     cbar = plt.colorbar(scatter, ax=ax, orientation='horizontal', location='top')
-    cbar.set_label(ylabel_map[precision_metric], fontsize=12)
+    cbar.set_label(ylabel_map[precision_metric], fontsize=12, labelpad=10)
     
     # Set colorbar ticks to the unique precision values
     unique_precision_values = np.sort(np.unique(precision_arr))
