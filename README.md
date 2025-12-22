@@ -8,9 +8,13 @@ This repository contains codes for computing Figures of Merit (FoMs) related to 
 
 Try the **[FOM Analysis](pipeline/degradation_analysis.ipynb)** notebook interactively in Binder (no installation required) by clicking the badge above, or view it with better rendering on [nbviewer](https://nbviewer.jupyter.org/github/cchapmanbird/EMRI-FoM/blob/main/pipeline/degradation_analysis.ipynb).
 
-![SNR Figure of Merit Example](pipeline/snr_at_z.png)
+![Figure of Merit EMRI/IMRIs](pipeline/figures/emri_imri_masses_m1_m2.png)
 
-![PE Figure of Merit Example](pipeline/precision_vs_m1_relative_precision_m1.png)
+![Horizon Redshift EMRI/IMRIs](pipeline/figures/z_at_snr.png)
+
+![FoM SNR EMRI/IMRIs](pipeline/figures/snr_fom_ranges_m2_1_Tpl_0.25_prograde_retrograde.png)
+
+![FoM Precision EMRI/IMRIs](pipeline/figures/scatter_relative_precision_a_m1_vs_m2_spin_a0.99.png)
 
 ## Installation Instructions
 
