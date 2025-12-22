@@ -1,18 +1,18 @@
 #!/usr/bin/env python
 """
-Plot: Scatter plot of m1 vs m2 color-coded by precision metric.
+Plot: Precision metrics vs plunge time Tpl.
 
-This script generates scatter plots for all available precision metrics,
-showing the primary vs secondary mass space with color-coding indicating
-measurement precision levels.
+This script generates plots showing precision metrics as a function of plunge time
+for different secondary masses, at fixed primary mass and spin.
 
-Cell 43 from degradation_analysis.ipynb
+Based on plot_scatter_precision_m1_m2.py for data processing and plot_redshift_at_snr_vs_tpl.py for structure.
 """
 
 import h5py
 import numpy as np
 import glob
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 import sys
 import os
 
@@ -31,11 +31,11 @@ except:
 # -----------------------------------------------------------------------------
 # Configuration parameters
 # -----------------------------------------------------------------------------
-spin_a = 0.99  # Prograde spin
-tpl_val = 0.25  # Plunge time
-degradation = 1.0
-tolerance = 1e-6
+m1_val = 1e7           # Primary mass [Msun]
+spin_a = 0.99          # Spin parameter (prograde)
+degradation = 1.0      # Degradation factor (1.0 = no degradation)
 selected_run_type = 'circular'
+m2_filter = 'all'      # Secondary mass filter ('all' or specific value)
 
 # Label mapping for precision metrics
 ylabel_map = {
@@ -136,141 +136,100 @@ for idx, inf_file in enumerate(inference_files):
 
 print(f"Loaded metadata for {len(inference_metadata)} sources")
 
-# Add SNR to ylabel_map
-ylabel_map['snr'] = 'SNR'
+# -----------------------------------------------------------------------------
+# Filter sources
+# -----------------------------------------------------------------------------
+tolerance = 1e-6
+matching_sources = []
+
+for src_key in sorted(inference_metadata.keys()):
+    source_id, run_type = src_key
+    src_a = inference_metadata[src_key]['a']
+    src_m1 = inference_metadata[src_key]['m1']
+    
+    if abs(src_a - spin_a) < tolerance and abs(src_m1 - m1_val) < tolerance and run_type == selected_run_type:
+        matching_sources.append(src_key)
+
+if not matching_sources:
+    raise ValueError(f"No sources found for m1={m1_val:.0e}, a={spin_a:.2f}, run_type={selected_run_type}")
 
 # -----------------------------------------------------------------------------
 # Generate plots for each precision metric
 # -----------------------------------------------------------------------------
 for precision_metric in list(ylabel_map.keys()):
-    scatter_data = {'m1': [], 'm2': [], 'precision': [], 'source_id': []}
-
-    for src_key in sorted(inference_metadata.keys()):
+    precision_data = {}
+    
+    for src_key in matching_sources:
         source_id, run_type = src_key
-        
-        # Filter by spin and Tpl
-        src_a = inference_metadata[src_key]['a']
-        src_tpl = inference_metadata[src_key]['T']
-        if abs(src_a - spin_a) > tolerance or abs(src_tpl - tpl_val) > tolerance:
-            continue
-        
-        m1 = inference_metadata[src_key]['m1']
+        tpl = inference_metadata[src_key]['T']
         m2 = inference_metadata[src_key]['m2']
         
         # Check if this precision metric exists for this source
         if precision_metric not in inference_precision_data[src_key]:
             continue
         
-        # Get precision array and compute median (across 100 realizations)
+        # Get precision array and compute median
         precision_array = inference_precision_data[src_key][precision_metric]
         precision_median = np.median(precision_array)
         precision_deg = precision_median * np.sqrt(degradation)
         
-        # Only add selected run type to avoid duplication
-        if run_type == selected_run_type:
-            scatter_data['m1'].append(m1)
-            scatter_data['m2'].append(m2)
-            scatter_data['precision'].append(precision_deg)
-            scatter_data['source_id'].append(source_id)
+        if m2 not in precision_data:
+            precision_data[m2] = {'tpl': [], 'precision': []}
+        precision_data[m2]['tpl'].append(tpl)
+        precision_data[m2]['precision'].append(precision_deg)
 
-    if not scatter_data['m1']:
-        print(f"No data found for spin a={spin_a:.2f}, Tpl={tpl_val:.2f} and metric {precision_metric}")
+    if not precision_data:
+        print(f"No data found for metric {precision_metric}")
         continue
     
-    fig, ax = plt.subplots(figsize=(3.25, 1.5*2.0))
+    # Filter out m2 with only one Tpl if q=1e-3
+    q_target = 1e-3
+    m2_to_remove = []
+    for m2 in precision_data:
+        q = m2 / m1_val
+        if abs(q - q_target) < 1e-6 and len(precision_data[m2]['tpl']) <= 1:
+            m2_to_remove.append(m2)
     
-    # Create scatter plot
-    m1_arr = np.array(scatter_data['m1'])
-    m2_arr = np.array(scatter_data['m2'])
-    precision_arr = np.abs(np.array(scatter_data['precision']))
+    for m2 in m2_to_remove:
+        del precision_data[m2]
     
-    # Create scatter plot with color mapping
-    prec_min = float(precision_arr.min())
-    prec_max = float(precision_arr.max())
-    vmin_decade = prec_min * 0.7
-    vmax_decade = prec_max * 1.5
+    if not precision_data:
+        continue
 
-    scatter = ax.scatter(m1_arr, m2_arr, c=precision_arr, s=200, cmap='cividis',
-                         alpha=0.7, edgecolors='black', linewidth=0.5,
-                         norm=plt.matplotlib.colors.LogNorm(vmin=vmin_decade, vmax=vmax_decade))
+    fig, ax = plt.subplots(1, 1, figsize=(3.25, 2*2.0))
     
-    ax.set_xlabel(r'Primary mass $m_1 [M_\odot]$')
-    ax.set_ylabel(r'Secondary mass $m_2 [M_\odot]$')
-    ax.set_xscale('log')
+    colors = plt.cm.tab20(np.linspace(0, 1, len(precision_data)))
+    
+    for idx, m2 in enumerate(sorted(precision_data.keys())):
+        if m2_filter != 'all' and m2 != m2_filter:
+            continue
+        
+        tpl_vals = np.array(precision_data[m2]['tpl'])
+        precision_vals = np.array(precision_data[m2]['precision'])
+        
+        sort_idx = np.argsort(tpl_vals)
+        tpl_sorted = tpl_vals[sort_idx]
+        precision_sorted = precision_vals[sort_idx]
+        
+        ax.plot(tpl_sorted, precision_sorted, 'o-', color=colors[idx],
+                markersize=7, linewidth=1.5, label=f'{m2:.0f}', alpha=0.7)
+
+    ax.set_xlabel(r'Plunge time $T_{{pl}} [\mathrm{yr}]$')
+    ax.set_ylabel(ylabel_map[precision_metric])
     ax.set_yscale('log')
     ax.grid(True, alpha=0.3)
-    ax.set_ylim(0.3, 3e4)
+    ax.tick_params(axis='both', which='major')
     
-    # Add colorbar above the plot
-    cbar = plt.colorbar(scatter, ax=ax, orientation='horizontal', location='top')
-    cbar.set_label(ylabel_map[precision_metric], fontsize=12)
-    
-    # Set colorbar ticks to the unique precision values
-    unique_precision_values = np.sort(np.unique(precision_arr))
-
-    # Add full-width tick lines across the colorbar for min/max values
-    cbar_ax = cbar.ax
-    for val in [unique_precision_values.min(), unique_precision_values.max()]:
-        cbar_ax.axvline(x=val, color='green', linewidth=1.5, alpha=1.0, linestyle='-')
-        
-    for val in [unique_precision_values.min(), unique_precision_values.max()]:
-        cbar_ax.axvline(x=val * 1.4, color='red', linewidth=1.5, alpha=1.0, linestyle='--')
+    # Legend for secondary masses
+    legend_elements_m2 = [Line2D([0], [0], marker='o', label=f'{m2:.0f}', markersize=7, linestyle='-', color=colors[idx]) 
+                          for idx, m2 in enumerate(sorted(precision_data.keys())) if (m2_filter == 'all' or m2 == m2_filter)]
+    leg = ax.legend(handles=legend_elements_m2,
+                     bbox_to_anchor=(0.5, 1.02), loc='lower center',
+                     frameon=True, ncols=4,
+                     title=r'Secondary mass $m_2 [M_\odot]$')
 
     plt.tight_layout()
-    output_filename = f'scatter_{precision_metric}_m1_vs_m2_spin_a{spin_a}.png'
-    plt.savefig(os.path.join(script_dir, output_filename), dpi=300, bbox_inches='tight')
+    output_filename = f'{precision_metric}_vs_tpl_m1_{m1_val:.0e}_a_{spin_a}.png'
+    plt.savefig(os.path.join(script_dir, output_filename), dpi=400)
     print(f"Plot saved: figures/{output_filename}")
     # plt.show()
-
-    # Generate markdown table for this plot's data
-    sorted_data = sorted(zip(scatter_data['source_id'], scatter_data['m1'], scatter_data['m2'], scatter_data['precision']))
-    header = "| Source ID | m1 | m2 | Precision |"
-    divider = "|---|---|---|---|"
-    markdown_content = f"# {precision_metric} Scatter Plot Data\n\n"
-    markdown_content += f"Data for spin a={spin_a:.2f}, Tpl={tpl_val:.2f}, run_type={selected_run_type}\n\n"
-    markdown_content += header + "\n" + divider + "\n"
-    for sid, m1, m2, prec in sorted_data:
-        markdown_content += f"| {sid} | {m1:.2e} | {m2:.2e} | {prec:.2e} |\n"
-    
-    output_filename_md = f'scatter_{precision_metric}_m1_vs_m2_spin_a{spin_a}_data.md'
-    with open(os.path.join(script_dir, output_filename_md), "w") as f:
-        f.write(markdown_content)
-    print(f"Data table saved: figures/{output_filename_md}")
-
-# -----------------------------------------------------------------------------
-# Generate markdown table summary
-# -----------------------------------------------------------------------------
-print("\nGenerating precision summary table...")
-
-# Collect all precision metrics
-all_metrics = sorted({k for d in inference_precision_data.values() for k in d.keys()})
-
-# Prepare table header
-header = "| m1 | m2 | " + " | ".join(all_metrics) + " |"
-divider = "|---" * (2 + len(all_metrics)) + "|"
-
-rows = []
-for src_key in sorted(inference_metadata.keys()):
-    m1 = inference_metadata[src_key]['m1']
-    m2 = inference_metadata[src_key]['m2']
-    row = [f"{m1:.2e}", f"{m2:.2e}"]
-    for metric in all_metrics:
-        if metric in inference_precision_data[src_key]:
-            val = np.median(inference_precision_data[src_key][metric])
-            row.append(f"{val:.2e}")
-        else:
-            row.append("-")
-    rows.append("| " + " | ".join(row) + " |")
-
-# Write to markdown file
-markdown_content = "# Precision Summary Table\n\n"
-markdown_content += "This table summarizes the median precision for each metric and each source (by m1, m2).\n\n"
-markdown_content += header + "\n"
-markdown_content += divider + "\n"
-for row in rows:
-    markdown_content += row + "\n"
-
-with open(os.path.join(script_dir, "precision_summary.md"), "w") as f:
-    f.write(markdown_content)
-
-print("Precision summary saved to figures/precision_summary.md")

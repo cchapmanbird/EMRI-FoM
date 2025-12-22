@@ -272,7 +272,19 @@ if __name__ == "__main__":
 
     plt.tight_layout()
     plt.savefig('uncertainty_msource.png')
-
+    
+    # plot asymptotic slot for different redshifts
+    z_ = np.logspace(-3, 1)
+    l_ = cosmo.get_luminosity_distance(z)
+    dz_dl = cosmo.get_dz_dl_interp(z_)
+    asymptotic_slope = np.abs(dz_dl) * l_ / (1 + z_)
+    plt.figure()
+    plt.loglog(z_, asymptotic_slope)
+    plt.xlabel('Redshift')
+    plt.ylabel('Uncertainty factor')
+    # plt.show()
+    
+    
     galaxies = {
     # Local Group
     "Andromeda (M31)": (0.00044, 0.78, 1.1e8),  # Bender et al. 2005
