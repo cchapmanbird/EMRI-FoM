@@ -1,0 +1,100 @@
+### Color scheme and line styles
+#
+# The default color scheme is the one from Mathematica
+# https://mathematica.stackexchange.com/questions/54629/what-are-the-standard-colors-for-plots-in-mathematica-10
+#
+# Additional line style takes from
+# https://matplotlib.org/stable/gallery/lines_bars_and_markers/linestyles.html
+#
+axes.prop_cycle : (cycler('color', ['5d81b4', 'e09b24', '8eb031', 'eb6235', '8678b2', 'c46e1a', '5c9dc7', 'ffbf00', 'a5609c']) + cycler('ls', ['-', '--', '-.', (0, (1,0.85)), (0, (3, 1, 1, 1, 1, 1)), (0, (3, 1, 1, 1)), (0, (5, 1)), ':', (4, (10, 3))]))
+
+# Use this if you want to use the default gnuplot palette (up to 8 colors)
+# The default palette can be found by typing 'show linetype' in gnuplot.
+# axes.prop_cycle : (cycler('color', ['9400d3', '009e73', '56b4e9', 'e69f00', 'f0e442', '0072b2', 'e51e10', 'k']) + cycler('ls', ['-', '--', '-.', (0, (1,0.85)), (0, (3, 1, 1, 1, 1, 1)), (0, (3, 1, 1, 1)), (0, (5, 1)), ':']))
+
+
+### Axes
+axes.titlesize : large
+axes.labelsize : 9
+axes.formatter.use_mathtext : True
+axes.linewidth : 0.5
+
+### Grid lines
+grid.linewidth : 0.5
+grid.linestyle : dashed
+grid.color : 'xkcd:light gray'
+
+### Lines
+lines.linewidth : 0.6
+lines.markersize : 10
+hatch.linewidth: 0.25
+patch.antialiased   : True
+
+### Ticks
+xtick.top: True
+xtick.bottom: True
+xtick.major.size: 3.0
+xtick.minor.size: 1.5
+xtick.major.width: 0.5
+xtick.minor.width: 0.5
+xtick.direction: in
+xtick.minor.visible: True
+xtick.major.top: True
+xtick.major.bottom: True
+xtick.minor.top: True
+xtick.minor.bottom: True
+xtick.major.pad: 5.0
+xtick.minor.pad: 5.0
+ytick.labelsize: 9
+
+ytick.left: True
+ytick.right: True
+ytick.major.size: 3.0
+ytick.minor.size: 1.5
+ytick.major.width: 0.5
+ytick.minor.width: 0.5
+ytick.direction: in
+ytick.minor.visible: True
+ytick.major.left: True
+ytick.major.right: True
+ytick.minor.left: True
+ytick.minor.right: True
+ytick.major.pad: 5.0
+ytick.minor.pad: 5.0
+xtick.labelsize: 9
+
+### Legend
+legend.frameon: True
+legend.fontsize: 8
+legend.handlelength: 1.375
+legend.labelspacing: 0.4
+legend.columnspacing: 1
+legend.facecolor: 'white'
+legend.edgecolor: 'white'
+legend.framealpha: 1
+legend.title_fontsize: 8
+
+### Figure size
+figure.figsize: 3.25, 2.0
+figure.subplot.left: 0.125
+figure.subplot.bottom: 0.175
+figure.subplot.top: 0.95
+figure.subplot.right: 0.95
+figure.autolayout : False
+
+### Fonts (computer modern)
+text.usetex: True
+mathtext.fontset: cm
+font.family: serif
+font.serif: cmr10
+### Fonts (times)
+# text.usetex:False
+# mathtext.fontset: stix
+# font.family: serif
+# font.serif: Times New Roman
+# font.weight: regular
+
+### Saving figures
+path.simplify : True
+savefig.bbox : tight
+savefig.pad_inches : 0.05

@@ -274,45 +274,27 @@ if __name__ == "__main__":
     psd_emri_1p5 = load_psd_from_file("TDI2_AE_psd_emri_background_1.5_yr.npy", smooth=False, clip=True)
     psd_emri_4p5 = load_psd_from_file("TDI2_AE_psd_emri_background_4.5_yr.npy", smooth=False, clip=True)
     psd_nominal = load_psd_from_file("TDI2_AE_psd.npy", smooth=False, clip=True)
-    psd_smoothed = load_psd_from_file("TDI2_AE_psd.npy", smooth=True, clip=False)
+    psd_smoothed = load_psd_from_file("TDI2_AE_psd_emri_background_4.5_yr.npy", smooth=True, clip=False)
 
     print("Created PSD functions:", psd_emri_1p5, psd_emri_4p5, psd_nominal, psd_smoothed)
 
     # plot example
     import matplotlib.pyplot as plt
-    import scienceplots
 
-    plt.style.use(['science'])
+    plt.style.use('physrev.mplstyle')
 
-    plot_params = {
-        "figure.dpi": "200",
-        "axes.labelsize": 20,
-        "axes.linewidth": 1.5,
-        "axes.titlesize": 20,
-        "xtick.labelsize": 16,
-        "ytick.labelsize": 16,
-        "legend.title_fontsize": 16,
-        "legend.fontsize": 16,
-        "xtick.major.size": 3.5,
-        "xtick.major.width": 1.5,
-        "xtick.minor.size": 2.5,
-        "xtick.minor.width": 1.5,
-        "ytick.major.size": 3.5,
-        "ytick.major.width": 1.5,
-        "ytick.minor.size": 2.5,
-        "ytick.minor.width": 1.5,
-    }
-    plt.rcParams.update(plot_params)
-    freqs = np.logspace(-4, 0.0, 1000)
-    plt.figure(figsize=(8,4))
-    plt.loglog(freqs, psd_nominal(freqs), label="Instrumental Only")
-    plt.loglog(freqs, psd_emri_1p5(freqs), "--", label="Mission Duration = 1.5 yr")
-    plt.loglog(freqs, psd_emri_4p5(freqs), ":",label="Mission Duration = 4.5 yr")
-    plt.loglog(freqs, psd_smoothed(freqs), "-.", label="Smoothed Instrumental Only")
+    freqs = np.logspace(np.log10(5e-5), 0.0, 1000)
+    plt.figure()
+    plt.loglog(freqs, psd_nominal(freqs), label="Instrumental", linewidth=1.)
+    plt.loglog(freqs, psd_emri_1p5(freqs), "--", label="FoM 1.5 yr", linewidth=1.)
+    plt.loglog(freqs, psd_emri_4p5(freqs), "-.",label="FoM 4.5 yr", linewidth=1.)
+    freqs = np.logspace(np.log10(1e-2), 0.0, 1000)
+
+    plt.loglog(freqs, psd_smoothed(freqs), "--", label="Smoothing", linewidth=1.)
     plt.xlabel("Frequency [Hz]")
     plt.ylabel("PSD [1/Hz]")
     plt.legend()
     plt.grid()
     plt.tight_layout()
-    plt.savefig("tdi2AE_psd.pdf")
+    plt.savefig("figures/tdi2AE_psd.png", dpi=300)
     # plt.show()
