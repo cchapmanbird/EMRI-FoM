@@ -63,7 +63,7 @@ M_bh = np.logspace(3, 7, 300)
 # ============================================
 # Figure 1: Tidal radius normalized by BH mass
 # ============================================
-plt.figure()
+plt.figure(figsize=(3.25*2, 2))
 
 for object_name in objects:
     R_ = objects[object_name]["R_m"] / MRSUN_SI  # Convert to geometric units
@@ -86,7 +86,7 @@ plt.axvline(4e6, color='r', linestyle=':', label='Sgr $A^*$')
 
 plt.xlabel("Black hole mass $ M \\,[M_\\odot]$")
 plt.ylabel("Tidal Radius $/M$")
-plt.legend(ncol=2, loc='upper left')
+plt.legend(ncol=1, bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.tight_layout()
 plt.savefig(os.path.join(script_dir, "tidal_radius_normalized.png"), dpi=300, bbox_inches='tight')
 # plt.show()
@@ -96,7 +96,7 @@ print("Figure 1 saved to figures/tidal_radius_normalized.png")
 # ============================================
 # Figure 2: Tidal radius in solar radii
 # ============================================
-plt.figure()
+plt.figure(figsize=(3.25*2, 2))
 
 for object_name in objects:
     R_ = objects[object_name]["R_m"] / R_sun_m  # Convert to solar radii
@@ -121,7 +121,7 @@ plt.axvline(4e6, color='r', linestyle=':', label='Sgr $A^*$')
 
 plt.xlabel("Black hole mass $[M_\\odot]$")
 plt.ylabel("Tidal Radius $[R_\\odot]$")
-plt.legend(ncol=2, loc='upper left')
+plt.legend(ncol=1, bbox_to_anchor=(1.05, 1), loc='upper left')
 plt.tight_layout()
 plt.ylim(100 * MRSUN_SI / R_sun_m, 5e9 * MRSUN_SI / R_sun_m)
 plt.savefig(os.path.join(script_dir, "tidal_radius_solar.png"), dpi=300, bbox_inches='tight')

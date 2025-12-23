@@ -44,6 +44,7 @@ PLOT_SCRIPTS=(
     "figures/plot_emri_imri_masses.py"
     "figures/plot_emri_trajectories.py"
     "figures/plot_tidal_radius.py"
+    "figures/plot_precision_vs_tpl.py"
 )
 
 # Function to generate all plots
