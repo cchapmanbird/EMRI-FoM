@@ -194,7 +194,7 @@ for m2_lvk, z_lvk in zip(lvk_events['primary_mass'], lvk_events['redshift']):
 ax.plot(theta_lvk + np.asarray(theta_rot), r_lvk, marker='.', color='blue', markersize=3, alpha=0.1, linestyle='None', label='LVK GW events')
 
 # # Legend for LVK
-leg_lvk = ax.legend([Line2D([0], [0], marker='.', color='blue', markersize=3, linestyle='None')], ['LVK GW events'], bbox_to_anchor=(0.9, 0.0), loc='center', frameon=True)
+leg_lvk = ax.legend([Line2D([0], [0], marker='.', color='blue', markersize=3,alpha=0.1, linestyle='None')], ['LVK GW events'], bbox_to_anchor=(0.9, 0.0), loc='center', frameon=True)
 ax.add_artist(leg_lvk)
 
 ax.set_rlabel_position(90)
@@ -217,10 +217,23 @@ ax.spines['polar'].set_visible(False)
 # Set theta ticks
 theta_grids = [(idx + 0.5) * (360 / num_m2) + theta_rot * 180 / np.pi for idx in range(num_m2)]
 labels = [rf'${m2:.0f}M_\odot$' for m2 in m2_list]
+labels[-1] = r'$10^{4} M_\odot$'
+labels[-2] = r'$10^{3} M_\odot$'
 ax.set_thetagrids(theta_grids, labels=labels)
 
 # Legend
-legend_elements_m1 = [Line2D([0], [0], marker=None, label=f'{m1:.0e}', markersize=7, linestyle='-', linewidth=2, color=m1_color_dict[m1]) 
+from math import log10, floor
+def format_sigfigs(v, n=2):
+    """Format value with n significant figures, avoiding scientific notation when possible."""
+    if v == 0:
+        return '0'
+    magnitude = floor(log10(abs(v)))
+    str_out = f'{v/(10**(magnitude)):.0f}' + rf'$\times 10^{{{magnitude}}}$'
+    if v/(10**(magnitude)) == 1.0:
+        str_out = rf'$10^{{{magnitude}}}$'
+    return str_out
+
+legend_elements_m1 = [Line2D([0], [0], marker=None, label=format_sigfigs(m1), markersize=7, linestyle='-', linewidth=2, color=m1_color_dict[m1]) 
                       for m1 in sorted(m1_color_dict.keys())]
 ax.legend(handles=legend_elements_m1, bbox_to_anchor=(0.5, 1.05), loc='lower center', ncols=4, title=r'Primary mass $m_1 [M_\odot]$')
 
