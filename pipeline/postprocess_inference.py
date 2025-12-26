@@ -39,8 +39,8 @@ if __name__ == "__main__":
         source_cov = np.asarray([np.load(el)["source_frame_cov"] for el in sorted(glob.glob(f"{fold}/*/results.npz"))])
         detector_cov = np.asarray([np.load(el)["cov"] for el in sorted(glob.glob(f"{fold}/*/results.npz"))])
         fish_params = np.asarray([np.load(el)["fisher_params"] for el in sorted(glob.glob(f"{fold}/*/results.npz"))])
-        fish_params[:, 0] = fish_params[:, 0] / (1 + redshift)
-        fish_params[:, 1] = fish_params[:, 1] / (1 + redshift)
+        # fish_params[:, 0] = fish_params[:, 0] / (1 + redshift)
+        # fish_params[:, 1] = fish_params[:, 1] / (1 + redshift)
         source_measurement_precision = np.asarray([np.sqrt(np.diag(source_cov[ii])) for ii in range(len(fish_params))])
         detector_measurement_precision = np.asarray([np.sqrt(np.diag(detector_cov[ii])) for ii in range(len(fish_params))])
         
