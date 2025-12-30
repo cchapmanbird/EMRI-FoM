@@ -11,11 +11,12 @@ import numpy as np
 
 from stableemrifisher.fisher import StableEMRIFisher
 from few.utils.constants import YRSID_SI
+import sys
+import h5py
+import json
 
 ONE_HOUR = 60 * 60
 # ================== CASE 1 PARAMETERS ======================
-T = 4.5
-dt = 5.0
 # EMRI Case 1 parameters as dictionary
 emri_params = {
     # Masses and spin
@@ -40,16 +41,28 @@ emri_params = {
     "Phi_r0": 3.0,  # Radial phase
 }
 
-import h5py
-dataset = h5py.File("../../pipeline/inference_46/inference.h5", "r")
+src = 0
+try:
+    
+    dataset = h5py.File(f"../../pipeline/inference_{src}/inference.h5", "r")
+    # continue
+    with open("../../pipeline/so3_sources_Dec8.json", "r") as f:
+        source_dict = json.load(f)
 
-sky_real = 0
-for sky_real in range(10):
+    print(source_dict[str(src)])
+    T = source_dict[str(src)]["Tpl"]
+    dt = source_dict[str(src)]["dt"]
+
+    print("="*60)
+    print("Source:", src)
+    sky_real = 0
     emri_params['m1'] = dataset['eccentric']['fish_params'][sky_real,0]
     emri_params['m2'] = dataset['eccentric']['fish_params'][sky_real,1]
     emri_params['a'] = dataset['eccentric']['fish_params'][sky_real,2]
     emri_params['p0'] = dataset['eccentric']['fish_params'][sky_real,3]
     emri_params['e0'] = dataset['eccentric']['fish_params'][sky_real,4]
+
+    print(emri_params['m1'], emri_params['m2'], emri_params['a'], emri_params['p0'], emri_params['e0'])
 
     emri_params['dist'] = dataset['eccentric']['fish_params'][sky_real,5]
     emri_params['qS'] = dataset['eccentric']['fish_params'][sky_real,6]
@@ -70,7 +83,7 @@ for sky_real in range(10):
     waveform_class = FastKerrEccentricEquatorialFlux
     waveform_class_kwargs = {
         "inspiral_kwargs": {
-            "err": 1e-11,
+            "err": 1e-13,
         },
         "sum_kwargs": {"pad_output": True},  # Required for plunging waveforms
         "mode_selector_kwargs": {"mode_selection_threshold": 1e-5},
@@ -155,10 +168,10 @@ for sky_real in range(10):
 
     # Compute specific delta ranges
     delta_range = dict(
-        m1=np.geomspace(1e2, 1e-3, Ndelta),
-        m2=np.geomspace(1e-1, 1e-7, Ndelta),
-        a=np.geomspace(1e-5, 1e-9, Ndelta),
-        p0=np.geomspace(1e-5, 1e-9, Ndelta),
+        m1=np.geomspace(1e-4*emri_params['m1'], 1e-9*emri_params['m1'], Ndelta),
+        m2=np.geomspace(1e-4*emri_params['m2'], 1e-9*emri_params['m2'], Ndelta),
+        a=np.geomspace(1e-4*emri_params['a'], 1e-9*emri_params['a'], Ndelta),
+        p0=np.geomspace(1e-4*emri_params['p0'], 1e-9*emri_params['p0'], Ndelta),
         e0=np.geomspace(1e-5, 1e-9, Ndelta),
         qS=np.geomspace(1e-3, 1e-7, Ndelta),
         phiS=np.geomspace(1e-3, 1e-7, Ndelta),
@@ -181,9 +194,9 @@ for sky_real in range(10):
             )
         )
 
-    print("="*60)
-    print("Sky real:", sky_real)
     print("New SNR:", sef.SNR2**0.5, "Old SNR:" , dataset['eccentric']['snr'][sky_real])
     print("Ratio sigmas of New Fisher / Old", np.diag(param_cov)**0.5 / sigma[:-2])
     print("Ratio sigmas of New Fisher / Old with SNR normalization", np.diag(param_cov)**0.5 * sef.SNR2**0.5 / (sigma[:-2] * dataset['eccentric']['snr'][sky_real]))
     print("="*60)
+except:
+    pass
