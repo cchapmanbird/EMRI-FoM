@@ -14,7 +14,7 @@ from few.utils.constants import YRSID_SI
 
 ONE_HOUR = 60 * 60
 # ================== CASE 1 PARAMETERS ======================
-T = 2.0
+T = 4.5
 dt = 5.0
 # EMRI Case 1 parameters as dictionary
 emri_params = {
@@ -40,6 +40,29 @@ emri_params = {
     "Phi_r0": 3.0,  # Radial phase
 }
 
+import h5py
+dataset = h5py.File("../../pipeline/inference_46/inference.h5", "r")
+
+sky_real = 0
+emri_params['m1'] = dataset['eccentric']['fish_params'][sky_real,0]
+emri_params['m2'] = dataset['eccentric']['fish_params'][sky_real,1]
+emri_params['a'] = dataset['eccentric']['fish_params'][sky_real,2]
+emri_params['p0'] = dataset['eccentric']['fish_params'][sky_real,3]
+emri_params['e0'] = dataset['eccentric']['fish_params'][sky_real,4]
+
+emri_params['dist'] = dataset['eccentric']['fish_params'][sky_real,5]
+emri_params['qS'] = dataset['eccentric']['fish_params'][sky_real,6]
+emri_params['phiS'] = dataset['eccentric']['fish_params'][sky_real,7]
+emri_params['qK'] = dataset['eccentric']['fish_params'][sky_real,8]
+emri_params['phiK'] = dataset['eccentric']['fish_params'][sky_real,9]
+
+emri_params['Phi_phi0'] = dataset['eccentric']['fish_params'][sky_real,10]
+emri_params['Phi_r0'] = dataset['eccentric']['fish_params'][sky_real,11]
+
+sigma = dataset['eccentric']['detector_measurement_precision'][sky_real]
+dataset['eccentric']['snr'][sky_real]
+print("SNR", dataset['eccentric']['snr'][sky_real])
+print("sigma", sigma)
 
 ####=======================True Responsed waveform==========================
 # waveform class setup
@@ -80,7 +103,7 @@ ResponseWrapper_kwargs = dict(
     index_beta=INDEX_BETA,
     t0=t0,
     flip_hx=True,
-    use_gpu=USE_GPU,
+    # use_gpu=USE_GPU,
     is_ecliptic_latitude=False,
     remove_garbage="zero",
     **tdi_kwargs,
@@ -156,3 +179,5 @@ for k, item in enumerate(param_names):
             item, param_cov[k, k] ** (1 / 2)
         )
     )
+
+breakpoint()

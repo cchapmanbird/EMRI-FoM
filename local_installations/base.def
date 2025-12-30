@@ -1,0 +1,30 @@
+Bootstrap: docker
+From: ghcr.io/nvidia/jax:jax-2024-07-24
+# the above version is chose for compatibility with fastemriwaveforms-cuda12x and the local CUDA driver
+# srun -p gpu_a100_22c --mem 64G -G a100:1 -c 2 --pty bash
+# singularity build --sandbox --nv --fakeroot base base.def
+%post
+    python -m pip install --upgrade pip
+    python -m pip install --no-cache-dir nvidia-cuda-runtime-cu12 astropy eryn fastemriwaveforms-cuda12x multiprocess optax matplotlib scipy jupyter interpax numba Cython tabulate scienceplots healpy pandas filelock lisaanalysistools
+    python -c "import few; few.get_backend('cuda12x'); print('FEW installation successful')"
+
+    # Set compilers explicitly and unset conda variables
+    unset CC CXX CUDACXX
+    export CC=/usr/bin/gcc
+    export CXX=/usr/bin/g++
+    export CUDACXX=/usr/local/cuda/bin/nvcc
+    export NVCC_PREPEND_FLAGS='-ccbin /usr/bin/g++'
+    
+    # # install lisa on gpu and StableEMRIFisher-package
+    # git clone https://github.com/cchapmanbird/EMRI-FoM.git temp 
+    # cd temp/
+    # git checkout dev
+    # cd local_installations/
+
+    # cd lisa-on-gpu/
+    # python -m pip install .
+    # cd ../
+
+    # cd StableEMRIFisher/
+    # python -m pip install .
+    # cd ../
