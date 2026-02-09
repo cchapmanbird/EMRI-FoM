@@ -135,7 +135,7 @@ for src_idx in matching_sources:
 # -----------------------------------------------------------------------------
 # Create polar plot
 # -----------------------------------------------------------------------------
-fig = plt.figure(figsize=(3.25*2, 2.0*2))
+fig = plt.figure(figsize=(3.25*2, 2.0*2.))
 ax = fig.add_subplot(111, polar=True)
 
 if all_m1:
@@ -175,8 +175,6 @@ for m2_lvk, z_lvk in zip(lvk_events['secondary_mass'], lvk_events['redshift']):
     theta_lvk.append(theta)
     r_lvk.append(z_lvk)
 
-ax.plot(theta_lvk + np.asarray(theta_rot), r_lvk, marker='.', color='blue', markersize=2, alpha=0.1, linestyle='None', label='LVK GW events')
-
 # Add LVK events
 theta_lvk = []
 r_lvk = []
@@ -191,20 +189,20 @@ for m2_lvk, z_lvk in zip(lvk_events['primary_mass'], lvk_events['redshift']):
     theta_lvk.append(theta)
     r_lvk.append(z_lvk)
 
-ax.plot(theta_lvk + np.asarray(theta_rot), r_lvk, marker='.', color='blue', markersize=3, alpha=0.1, linestyle='None', label='LVK GW events')
+ax.plot(theta_lvk + np.asarray(theta_rot), r_lvk, marker='.', color='blue', markersize=3, alpha=0.1, linestyle='None')
 
 # # Legend for LVK
-leg_lvk = ax.legend([Line2D([0], [0], marker='.', color='blue', markersize=3,alpha=0.1, linestyle='None')], ['LVK GW events'], bbox_to_anchor=(0.9, 0.0), loc='center', frameon=True)
+leg_lvk = ax.legend([Line2D([0], [0], marker='.', color='blue', markersize=5,alpha=0.1, linestyle='None')], ['LIGO-Virgo-Kagra events'], bbox_to_anchor=(0.5, -0.1), loc='center', frameon=True)
 ax.add_artist(leg_lvk)
 
 ax.set_rlabel_position(90)
-ax.text(np.pi/2, ax.get_ylim()[1] * 1.1, 'Redshift', ha='center', va='bottom')
+ax.text(np.pi/2, ax.get_ylim()[1] * 1.6, 'Redshift horizon for $m_2 [M_\odot]$', ha='center', va='bottom')
 
 ax.set_rscale('log')
 
 # Set radial ticks for redshift
 r_ticks = [0.02, 0.2, 2]
-ax.set_rgrids(r_ticks, labels=[rf'${r:g}$' for r in r_ticks])
+ax.set_rgrids(r_ticks, angle=86, labels=[rf'${r:g}$' for r in r_ticks])
 
 # Rotate radial labels to vertical
 for label in ax.get_yticklabels():
@@ -215,11 +213,21 @@ ax.grid(True, alpha=0.8, linewidth=2)
 ax.spines['polar'].set_visible(False)
 
 # Set theta ticks
-theta_grids = [(idx + 0.5) * (360 / num_m2) + theta_rot * 180 / np.pi for idx in range(num_m2)]
+theta_grids = [(idx + 0.5) * (360 / num_m2) + theta_rot * 180 / np.pi + 360/7/2 for idx in range(num_m2)]
 labels = [rf'${m2:.0f}M_\odot$' for m2 in m2_list]
 labels[-1] = r'$10^{4} M_\odot$'
 labels[-2] = r'$10^{3} M_\odot$'
-ax.set_thetagrids(theta_grids, labels=labels)
+ax.set_thetagrids(theta_grids, labels=['']*num_m2)  # Hide default labels
+
+
+# Add custom text labels at specified angles and radius
+angles = [(idx + 0.5) * (360 / num_m2) + theta_rot * 180 / np.pi for idx in range(num_m2)]
+angles_rad = [np.deg2rad(a) for a in angles]
+# Place the labels at a radius just above the max plotted redshift
+r_label = ax.get_ylim()[1] * 1.15
+for angle, label in zip(angles_rad, labels):
+    ax.text(angle, r_label, label, ha='center', va='center', fontsize=11, rotation=(angle % (np.pi))*180/np.pi-90, rotation_mode='anchor')
+
 
 # Legend
 from math import log10, floor
@@ -235,9 +243,12 @@ def format_sigfigs(v, n=2):
 
 legend_elements_m1 = [Line2D([0], [0], marker=None, label=format_sigfigs(m1), markersize=7, linestyle='-', linewidth=2, color=m1_color_dict[m1]) 
                       for m1 in sorted(m1_color_dict.keys())]
-ax.legend(handles=legend_elements_m1, bbox_to_anchor=(0.5, 1.05), loc='lower center', ncols=4, title=r'Primary mass $m_1 [M_\odot]$')
+# place main legend below the plot
+ax.legend(handles=legend_elements_m1, bbox_to_anchor=(0.5, -0.15), loc='upper center', ncols=2, title=r'Primary mass $m_1 [M_\odot]$')
 
-plt.tight_layout()
+# plt.tight_layout()
+# ensure there is room for the legend below the figure
+plt.subplots_adjust(bottom=0.18)
 output_filename = f'redshift_horizon_polar_m2_a_{spin_a}_tpl_{tpl_val}.png'
-plt.savefig(os.path.join(script_dir, output_filename), dpi=400)
+plt.savefig(os.path.join(script_dir, output_filename), dpi=400, bbox_inches='tight')
 print(f"Polar plot saved: figures/{output_filename}")

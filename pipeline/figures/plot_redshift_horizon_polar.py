@@ -17,7 +17,7 @@ from scipy.interpolate import interp1d
 from matplotlib.lines import Line2D
 import sys
 import os
-
+np.random.seed(42)
 # Add parent directory to path and change to pipeline directory for data files
 script_dir = os.path.dirname(os.path.abspath(__file__))
 pipeline_dir = os.path.dirname(script_dir)
@@ -166,7 +166,7 @@ for src_idx in matching_sources:
 # -----------------------------------------------------------------------------
 # Create polar plot
 # -----------------------------------------------------------------------------
-fig = plt.figure(figsize=(3.25*2, 2.0*2))
+fig = plt.figure(figsize=(3.25*2.0, 2.0*2.))
 ax = fig.add_subplot(111, polar=True)
 
 if all_m1:
@@ -184,13 +184,13 @@ for idx, m2 in enumerate(sorted(z_data.keys())):
     z_orig = np.array(z_data[m2]['z_orig'])
     for i, m1_val in enumerate(m1_vals):
         # Convert m1 to angle
-        if np.abs(m1_val - 5e4)<1e-6:
+        if np.abs(1- m1_val / 5e4)<1e-6:
             theta_min, theta_max = 0, 2 * np.pi/4
-        elif np.abs(m1_val - 1e5)<1e-6:
+        elif np.abs(1 - m1_val / 1e5)<1e-6:
             theta_min, theta_max = 2 * np.pi/4, 2 * np.pi * 2/4
-        elif np.abs(m1_val - 1e6)<1e-6:
+        elif np.abs(1 - m1_val / 1e6)<1e-6:
             theta_min, theta_max = 2 * np.pi * 2/4, 2 * np.pi * 3/4
-        elif np.abs(m1_val - 1e7)<1e-6:
+        elif np.abs(1 - m1_val / 1e7)<1e-6:
             theta_min, theta_max = 2 * np.pi * 3/4, 2 * np.pi * 4/4
         theta = np.linspace(theta_min, theta_max, 100)
         plt.plot(theta, z_orig[i]*np.ones_like(theta),  color=colors[idx], markersize=5, alpha=0.7, linestyle='-', linewidth=2)
@@ -199,7 +199,7 @@ for idx, m2 in enumerate(sorted(z_data.keys())):
 obs_data = {
     'QPE': (masses_qpe, z_qpe, 'purple', 'D', 6, 0.5),
     'AGN': (smbh_masses, smbh_redshifts, 'k', 'X', 8, 0.5),
-    'SDSS': (massbh_sdss, redshift_sdss, 'blue', '.', 8, 0.1)
+    'SDSS': (massbh_sdss, redshift_sdss, 'blue', '.', 5, 0.1)
 }
 
 for obs_type, (masses, zs, color, marker, ms, alpha) in obs_data.items():
@@ -225,16 +225,16 @@ legend_elements_obs = [
     Line2D([0], [0], marker='X', label='AGN', alpha=0.5, markerfacecolor='k', markersize=8, linestyle='None', color='k'),
     Line2D([0], [0], marker='.', label='SDSS Quasars', alpha=0.1, markerfacecolor='blue', markersize=8, linestyle='None', color='blue'),
 ]
-leg_obs = ax.legend(handles=legend_elements_obs, frameon=True, bbox_to_anchor=(0.5, 0.01), loc='center', ncol=3)
+leg_obs = ax.legend(handles=legend_elements_obs, frameon=True, bbox_to_anchor=(0.5, -0.1), loc='center', ncol=3, fontsize=8)
 ax.add_artist(leg_obs)
 
 ax.set_rlabel_position(90)
-ax.text(np.pi/2, ax.get_ylim()[1] * 1.1, 'Redshift', ha='center', va='bottom')
+ax.text(np.pi/2, ax.get_ylim()[1] * 1.3, 'Redshift horizon for $m_1 [M_\odot]$', ha='center', va='bottom')
 ax.set_rscale('log')
 
 # Set radial ticks for redshift
 r_ticks = [0.02, 0.2, 2]
-ax.set_rgrids(r_ticks, labels=[rf'${r:g}$' for r in r_ticks])
+ax.set_rgrids(r_ticks, angle=88, labels=[rf'${r:g}$' for r in r_ticks])
 
 # Rotate radial labels to vertical
 for label in ax.get_yticklabels():
@@ -244,15 +244,36 @@ ax.grid(True, alpha=0.8, linewidth=2)
 
 ax.spines['polar'].set_visible(False)
 
-# Set theta ticks
-ax.set_thetagrids([45, 135, 225, 315], labels=[r'$5\times10^4M_\odot$', r'$10^5M_\odot$', r'$10^6M_\odot$', r'$10^7M_\odot$'])
+
+# Set theta grid lines at 0, 90, 180, 270 (no labels)
+ax.set_thetagrids([0, 90, 180, 270], labels=['', '', '', ''])
+# Set only labels at 45, 135, 225, 315
+# ax.set_thetagrids([45, 135, 225, 315], labels=[r'$m_1 =$ \newline $ 5\times10^4M_\odot$', r'$m_1 = 10^5M_\odot$', r'$m_1 = 10^6M_\odot$', r'$m_1 =  10^7M_\odot$'])
+
+
+# Add custom text labels at specified angles and radius
+angles = [45, 135, 225, 315]
+angles_rad = [np.deg2rad(a) for a in angles]
+labels = [
+    r'$5\times10^4$',
+    r'$10^5$',
+    r'$10^6$',
+    r'$10^7$'
+]
+# Place the labels at a radius just above the max plotted redshift
+r_label = ax.get_ylim()[1] * 1.15
+for angle, label in zip(angles_rad, labels):
+    ax.text(angle, r_label, label, ha='center', va='center', fontsize=11, rotation=(angle % (np.pi))*180/np.pi-90, rotation_mode='anchor')
 
 # Legend
 legend_elements_m2 = [Line2D([0], [0], marker=None, label=f'{m2:.0f}', linestyle='-', linewidth=2, color=colors[idx]) 
                       for idx, m2 in enumerate(sorted(z_data.keys())) if (m2_filter == 'all' or m2 == m2_filter)]
-ax.legend(handles=legend_elements_m2, bbox_to_anchor=(0.5, 1.05), loc='lower center', ncols=4, title=r'Secondary mass $m_2 [M_\odot]$')
+# place main legend below the plot
+ax.legend(handles=legend_elements_m2, bbox_to_anchor=(0.5, -0.15), loc='upper center', ncols=4, title=r'Secondary mass $m_2 [M_\odot]$')
 
-plt.tight_layout()
+# plt.tight_layout()
+# ensure there is room for the legend below the figure
+plt.subplots_adjust(bottom=0.18)
 output_filename = f'redshift_horizon_polar_a_{spin_a}_tpl_{tpl_val}.png'
-plt.savefig(os.path.join(script_dir, output_filename), dpi=400)
+plt.savefig(os.path.join(script_dir, output_filename), dpi=400, bbox_inches='tight')
 print(f"Polar plot saved: figures/{output_filename}")

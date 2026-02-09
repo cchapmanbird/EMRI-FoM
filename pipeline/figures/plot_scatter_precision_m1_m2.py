@@ -47,7 +47,7 @@ ylabel_map = {
     "relative_precision_e0": r"$\sigma_{e_0}/e_0$",
     "absolute_precision_a": r"$\sigma_{a}$",
     "relative_precision_a": r"$\sigma_{a}/a$",
-    "absolute_precision_OmegaS": r"$\Delta \Omega_S$",
+    "absolute_precision_OmegaS": r"Sky Localization $\Delta \Omega_S [\mathrm{deg}^2]$",
     "snr": "SNR",
 }
 

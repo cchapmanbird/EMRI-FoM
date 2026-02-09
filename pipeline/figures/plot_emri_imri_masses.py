@@ -116,6 +116,21 @@ ax2.fill_betweenx([min(lvk_gw_events['primary_mass'] + lvk_gw_events['secondary_
                    max(lvk_gw_events['primary_mass'] + lvk_gw_events['secondary_mass'])],
                   [3e4], [2e7], color='C1', alpha=0.2, label='GW observations (LIGO-Virgo-KAGRA)')
 
+# # Plot filled area for LVK GW observations (replace simple range with density envelope)
+# m1_lvk = np.asarray(lvk_gw_events['primary_mass'])
+# m2_lvk = np.asarray(lvk_gw_events['secondary_mass'])
+# min_lvk, max_lvk = min(lvk_gw_events['primary_mass'] + lvk_gw_events['secondary_mass']), max(lvk_gw_events['primary_mass'] + lvk_gw_events['secondary_mass'])
+
+# # bins for secondary mass (y axis), match final plot y-limits
+# bins = np.logspace(np.log10(min_lvk), np.log10(max_lvk), 30)
+# bin_centers = 0.5 * (bins[:-1] + bins[1:])
+# hist, bin_edg = np.histogram(np.append(m1_lvk, m2_lvk), bins=bins, density=True)
+# alpha = hist / np.max(hist) * 0.8  # Scale alpha to max of 0.5 for visibility
+
+# for i in range(len(bin_centers)):
+#     ax2.fill_betweenx([bins[i], bins[i+1]], 3e4, 2e7, color='C1', alpha=alpha[i], step='post')
+# ax2.fill_betweenx([], [], color='C1', alpha=0.5, label='GW observations (LIGO-Virgo-KAGRA)')  # For legend
+
 # Mass ratio lines    
 m1_vec = np.logspace(4, 8)
 # ax2.loglog(m1_vec, m1_vec * 1, 'r--')

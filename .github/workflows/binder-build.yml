@@ -1,0 +1,72 @@
+name: Build and Push Binder Image
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'requirements.txt'
+      - 'pipeline/degradation_analysis.ipynb'
+      - 'pipeline/common.py'
+      - '.github/workflows/binder-build.yml'
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get repo2docker version
+        id: r2d-version
+        run: |
+          # Use the same repo2docker version that mybinder.org uses
+          echo "version=2024.07.0" >> $GITHUB_OUTPUT
+
+      - name: Build and push Docker image with repo2docker
+        run: |
+          # Install repo2docker
+          pip install jupyter-repo2docker==${{ steps.r2d-version.outputs.version }}
+          
+          # Temporarily move .binder/Dockerfile out of the way so repo2docker builds from requirements.txt
+          if [ -f .binder/Dockerfile ]; then
+            mv .binder/Dockerfile .binder/Dockerfile.bak
+          fi
+          
+          # Build and push the image from requirements.txt
+          jupyter-repo2docker \
+            --no-run \
+            --user-name=jovyan \
+            --user-id=1000 \
+            --image-name ghcr.io/${{ github.repository_owner }}/emri-fom-binder:latest \
+            --cache-from ghcr.io/${{ github.repository_owner }}/emri-fom-binder:latest \
+            --push \
+            .
+          
+          # Restore .binder/Dockerfile
+          if [ -f .binder/Dockerfile.bak ]; then
+            mv .binder/Dockerfile.bak .binder/Dockerfile
+          fi
+
+      - name: Add comment to commit (on push)
+        if: github.event_name == 'push'
+        uses: peter-evans/commit-comment@v3
+        with:
+          body: |
+            Binder image built and pushed successfully! 🎉
+            
+            The pre-built image will be used when launching from:
+            [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/${{ github.repository }}/main?urlpath=lab/tree/pipeline/degradation_analysis.ipynb)
+            
+            **Note:** The first launch after this build may still take a moment as Binder pulls the image from the registry.

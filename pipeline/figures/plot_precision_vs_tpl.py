@@ -35,7 +35,7 @@ except:
 m1_val = 1e7           # Primary mass [Msun]
 spin_a = 0.99          # Spin parameter (prograde)
 degradation = 1.0      # Degradation factor (1.0 = no degradation)
-selected_run_type = 'circular'
+selected_run_type = 'eccentric'  # 'circular' or 'eccentric'
 m2_filter = 'all'      # Secondary mass filter ('all' or specific value)
 
 # Label mapping for precision metrics
@@ -48,7 +48,7 @@ ylabel_map = {
     "relative_precision_e0": r"$\sigma_{e_0}/e_0$",
     "absolute_precision_a": r"$\sigma_{a}$",
     "relative_precision_a": r"$\sigma_{a}/a$",
-    "absolute_precision_OmegaS": r"$\Delta \Omega_S$",
+    "absolute_precision_OmegaS": r"Sky Localization $\Delta \Omega_S [\mathrm{deg}^2]$",
     "snr": "SNR",
 }
 
@@ -154,7 +154,6 @@ for src_key in sorted(inference_metadata.keys()):
 if not matching_sources:
     raise ValueError(f"No sources found for m1={m1_val:.0e}, a={spin_a:.2f}, run_type={selected_run_type}")
 
-# ...existing code...
 # -----------------------------------------------------------------------------
 # Generate plots for each precision metric
 # -----------------------------------------------------------------------------
@@ -189,6 +188,7 @@ for precision_metric in list(ylabel_map.keys()):
     # Filter out m2 with only one Tpl if q=1e-3
     q_target = 1e-3
     m2_to_remove = []
+    
     for m2 in precision_data:
         q = m2 / m1_val
         if abs(q - q_target) < 1e-6 and len(precision_data[m2]['tpl']) <= 1:
@@ -248,7 +248,7 @@ for precision_metric in list(ylabel_map.keys()):
                      title=r'Secondary mass $m_2 [M_\odot]$')
 
     plt.tight_layout()
-    output_filename = f'{precision_metric}_vs_tpl_m1_{m1_val:.0e}_a_{spin_a}.png'
+    output_filename = f'{precision_metric}_vs_tpl_m1_{m1_val:.0e}_a_{spin_a}_{selected_run_type}.png'
     plt.savefig(os.path.join(script_dir, output_filename), dpi=400)
     print(f"Plot saved: figures/{output_filename}")
     # plt.show()
@@ -281,6 +281,21 @@ selected_metrics = [
 
 # Filter improvement_data to only selected metrics
 filtered_improvement_data = {metric: improvement_data[metric] for metric in selected_metrics if metric in improvement_data}
+
+# Apply the same filter: remove m2 with only one Tpl if q=1e-3
+q_target = 1e-3
+m1_val_for_filter = m1_val  # Use the same m1 as above
+for metric in filtered_improvement_data:
+    m2_to_remove = []
+    for m2 in filtered_improvement_data[metric]:
+        q = m2 / m1_val_for_filter
+        # Check if both 1.5 and 4.5 are missing or only one present (i.e., not both improvements)
+        imp = filtered_improvement_data[metric][m2]
+        tpl_keys = [k for k in imp.keys() if k in ['1.5', '4.5']]
+        if abs(q - q_target) < 1e-6 and len(tpl_keys) <= 1:
+            m2_to_remove.append(m2)
+    for m2 in m2_to_remove:
+        del filtered_improvement_data[metric][m2]
 
 if not filtered_improvement_data:
     print("No data for selected metrics.")
@@ -333,7 +348,7 @@ else:
     ax.set_yscale('log')
     ax.set_ylim(1e-3, 1.0)
     plt.tight_layout()
-    output_filename = f'improvement_vs_parameters_m1_{m1_val:.0e}_a_{spin_a}.png'
+    output_filename = f'improvement_vs_parameters_m1_{m1_val:.0e}_a_{spin_a}_{selected_run_type}.png'
     plt.savefig(os.path.join(script_dir, output_filename), dpi=400)
     print(f"Improvement plot saved: figures/{output_filename}")
 
@@ -358,17 +373,22 @@ for metric in selected_metrics:
         source_id, run_type = src_key
         tpl = inference_metadata[src_key]['T']
         m2 = inference_metadata[src_key]['m2']
-        
         if metric not in inference_precision_data[src_key]:
             continue
-        
         precision_array = inference_precision_data[src_key][metric]
         precision_median = np.median(precision_array) * np.sqrt(degradation)
-        
         if m2 not in precision_vs_tpl_data[metric]:
             precision_vs_tpl_data[metric][m2] = {'tpl': [], 'precision': []}
         precision_vs_tpl_data[metric][m2]['tpl'].append(tpl)
         precision_vs_tpl_data[metric][m2]['precision'].append(precision_median)
+    # Apply the same filter: remove m2 with only one Tpl if q=1e-3
+    m2_to_remove = []
+    for m2 in precision_vs_tpl_data[metric]:
+        q = m2 / m1_val
+        if abs(q - q_target) < 1e-6 and len(precision_vs_tpl_data[metric][m2]['tpl']) <= 1:
+            m2_to_remove.append(m2)
+    for m2 in m2_to_remove:
+        del precision_vs_tpl_data[metric][m2]
 
 # Collect redshift data
 redshift_vs_tpl_data = {}
@@ -377,21 +397,28 @@ for src_key in matching_sources:
     tpl = inference_metadata[src_key]['T']
     m2 = inference_metadata[src_key]['m2']
     redshift = inference_metadata[src_key]['redshift']
-    
     if m2 not in redshift_vs_tpl_data:
         redshift_vs_tpl_data[m2] = {'tpl': [], 'redshift': []}
     redshift_vs_tpl_data[m2]['tpl'].append(tpl)
     redshift_vs_tpl_data[m2]['redshift'].append(redshift)
+# Apply the same filter: remove m2 with only one Tpl if q=1e-3
+m2_to_remove = []
+for m2 in redshift_vs_tpl_data:
+    q = m2 / m1_val
+    if abs(q - q_target) < 1e-6 and len(redshift_vs_tpl_data[m2]['tpl']) <= 1:
+        m2_to_remove.append(m2)
+for m2 in m2_to_remove:
+    del redshift_vs_tpl_data[m2]
 
 # Define combined metrics
-combined_metrics = ["relative_precision_m1_det", "relative_precision_m2_det"]#, "relative_precision_a"]
+combined_metrics = ["relative_precision_m1_det", "relative_precision_m2_det"]
 linestyles = ['-', '--', ':']
 
 # Create the plot
-fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, figsize=(3.25, 4*2.0), sharex=True)
+fig, (ax1, ax2, ax3, ax4, ax5) = plt.subplots(5, 1, figsize=(3.25, 4*2.0), sharex=True)
 
-axes = [ax1, ax2, ax3, ax4]
-metric_names = ["redshift", "combined", "absolute_precision_OmegaS", "relative_precision_dist"]
+axes = [ax1, ax2, ax3, ax4, ax5]
+metric_names = ["redshift", "combined", "relative_precision_a", "absolute_precision_OmegaS", "relative_precision_dist"]
 
 # Colors for m2
 all_m2 = set()
@@ -439,9 +466,11 @@ for i, (ax, metric) in enumerate(zip(axes, metric_names)):
                 precision_sorted = precision_vals[sort_idx]
                 if met == "relative_precision_m1_det":
                     markersize = 6
+                    marker = 'o'
                 else:
                     markersize = 3
-                ax.plot(tpl_sorted, precision_sorted, linestyle=linestyles[j], marker='o', color=m2_to_color[m2],
+                    marker = 'o'
+                ax.plot(tpl_sorted, precision_sorted, linestyle=linestyles[j], marker=marker, color=m2_to_color[m2],
                         markersize=markersize, linewidth=1.5, alpha=0.8)
         
         ax.set_ylabel(r"Relative Precision")
@@ -472,12 +501,9 @@ for i, (ax, metric) in enumerate(zip(axes, metric_names)):
         if metric != 'relative_precision_dist':
             ax.set_yscale('log')
 
-ax4.set_xlabel(r'Mission Duration [yr]')
+ax5.set_xlabel(r'Mission Duration [yr]')
 
 plt.tight_layout()
 output_filename = f'redshift_combined_precision_vs_tpl_m1_{m1_val:.0e}_a_{spin_a}.png'
 plt.savefig(os.path.join(script_dir, output_filename), dpi=400)
 print(f"Additional plot saved: figures/{output_filename}")
-
-# -----------------------------------------------------------------------------
-# ...existing code...

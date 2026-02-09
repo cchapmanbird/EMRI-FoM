@@ -128,8 +128,8 @@ def inner_product(a, b, PSD, dt, window=None, fmin = None, fmax = None, use_gpu=
         length = len(a[0])
         freq = xp.fft.rfftfreq(length)/dt
 
-        if use_gpu:
-            freq = freq.get() #convert to numpy
+        # if use_gpu:
+        #     freq = freq.get() #convert to numpy
 
         if fmin != None:
             mask_min = xp.asarray(freq > fmin)

@@ -189,6 +189,7 @@ for idx, m2 in enumerate(sorted(z_data.keys())):
                  markersize=6, linewidth=1.5, alpha=0.5)
 
 ax1.set_ylabel(f'Redshift at $\\mathrm{{SNR}}={int(snr_threshold):.0f}$')
+# ax1.set_ylabel(f'LISA Redshift Horizon')
 ax1.set_yscale('log')
 
 # Overlay EM observations
@@ -202,11 +203,11 @@ legend_elements += [
     Line2D([0], [0], marker='X', label='AGN', alpha=0.5, markerfacecolor='k', markersize=8, linestyle='None', color='k'),
     Line2D([0], [0], marker='.', label='SDSS Quasars', alpha=0.1, markerfacecolor='blue', markersize=8, linestyle='None', color='blue'),
 ]
-leg2 = ax1.legend(handles=legend_elements, frameon=True, loc='lower left')
+leg2 = ax1.legend(handles=legend_elements, frameon=True, loc='lower left', title=r'EM Observations', framealpha=0.0)
 ax1.add_artist(leg2)
 
 ax1.set_ylim(1e-3, 5.)
-ax1.set_xlabel(r'Primary mass $m_1 [M_\odot]$')
+ax1.set_xlabel(r'Black Hole Primary Mass $m_1 [M_\odot]$')
 ax1.set_xscale('log')
 ax1.grid(True, alpha=0.3)
 ax1.tick_params(axis='both', which='major')
@@ -217,7 +218,7 @@ legend_elements_m2 = [Line2D([0], [0], marker='o', label=f'{m2:.0f}', markersize
 leg3 = ax1.legend(handles=legend_elements_m2,
                   bbox_to_anchor=(0.95, 1.2),
                   frameon=True, ncols=4,
-                  title=r'Secondary mass $m_2 [M_\odot]$')
+                  title=r'Secondary Mass $m_2 [M_\odot]$')
 ax1.set_xlim(4e4, 1.1e7)
 
 plt.tight_layout()

@@ -1,0 +1,47 @@
+# Binder ignore file - excludes unnecessary files to speed up build
+# The notebook NEEDS: snr_*/detection.h5, inference_*/inference.h5, and specific .h5/.json files
+
+# Large submodules/packages (install via requirements.txt instead)
+lisa-on-gpu/
+StableEMRIFisher-package/
+
+# Container files
+*.sif
+fom.def
+
+# Test files (not needed for Binder)
+test_waveform_and_response.py
+
+# Other notebooks (only degradation_analysis.ipynb is in Binder)
+SNR_parameter_space_analysis.ipynb
+
+# Standalone figures (not needed, generated in notebook)
+snr_distribution.png
+
+# Python cache
+**/__pycache__/
+**/*.pyc
+
+# Git files
+.git/
+
+# Exclude large unnecessary data files in pipeline
+pipeline/requirements_results/
+pipeline/*.txt
+pipeline/*.submit
+pipeline/test_cosmo.py
+pipeline/postprocess_*.py
+pipeline/pipeline*.py
+pipeline/assess_so3_snr.py
+pipeline/*.mplstyle
+
+# Keep the following essential files for the notebook:
+# - pipeline/degradation_analysis.ipynb
+# - pipeline/snr_*/detection.h5 (needed for SNR analysis)
+# - pipeline/inference_*/inference.h5 (needed for parameter estimation)
+# - pipeline/sdss_dr16q_quasars.h5
+# - pipeline/lvk_gw_events.json
+# - pipeline/common.py (imports CosmoInt)
+# - pipeline/*.py (other scripts)
+# - requirements.txt
+# - README.md

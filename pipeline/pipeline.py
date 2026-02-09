@@ -1,5 +1,7 @@
-# python pipeline.py --M 1e6 --mu 1e1 --a 0.5 --e_f 0.1 --T 4.0 --z 0.5 --psd_file TDI2_AE_psd.npy --dt 10.0 --use_gpu --N_montecarlo 1 --device 0 --power_law --repo test_acc --calculate_fisher 1
-# singularity exec --nv ../fom_final.sif python pipeline.py --M 50000.0 --mu 50.0 --a 0.5 --e_f 0.0 --T 0.25 --z 0.5898912629902194 --psd_file ./TDI2_AE_psd_emri_background_1.5_yr.npy --dt 0.6 --use_gpu --N_montecarlo 1 --device 0 --repo test_ --calculate_fisher 1
+# nohup python pipeline.py --M 3.75e5 --mu 3.75e1 --a 0.99 --e_f 0.0 --T 4.5 --z 0.5 --psd_file TDI2_AE_psd_emri_background_4.5_yr.npy --dt 10.0 --use_gpu --N_montecarlo 500 --device 0 --power_law --nr 1 --repo production_inference_m1=375000.0_m2=37.5_a=0.99_e_f=0_T=4.5_z=0.5_nr_1 --calculate_fisher 1 > out_pe_M3.75e5_m3.75e1_z05.out &
+# nohup python pipeline.py --M 1.5e6 --mu 1.5e1 --a 0.99 --e_f 0.0 --T 4.5 --z 0.5 --psd_file TDI2_AE_psd_emri_background_4.5_yr.npy --dt 10.0 --use_gpu --N_montecarlo 500 --device 1 --power_law --nr 1 --repo production_inference_m1=1500000.0_m2=15_a=0.99_e_f=0_T=4.5_z=0.5_nr_1 --calculate_fisher 1 > out_pe_M1.5e6_m1.5e1_z05_nr1.out &
+# nohup python pipeline.py --M 1.5e6 --mu 7.5e1 --a 0.99 --e_f 0.0 --T 4.5 --z 0.5 --psd_file TDI2_AE_psd_emri_background_4.5_yr.npy --dt 10.0 --use_gpu --N_montecarlo 500 --device 3 --power_law --nr 8 --repo production_inference_m1=1500000.0_m2=75_a=0.99_e_f=0_T=4.5_z=0.5_nr_8 --calculate_fisher 1 > out_pe_M1.5e6_m1.5e1_z05_nr8.out &
+
 import os
 print("PID:",os.getpid())
 
@@ -32,7 +34,6 @@ logger = logging.getLogger()
 
 def parse_arguments():
     parser = argparse.ArgumentParser()
-
     parser.add_argument("--M", help="Primary Mass of the central black hole at detector", type=float)
     parser.add_argument("--mu", help="Secondary Mass of the compact object at detector", type=float)
     parser.add_argument("--a", help="Dimensionless Spin of the central black hole", type=float)
@@ -49,6 +50,7 @@ def parse_arguments():
     parser.add_argument('--esaorbits', action='store_true', default=False, help="Use ESA trailing orbits. Default is equal arm length orbits.")
     parser.add_argument('--tdi2', action='store_true', default=False, help="Use 2nd generation TDI channels")
     parser.add_argument('--channels', type=str, default="AE", help="TDI channels to use")
+    parser.add_argument('--model', type=str, default="scirdv1", help="Noise model to use") #TODO: is this used?
     parser.add_argument("--calculate_fisher", help="Calculate the Fisher matrix", type=int, default=0)
     # optional time to plunge
     parser.add_argument("--Tpl", help="Time to plunge", type=float, default=0.0)
@@ -310,6 +312,7 @@ if __name__ == "__main__":
     if (args.e_f != 0.0):
         log_e = True
     else:
+        print("Working in non log_e")
         log_e = False
     
     if log_e:

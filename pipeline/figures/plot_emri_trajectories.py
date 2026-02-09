@@ -242,7 +242,7 @@ cmap_discrete = ListedColormap(colors)
 # PLOT 1: Time-Frequency Space
 # -----------------------------------------------------------------------------
 print("\nGenerating time-frequency plot...")
-fig1 = plt.figure(figsize=(3.25, 2*1.5))
+fig1 = plt.figure(figsize=(3.25*2, 2*1.5))
 
 sm = cm.ScalarMappable(cmap=cmap_discrete, norm=plt.Normalize(vmin=0, vmax=len(m1_values_unique) - 1))
 sm.set_array([])
@@ -363,7 +363,7 @@ print("Saved: figures/emri_trajectories_frequency_eccentricity.png")
 # -----------------------------------------------------------------------------
 print("\nGenerating combined time-frequency and frequency-eccentricity plot...")
 
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(3.25*2, 2*1.1), sharey=True)
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(3.25*2.1, 2*1.1), sharey=True)
 
 sm = cm.ScalarMappable(cmap=cmap_discrete, norm=plt.Normalize(vmin=0, vmax=len(m1_values_unique) - 1))
 sm.set_array([])

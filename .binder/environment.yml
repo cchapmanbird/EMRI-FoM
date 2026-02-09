@@ -1,0 +1,17 @@
+# Binder force rebuild
+name: emri-fom
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - numpy
+  - matplotlib
+  - scipy
+  - ipywidgets
+  - h5py
+  - astropy
+  - healpy
+  - jupyter
+  - notebook
+  - jupyterlab
