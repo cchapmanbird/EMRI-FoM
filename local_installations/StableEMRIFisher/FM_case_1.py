@@ -41,7 +41,7 @@ emri_params = {
     "Phi_r0": 3.0,  # Radial phase
 }
 
-src = 0
+src = sys.argv[1]
 try:
     
     dataset = h5py.File(f"../../pipeline/inference_{src}/inference.h5", "r")
