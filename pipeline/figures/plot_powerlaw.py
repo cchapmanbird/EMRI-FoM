@@ -524,16 +524,16 @@ for config, data in sorted(config_data.items()):
     nr_vals     = np.array(data['nr'])
     mask = (nr_vals >= -2) & (nr_vals <= 2)
     nr_vals = nr_vals[mask]
-    median_absA = np.array(data['median_absA'])[mask]
-    delta_phi_list = np.abs([get_beta_dphi_from_B(median_absA[ii], -nr_vals[ii], m1, m2, 0.99)[1] for ii in range(len(nr_vals))])
+    median_absA = np.array(data['median_absA'])[mask]/10**(nr_vals) # convert to A at 1 year before merger
+    delta_phi_list = np.abs([get_beta_dphi_from_B(median_absA[ii], -nr_vals[ii], m1*(1+z), m2*(1+z), 0.99)[1] for ii in range(len(nr_vals))])
     style = styles[(m1, m2, T_val)]
     arg_sort = np.argsort(nr_vals)
     
     label_ = rf'{format_mass_pair(m1, m2)}, {T_val}'
     axs.semilogy(-nr_vals[arg_sort], delta_phi_list[arg_sort],'o', alpha=0.8,ms=5, color=style['color'], linestyle=style['linestyle'], label=label_)
 
-dphi_1e6 = np.abs(get_beta_dphi_from_B(4.5e-6, -1, 1e6, 100, 0.99)[1])
-dphi_1e5 = np.abs(get_beta_dphi_from_B(3.6e-6, -1, 1e5, 10, 0.99)[1])
+dphi_1e6 = np.abs(get_beta_dphi_from_B(4.5e-6 / 10, -1, 1e6, 100, 0.99)[1])
+dphi_1e5 = np.abs(get_beta_dphi_from_B(3.6e-6 / 10, -1, 1e5, 10, 0.99)[1])
 print(f"dphi for 1e6: {dphi_1e6:.2e}, dphi for 1e5: {dphi_1e5:.2e}")
 axs.scatter([-1.15], [dphi_1e6], marker='P', color='C0', s=25, zorder=10, alpha=0.7)
 axs.scatter([-1.15], [dphi_1e5], marker='P', color='#ff7f0e', s=25, zorder=10, alpha=0.7)
@@ -548,11 +548,14 @@ axs.set_ylabel(r'$|\delta \varphi|$',fontsize=15)
 # axs.semilogy(["-1", "0", "0.5", "1", "1.5", "2"], dphi_lvk,'*',label='LVK')
 nr_array = np.array([-1, 0, 0.5, 1, 1.5, 2])
 # axs.semilogy(nr_array, [2e-5, 3e-1, 7e-2, 1e-1, 0.25, 3],'*',label='GW170817',alpha=0.5,ms=10)
-axs.semilogy(nr_array, [8e-5, 5.0, 0.2, 0.2, 0.3, 3],'*',label='GW230529',alpha=0.5,ms=10, color='orange')
-axs.semilogy(nr_array, [7e-3, 6e-2, 1.5e-1, 1e-1, 7e-2, 0.4],'D',label='GWTC-3',alpha=0.5,ms=5, color='purple')
+axs.semilogy(nr_array, np.asarray([8e-5, 5.0, 0.2, 0.2, 0.3, 3]),'*',label='GW230529',alpha=0.5,ms=10, color='red')
+axs.semilogy(nr_array, [1e-3, 6e-2, 1.5e-1, 1e-1, 7e-2, 0.4],'D',label='GWTC-3',alpha=0.5,ms=5, color='purple')
 axs.semilogy(nr_array, [5.5e-7, 0.230612, 0.0161558, 0.166536, 0.127024, 0.845096],'p',label='ET GW230529',alpha=0.5,ms=10)
 
-
+indep_ = np.abs(get_beta_dphi_from_B(1.6e-4/10, -1, 1.5, 2.5, 0.0)[1])
+axs.semilogy(-1, indep_,'*',label='GW230529',alpha=0.5,ms=10, color='orange')
+# independent GW230529 at 
+print(f"Independent GW230529 dphi: {indep_:.2e}, from paper {8e-5}")
 
 # ax.plot(-n_r_quad, A_GW241011, '*', color='blue', markersize=10, zorder=10,
 #         markeredgecolor='white', markeredgewidth=0.3, alpha=0.7)
@@ -574,14 +577,15 @@ nr_array = [float(el) for el in ["-1", "0", "0.5", "1"]]
 axs.yaxis.set_major_locator(LogLocator(base=10,numticks=30))  # Set the number of y-axis ticks
 
 legend_elements_effects = [
-    Line2D([0], [0], marker='*', color='w', label='GW230529', markerfacecolor='orange', markersize=10, alpha=0.7),
     Line2D([0], [0], marker='D', color='w', label='GWTC-3', markerfacecolor='purple', markersize=5, alpha=0.7),
+    Line2D([0], [0], marker='*', color='w', label='GW230529', markerfacecolor='red', markersize=10, alpha=0.7),
+    Line2D([0], [0], marker='*', color='w', label='approximate \n mapping \n GW230529', markerfacecolor='orange', markersize=10, alpha=0.7),
     Line2D([0], [0], marker='p', color='w', label='ET GW230529', markerfacecolor='C0', markersize=10, alpha=0.7),
     # Line2D([0], [0], marker='X', color='w', label='PTA J0737–3039', markerfacecolor='green', markersize=8, alpha=0.7),
 ]
 leg2 = axs.legend(handles=legend_elements_effects,
-                  loc='upper left',bbox_to_anchor=(0.0, 0.15),
-                 ncols=3, title='Ground-based constraints',
+                  loc='lower right',
+                 ncols=1, title='Ground-based constraints',
                  frameon=False, fontsize=7, title_fontsize=7)
 axs.add_artist(leg2)
 
@@ -591,5 +595,5 @@ leg1 = axs.legend(handles=legend_elements_emri,
                  title=r'EMRI constraints \\ $m_1[M_\odot], m_2[M_\odot], T[\mathrm{yr}]$', frameon=False, framealpha=1.0,
                  fontsize=7, title_fontsize=6)
 axs.add_artist(leg1)
-axs.set_ylim(0.1e-7, 10)
+axs.set_ylim(0.002e-7, 10)
 plt.savefig(f'./bound_delta_phi.pdf', bbox_inches='tight')  
