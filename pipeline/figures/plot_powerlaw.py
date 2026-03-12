@@ -398,16 +398,16 @@ ax.axvspan(n_r_df - region_hw, n_r_df + region_hw, alpha=0.2, color='steelblue',
 # -----------------------------------------------------------------------------
 # Add constraint markers with annotations
 # -----------------------------------------------------------------------------
-ax.plot(n_r_quad, A_GW241011, '*', color='blue', markersize=7, zorder=10,
+ax.plot(n_r_quad, A_GW241011, '*', color='blue', markersize=10, zorder=10,
         markeredgecolor='white', markeredgewidth=0.3, alpha=0.7)
 ax.annotate('GW241011', xy=(n_r_quad, A_GW241011),
-            xytext=(n_r_quad + 0.1, A_GW241011 * 1.5),
+            xytext=(n_r_quad + 0.1, A_GW241011 * 1.7),
             fontsize=7, color='black', ha='left', va='bottom')
 
-ax.plot(n_r_dipole, A_GW230529, '*', color='orange', markersize=7, zorder=10,
+ax.plot(n_r_dipole, A_GW230529, '*', color='orange', markersize=10, zorder=10,
         markeredgecolor='white', markeredgewidth=0.3, alpha=0.7)
 ax.annotate('GW230529', xy=(n_r_dipole, A_GW230529),
-            xytext=(n_r_dipole + 0.15, A_GW230529 * 1.25),
+            xytext=(n_r_dipole + 0.15, A_GW230529 * 1.4),
             fontsize=7, color='black', ha='left', va='bottom')
 
 
@@ -417,8 +417,8 @@ ax.annotate('GW230529', xy=(n_r_dipole, A_GW230529),
 # Relativistic model points (Susi's results)
 # ax.errorbar([1.15], [5.57e-6], yerr=[[2.01e-6], [3.24e-6]], fmt='x', color='C0', markersize=5, zorder=10, alpha=0.7)
 # ax.errorbar([1.15], [1.59e-6], yerr=[[0.56e-6], [0.85e-6]], fmt='x', color='#ff7f0e', markersize=5, zorder=10, alpha=0.7)
-ax.scatter([1.15], [5.57e-6], marker='P', color='C0', s=25, zorder=10, alpha=0.7)
-ax.scatter([1.15], [1.59e-6], marker='P', color='#ff7f0e', s=25, zorder=10, alpha=0.7)
+ax.scatter([1.15], [4.5e-6], marker='P', color='C0', s=25, zorder=10, alpha=0.7)
+ax.scatter([1.15], [3.6e-6], marker='P', color='#ff7f0e', s=25, zorder=10, alpha=0.7)
 # arrow to relativistic model
 ax.annotate('', xy=(0.7, 0.3e-5), xytext=(-0.5, 1e-6), arrowprops=dict(arrowstyle='->', color='black', lw=0.8))
 ax.annotate('Relativistic\nModel', xy=(-0.5, 1e-7), xytext=(-0.5, 1e-7),
@@ -482,3 +482,114 @@ ax.add_artist(leg1)
 plt.tight_layout()
 plt.savefig(f"nr_amplitude_precision_constraints_prx{include_prx}.png", dpi=300, bbox_inches='tight')
 print(f"Plot saved: nr_amplitude_precision_constraints_prx{include_prx}.png")
+
+##############################################################################################################
+def get_phi_n(pn_order, m1, m2, M, nu, chi_1, chi_2):
+    # from appendix of https://arxiv.org/pdf/2203.13937.pdf
+    gamma_E = 0.57721566490153286060  # Euler's constant
+    delta = (m1 - m2) / M
+    chi_S = (chi_1 + chi_2) / 2
+    chi_A = (chi_1 - chi_2) / 2
+    if int(2*pn_order) == 2:
+        return 3715/756 + 55*nu/9
+    elif int(2*pn_order) == 3:
+        return -16*np.pi + 113*delta*chi_A/3 + (113/3 - 76*nu/3)*chi_S
+    elif int(2*pn_order) == 4:
+        return 15293365/508032 + 27145*nu/504 + 3085*nu**2/72 + (-405/8 + 200*nu)*chi_A**2 - 405*delta*chi_A*chi_S/4 + (-405/8 + 5*nu/2)*chi_S**2
+    elif int(2*pn_order) == 5:
+        return 38645*np.pi/756 - 65*np.pi*nu/9 + (-732985/2268 - 140*nu/9)*delta*chi_A + (-732985/2268 + 24260*nu/81 + 340*nu**2/9)*chi_S
+    elif int(2*pn_order) == 6:
+        return 11583231236531/4694215680 - 6848*np.log(4)/21 - 640*np.pi**2/3 + 6848*gamma_E/21 + (-15737765635/3048192 + 2255*np.pi**2/12)*nu + 76055*nu**2/1728 - 127825*nu**3/1296 + 2270*np.pi*delta*chi_A/3 + (2270*np.pi/3 - 520*np.pi*nu)*chi_S + (75515/288 - 547945*nu/504 - 8455*nu**2/24)*chi_A**2 + (75515/144 - 8225*nu/18)*delta*chi_A*chi_S + (75515/288 - 126935*nu/252 + 19235*nu**2/72)*chi_S**2
+    elif int(2*pn_order) == 7:
+        return 77096675*np.pi/254016 + 378515*np.pi*nu/1512 - 74045*np.pi*nu**2/756 + (-25150083775/3048192 + 26804935*nu/6048 - 1985*nu**2/48)*delta*chi_A + (-25150083775/3048192 + 10566655595*nu/762048 - 1042165*nu**2/3024 + 5345*nu**3/36)*chi_S
+    else:
+        return 1.0
+
+def get_beta_dphi_from_B(B, pn_order, M, mu, a):
+    # from eq 21 of https://arxiv.org/pdf/2002.02030
+    eta = mu * M / (mu + M)**2 # symmetric mass ratio
+    beta = -15/32 * 1/(4-pn_order) * 1/(5-2*pn_order) * B * eta**(-2*pn_order/5) # https://arxiv.org/pdf/1204.2585 also eq 29 of https://arxiv.org/pdf/1603.08955
+    # beta(phi_n) eq 10 of https://arxiv.org/pdf/1603.08955
+    b = 2*pn_order-5 # power ppE
+    delta_phi = 128/3 * beta * eta**(2*pn_order/5) / get_phi_n(pn_order, M, mu, M+mu, eta, a, 0.0) # eq 21 https://arxiv.org/pdf/2002.02030
+    return beta, delta_phi
+
+
+default_width = 3.25 # in inches
+default_ratio = (np.sqrt(5.0) - 1.0) / 2.0 # golden mean
+
+fig, axs = plt.subplots(1, 1, figsize=(default_width, default_width * default_ratio*2.0))
+for config, data in sorted(config_data.items()):
+    m1, m2, z, T_val = config
+    nr_vals     = np.array(data['nr'])
+    mask = (nr_vals >= -2) & (nr_vals <= 2)
+    nr_vals = nr_vals[mask]
+    median_absA = np.array(data['median_absA'])[mask]
+    delta_phi_list = np.abs([get_beta_dphi_from_B(median_absA[ii], -nr_vals[ii], m1, m2, 0.99)[1] for ii in range(len(nr_vals))])
+    style = styles[(m1, m2, T_val)]
+    arg_sort = np.argsort(nr_vals)
+    
+    label_ = rf'{format_mass_pair(m1, m2)}, {T_val}'
+    axs.semilogy(-nr_vals[arg_sort], delta_phi_list[arg_sort],'o', alpha=0.8,ms=5, color=style['color'], linestyle=style['linestyle'], label=label_)
+
+dphi_1e6 = np.abs(get_beta_dphi_from_B(4.5e-6, -1, 1e6, 100, 0.99)[1])
+dphi_1e5 = np.abs(get_beta_dphi_from_B(3.6e-6, -1, 1e5, 10, 0.99)[1])
+print(f"dphi for 1e6: {dphi_1e6:.2e}, dphi for 1e5: {dphi_1e5:.2e}")
+axs.scatter([-1.15], [dphi_1e6], marker='P', color='C0', s=25, zorder=10, alpha=0.7)
+axs.scatter([-1.15], [dphi_1e5], marker='P', color='#ff7f0e', s=25, zorder=10, alpha=0.7)
+
+axs.set_xlabel(r'PN order',fontsize=15)
+axs.set_ylabel(r'$|\delta \varphi|$',fontsize=15)
+
+
+# axs.grid(axis='y')
+
+# LVK bounds from Elise's paper
+# axs.semilogy(["-1", "0", "0.5", "1", "1.5", "2"], dphi_lvk,'*',label='LVK')
+nr_array = np.array([-1, 0, 0.5, 1, 1.5, 2])
+# axs.semilogy(nr_array, [2e-5, 3e-1, 7e-2, 1e-1, 0.25, 3],'*',label='GW170817',alpha=0.5,ms=10)
+axs.semilogy(nr_array, [8e-5, 5.0, 0.2, 0.2, 0.3, 3],'*',label='GW230529',alpha=0.5,ms=10, color='orange')
+axs.semilogy(nr_array, [7e-3, 6e-2, 1.5e-1, 1e-1, 7e-2, 0.4],'D',label='GWTC-3',alpha=0.5,ms=5, color='purple')
+axs.semilogy(nr_array, [5.5e-7, 0.230612, 0.0161558, 0.166536, 0.127024, 0.845096],'p',label='ET GW230529',alpha=0.5,ms=10)
+
+
+
+# ax.plot(-n_r_quad, A_GW241011, '*', color='blue', markersize=10, zorder=10,
+#         markeredgecolor='white', markeredgewidth=0.3, alpha=0.7)
+# ax.plot(-n_r_dipole, A_GW230529, '*', color='orange', markersize=10, zorder=10,
+#         markeredgecolor='white', markeredgewidth=0.3, alpha=0.7)
+
+
+# {{-1, 5.54476*10^-7}, {-(1/2), 0.0000212187}, {0, 0.230612}, {1/2, 0.0161558}, {1, 0.166536}, {3/2, 0.127024}, {2, 0.845096}}
+# pulsar bounds # # https://journals.aps.org/prx/pdf/10.1103/PhysRevX.11.041050
+beta2 = 4e-6
+Pdot_precision = 1.3e-4
+boundB_prx_dpsr = 4e-10 # 95% quoted in the paper, 
+# if we divide by two we obtain one sigma
+B = np.random.normal(0,boundB_prx_dpsr / 2,size=10000)
+beta_dp, dphi_dp = get_beta_dphi_from_B(B, -1, 1.33818, 1.24886, 0.0)
+nr_array = [float(el) for el in ["-1", "0", "0.5", "1"]]
+# axs.semilogy(nr_array, [np.quantile(dphi_dp,0.95), 0.8e-4, 0.8, 10.0],'X',label='PTA J0737–3039',alpha=0.5,ms=8, color='green')
+# axs.set_ylim(0.5e-11,30)
+axs.yaxis.set_major_locator(LogLocator(base=10,numticks=30))  # Set the number of y-axis ticks
+
+legend_elements_effects = [
+    Line2D([0], [0], marker='*', color='w', label='GW230529', markerfacecolor='orange', markersize=10, alpha=0.7),
+    Line2D([0], [0], marker='D', color='w', label='GWTC-3', markerfacecolor='purple', markersize=5, alpha=0.7),
+    Line2D([0], [0], marker='p', color='w', label='ET GW230529', markerfacecolor='C0', markersize=10, alpha=0.7),
+    # Line2D([0], [0], marker='X', color='w', label='PTA J0737–3039', markerfacecolor='green', markersize=8, alpha=0.7),
+]
+leg2 = axs.legend(handles=legend_elements_effects,
+                  loc='upper left',bbox_to_anchor=(0.0, 0.15),
+                 ncols=3, title='Ground-based constraints',
+                 frameon=False, fontsize=7, title_fontsize=7)
+axs.add_artist(leg2)
+
+leg1 = axs.legend(handles=legend_elements_emri,
+                 loc='upper left', ncols=1,
+                 bbox_to_anchor=(0.0, 0.99),
+                 title=r'EMRI constraints \\ $m_1[M_\odot], m_2[M_\odot], T[\mathrm{yr}]$', frameon=False, framealpha=1.0,
+                 fontsize=7, title_fontsize=6)
+axs.add_artist(leg1)
+axs.set_ylim(0.1e-7, 10)
+plt.savefig(f'./bound_delta_phi.pdf', bbox_inches='tight')  
