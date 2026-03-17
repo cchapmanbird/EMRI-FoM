@@ -192,7 +192,7 @@ for m2_lvk, z_lvk in zip(lvk_events['primary_mass'], lvk_events['redshift']):
 ax.plot(theta_lvk + np.asarray(theta_rot), r_lvk, marker='.', color='blue', markersize=3, alpha=0.1, linestyle='None')
 
 # # Legend for LVK
-leg_lvk = ax.legend([Line2D([0], [0], marker='.', color='blue', markersize=5,alpha=0.1, linestyle='None')], ['LIGO-Virgo-Kagra events'], bbox_to_anchor=(0.5, -0.1), loc='center', frameon=True)
+leg_lvk = ax.legend([Line2D([0], [0], marker='.', color='blue', markersize=5,alpha=0.1, linestyle='None')], ['LIGO-Virgo-KAGRA events'], bbox_to_anchor=(0.5, -0.1), loc='center', frameon=True)
 ax.add_artist(leg_lvk)
 
 ax.set_rlabel_position(90)
