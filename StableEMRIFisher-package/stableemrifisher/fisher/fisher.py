@@ -358,18 +358,23 @@ class StableEMRIFisher:
             # Compute Ndelta number of delta values to compute derivative. Testing stability.
             if self.param_names[i] == 'M' or self.param_names[i] == 'mu': 
                 delta_init = np.geomspace(1e-4*self.wave_params[self.param_names[i]],1e-9*self.wave_params[self.param_names[i]],Ndelta)
-            elif self.param_names[i] == 'a' or self.param_names[i] == 'p0' or self.param_names[i] == 'e0' or self.param_names[i] == 'Y0':
+            elif self.param_names[i] == 'a' or self.param_names[i] == 'p0' or self.param_names[i] == 'Y0':
                 delta_init = np.geomspace(1e-4*self.wave_params[self.param_names[i]],1e-9*self.wave_params[self.param_names[i]],Ndelta)
             elif self.param_names[i] == 'e0':
                 if self.log_e:
                     delta_init = np.geomspace(1e-1, 1e-9, Ndelta)
                 else:
                     delta_init = np.geomspace(1e-4*self.wave_params[self.param_names[i]],1e-9*self.wave_params[self.param_names[i]],Ndelta)
-            elif self.param_names[i] == 'A':
+            elif self.param_names[i] == 'A':   
                 if self.wave_params[self.param_names[i]] < 1e-8:
                      delta_init = np.geomspace(1e-4,1e-11, Ndelta)
                 else:
                      delta_init = np.geomspace(1e-1*self.wave_params[self.param_names[i]],1e-7*self.wave_params[self.param_names[i]],Ndelta)            
+            elif self.param_names[i] == 'Lambda':
+                #delta_init = np.geomspace(1e-1,1e-8,Ndelta)
+                delta_init = np.geomspace(3e-5,5e-10,Ndelta)
+            elif self.param_names[i] == 'ScalarMass':
+                delta_init = np.geomspace(1e-4,1e-9,Ndelta)      
             else:
                 delta_init = np.geomspace(1e-1*self.wave_params[self.param_names[i]],1e-10*self.wave_params[self.param_names[i]], Ndelta)
  
