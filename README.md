@@ -5,7 +5,7 @@
 
 ## Overview
 
-This repository provides comprehensive tools for computing **Figures of Merit (FoMs)** for Extreme Mass Ratio Inspirals (EMRIs) and Intermediate Mass Ratio Inspirals (IMRIs) observable by the [Laser Interferometer Space Antenna (LISA)](https://www.lisamission.org/) mission. If you use the results or codes contained here please cite [our work](#citation)
+This repository provides comprehensive tools for computing **Figures of Merit (FoMs)** for Extreme Mass Ratio Inspirals (EMRIs) and Intermediate Mass Ratio Inspirals (IMRIs) observable by the [Laser Interferometer Space Antenna (LISA)](https://www.lisamission.org/) mission. If you use the results or codes contained here please cite [our work](#citation) also available [here](https://arxiv.org/abs/2603.17072).
 
 ### What are EMRIs and IMRIs?
 
@@ -293,12 +293,14 @@ We welcome contributions! Please feel free to submit issues, feature requests, o
 If you use the results or code provided in this repository, please cite:
 
 ```bibtex
-@article{speri_2025_emri_imri,
-  title = {Quantifying the Scientific Potential of Intermediate and Extreme Mass Ratio Inspirals with the Laser Interferometer Space Antenna},
-  author = {Speri, Lorenzo and Duque, Francisco and Santini, Alessandro and Barsanti, Susanna and Kejriwal, Shubham and Burke, Ollie and Chapman-Bird, Christian},
-  journal = {In preparation},
-  year = {2025},
-  url = {https://github.com/lorenzsp/EMRI-FoM}
+@article{Speri:2026ade,
+    author = "Speri, Lorenzo and Duque, Francisco and Barsanti, Susanna and Santini, Alessandro and Kejriwal, Shubham and Burke, Ollie and Chapman-Bird, Christian E. A.",
+    title = "{Quantifying the Scientific Potential of Intermediate and Extreme Mass Ratio Inspirals with the Laser Interferometer Space Antenna}",
+    eprint = "2603.17072",
+    archivePrefix = "arXiv",
+    primaryClass = "astro-ph.IM",
+    month = "3",
+    year = "2026"
 }
 ```
 
