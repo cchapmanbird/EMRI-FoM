@@ -259,7 +259,9 @@ for m1, m2, T_val in unique_systems:
 # -----------------------------------------------------------------------------
 # Create plot
 # -----------------------------------------------------------------------------
-fig, ax = plt.subplots(figsize=(3.75, 3.5))
+default_width = 5
+default_ratio = (np.sqrt(5.0) - 1.0) / 2.0 # golden mean
+fig, ax = plt.subplots(figsize=(default_width, default_width * default_ratio*2.0))
 
 
 # -----------------------------------------------------------------------------
@@ -597,3 +599,38 @@ leg1 = axs.legend(handles=legend_elements_emri,
 axs.add_artist(leg1)
 axs.set_ylim(0.002e-7, 10)
 plt.savefig(f'./bound_delta_phi.pdf', bbox_inches='tight')  
+
+
+############################################################################################################################
+
+fig, axs = plt.subplots(1, 1, figsize=(default_width, default_width * default_ratio*2.0))
+for config, data in sorted(config_data.items()):
+    m1, m2, z, T_val = config
+    nr_vals     = np.array(data['nr'])
+    mask = (nr_vals >= -2)&(nr_vals <= 6) # (nr_vals >= -2) & (nr_vals <= 2)
+    nr_vals = nr_vals[mask]
+    median_absA = np.array(data['median_absA'])[mask]/10**(nr_vals) # convert to A at 1 year before merger
+    beta_list = np.abs([get_beta_dphi_from_B(median_absA[ii], -nr_vals[ii], m1*(1+z), m2*(1+z), 0.99)[0] for ii in range(len(nr_vals))])
+    style = styles[(m1, m2, T_val)]
+    arg_sort = np.argsort(nr_vals)
+    
+    label_ = rf'{format_mass_pair(m1, m2)}, {T_val}'
+    axs.semilogy(-nr_vals[arg_sort], beta_list[arg_sort],'o', alpha=0.8,ms=5, color=style['color'], linestyle=style['linestyle'], label=label_)
+
+beta_1e6 = np.abs(get_beta_dphi_from_B(4.5e-6 / 10, -1, 1e6, 100, 0.99)[0])
+beta_1e5 = np.abs(get_beta_dphi_from_B(3.6e-6 / 10, -1, 1e5, 10, 0.99)[0])
+axs.scatter([-1.15], [beta_1e6], marker='P', color='C0', s=25, zorder=10, alpha=0.7)
+axs.scatter([-1.15], [beta_1e5], marker='P', color='#ff7f0e', s=25, zorder=10, alpha=0.7)
+
+axs.set_xlabel(r'PN order',fontsize=15)
+axs.set_ylabel(r'$\beta$',fontsize=15)
+
+# axs.yaxis.set_major_locator(LogLocator(base=10,numticks=30))  # Set the number of y-axis ticks
+
+leg1 = axs.legend(handles=legend_elements_emri,
+                 loc='upper left', ncols=1,
+                 bbox_to_anchor=(0.0, 0.99),
+                 title=r'EMRI constraints \\ $m_1[M_\odot], m_2[M_\odot], T[\mathrm{yr}]$', frameon=False, framealpha=1.0,
+                 fontsize=7, title_fontsize=6)
+axs.add_artist(leg1)
+plt.savefig(f'./bound_beta.pdf', bbox_inches='tight')  
