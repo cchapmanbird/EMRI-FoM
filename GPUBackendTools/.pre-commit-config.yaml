@@ -1,0 +1,74 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks.git
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+      - id: check-ast
+      - id: check-case-conflict
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-symlinks
+      - id: check-xml
+      - id: check-yaml
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: ['--fix=auto']
+      - id: pretty-format-json
+        args: [--autofix, --indent, "4", --top-keys, "version"]
+      - id: requirements-txt-fixer
+      - id: trailing-whitespace
+  - repo: https://github.com/cheshirekow/cmake-format-precommit
+    rev: v0.6.13
+    hooks:
+      - id: cmake-format
+        additional_dependencies: ['PyYAML']
+        args: [--config-file, .cmake-format.yaml]
+      - id: cmake-lint
+        additional_dependencies: ['PyYAML']
+        args: [--config-file, .cmake-format.yaml]
+  - repo: https://github.com/tox-dev/pyproject-fmt
+    rev: "v2.6.0"
+    hooks:
+      - id: pyproject-fmt
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
+    rev: v0.13.0
+    hooks:
+      # Run the linter.
+      - id: ruff
+        args: [--fix]
+      # Run the formatter.
+      - id: ruff-format
+        args: [--extension, 'pyi:python']
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.8.17
+    hooks:
+      - id: uv-lock
+      - id: uv-export
+        args: [--frozen, -o, pylock.toml, --quiet]
+        files: ^(uv\.lock|pyproject\.toml|uv\.toml|pylock\.toml)$
+  - repo: https://github.com/opensource-nepal/commitlint
+    rev: v1.3.1
+    hooks:
+      - id: commitlint
+        stages: [commit-msg]
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.33.3
+    hooks:
+      - id: check-jsonschema
+        name: Check CMakePresets.json against schema
+        args: [--schemafile, 'https://cmake.org/cmake/help/v3.30/_downloads/3e2d73bff478d88a7de0de736ba5e361/schema.json']
+        files: ^CMakePresets\.json$
+      - id: check-gitlab-ci
+        args: ["--verbose"]
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.18.1
+    hooks:
+      - id: mypy
+        additional_dependencies: ['numpy', 'torchtyping']
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v21.1.1
+    hooks:
+      - id: clang-format
+        args: [--style=Google]
+        types_or: [c++, c, cuda]

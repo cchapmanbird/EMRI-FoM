@@ -1,0 +1,136 @@
+name: Build and publish wheels
+on:
+  push:
+permissions:
+  contents: read
+jobs:
+  select:
+    runs-on: ubuntu-latest
+    outputs:
+      build: ${{ steps.select.outputs.build }}
+      publish: ${{ steps.select.outputs.publish }}
+      core-suffix: ${{ steps.select.outputs.core-suffix }}
+    steps:
+      - name: initialize
+        run: |
+          echo "GBTWHL_BUILD=false" >> "$GITHUB_ENV"
+          echo "GBTWHL_CORE_SUFFIX=false" >> "$GITHUB_ENV"
+          echo "GBTWHL_PUBLISH=false" >> "$GITHUB_ENV"
+      - name: build on commit message
+        if: contains(github.event.head_commit.message, '[ci:build-wheels]')
+        run: |
+          echo "GBTWHL_BUILD=true" >> "$GITHUB_ENV"
+      - name: publish wheels on commit message
+        if: contains(github.event.head_commit.message, '[ci:publish-wheels]')
+        run: |
+          echo "GBTWHL_PUBLISH=true" >> "$GITHUB_ENV"
+      - name: build and publish on tag 'v*'
+        if: startsWith(github.event.ref, 'refs/tags/v')
+        run: |
+          echo "GBTWHL_BUILD=true" >> "$GITHUB_ENV"
+          echo "GBTWHL_PUBLISH=true" >> "$GITHUB_ENV"
+      - name: add core-suffix on non-official repo
+        if: github.event.repository.full_name != 'mikekatz04/LISAanalysistools'
+        run: |
+          echo "GBTWHL_CORE_SUFFIX=true" >> "$GITHUB_ENV"
+      - name: output results
+        id: select
+        run: |
+          echo "build=$GBTWHL_BUILD" >> $GITHUB_OUTPUT
+          echo "publish=$GBTWHL_PUBLISH" >> $GITHUB_OUTPUT
+          echo "core-suffix=$GBTWHL_CORE_SUFFIX" >> $GITHUB_OUTPUT
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.setuptools_scm.outputs.value }}
+    steps:
+      # =========================
+      # = I - Retrieve sources  =
+      # =========================
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      # ===================================
+      # = II - Prepare Python environment =
+      # ===================================
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: |
+          pip install setuptools_scm
+      # ========================
+      # = III - Detect version =
+      # ========================
+      - name: Update version scheme
+        run: |
+          sed -i'' -e 's|version_scheme = "no-guess-dev"|version_scheme = "only-version"|g' pyproject.toml
+          sed -i'' -e 's|local_scheme = "node-and-date"|local_scheme = "no-local-version"|g' pyproject.toml
+      - name: Detect current version
+        id: setuptools_scm
+        run: |
+          VERSION="$(python -m setuptools_scm)"
+          echo "RUNNING CHECK $(python -m setuptools_scm)"
+          echo "notice:: Detected version: ${VERSION}"
+          echo "value=${VERSION}" >> $GITHUB_OUTPUT
+          echo "version: ${VERSION}" >> $GITHUB_STEP_SUMMARY
+  build:
+    needs:
+      - select
+      - version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install build dependencies
+        run: python -m pip install build
+
+      - name: Build Sdist and Wheel
+        run: python -m build --sdist --wheel --outdir dist/ . 
+        env:
+          SETUPTOOLS_SCM_PRETEND_VERSION: ${{needs.version.outputs.version}}
+
+      # =====================
+      # = V. Upload wheels  =
+      # =====================
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ strategy.job-index }}
+          path: ./dist/*
+  
+  publish:
+    runs-on: ubuntu-latest
+    environment: pypiconf
+    defaults:
+      run:
+        shell: bash
+    needs:
+      - build
+      - select
+    if: needs.select.outputs.publish == 'true'
+    permissions:
+      # IMPORTANT: this permission is mandatory for trusted publishing
+      id-token: write
+    steps:
+      - name: Retrieve release distributions
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/
+          merge-multiple: true
+      - name: List wheels
+        run: |
+          ls -al dist/*
+      - name: Install twine from PyPI
+        uses: install-pinned/twine@c7ca21f7f66fc895b73cba784dc1d0e302e3b4a3 # 6.1.0
+      - name: Publish release distributions to registry
+        env:
+          TWINE_NON_INTERACTIVE: "yes"
+          TWINE_PASSWORD: ${{ secrets.TWINE_PASSWORD }}
+          TWINE_REPOSITORY: ${{ vars.TWINE_REPOSITORY }}
+          TWINE_USERNAME: ${{ vars.TWINE_USERNAME }}
+        run: |
+          twine upload dist/*

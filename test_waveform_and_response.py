@@ -4,6 +4,8 @@ import numpy as np
 import warnings
 import os
 
+from lisatools.detector import EqualArmlengthOrbits
+
 path_to_file = os.path.dirname(__file__)
 
 #from lisatools.detector import EqualArmlengthOrbits
@@ -106,10 +108,10 @@ class ResponseTest(unittest.TestCase):
         #     **tdi_kwargs_esa,
         # )
 
-        orbits = "equalarmlength-orbits.h5"
-        orbit_file = os.path.join(os.path.dirname(__file__), 'lisa-on-gpu', 'orbit_files', orbits)
-        orbit_kwargs = dict(orbit_file=orbit_file)
-        tdi_kwargs = dict(orbit_kwargs=orbit_kwargs, order=order, tdi=tdi_gen, tdi_chan="AET")
+        backend = 'gpu' if use_gpu else 'cpu'
+        orbits = EqualArmlengthOrbits(force_backend=backend)
+        orbits.configure(linear_interp_setup=True)
+        tdi_kwargs = dict(order=order, tdi=tdi_gen, tdi_chan="AET")
 
         gb_lisa_esa = ResponseWrapper(
             gb,
@@ -117,12 +119,13 @@ class ResponseTest(unittest.TestCase):
             dt,
             index_lambda,
             index_beta,
-            t0=t0,
+            t_buffer=t0,
             flip_hx=False,  # set to True if waveform is h+ - ihx
-            use_gpu=use_gpu,
             remove_sky_coords=True,  # True if the waveform generator does not take sky coordinates
             is_ecliptic_latitude=True,  # False if using polar angle (theta)
             remove_garbage=True,  # removes the beginning of the signal that has bad information
+            orbits=orbits,
+            force_backend=backend,
             **tdi_kwargs,
         )
 
@@ -145,14 +148,13 @@ class ResponseTest(unittest.TestCase):
 
         waveform_cpu = self.run_test("1st generation", False)
         self.assertTrue(np.all(np.isnan(waveform_cpu) == False))
-
         if gpu_available:
             waveform_gpu = self.run_test("1st generation", True)
-            mm = len(waveform_cpu) - get_overlap(
+            mm = 1.0 - get_overlap(
                 cp.asarray(waveform_cpu),
                 cp.asarray(waveform_gpu),
                 use_gpu=gpu_available,
-            )
+            ) # now the overlap is already divided by the number of channels
             self.assertLess(np.abs(mm), 1e-10)
 
     def test_tdi_2nd_generation(self):
@@ -162,9 +164,9 @@ class ResponseTest(unittest.TestCase):
 
         if gpu_available:
             waveform_gpu = self.run_test("2nd generation", True)
-            mm = len(waveform_cpu) - get_overlap(
+            mm = 1.0 - get_overlap(
                 cp.asarray(waveform_cpu), waveform_gpu, use_gpu=gpu_available
-            )
+            ) # now the overlap is already divided by the number of channels
             self.assertLess(np.abs(mm), 1e-10)
 
 # from few.waveform import FastSchwarzschildEccentricFlux

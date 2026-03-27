@@ -1,0 +1,24 @@
+# Include the README
+include README
+
+# Include the license file
+include LICENSE
+include THIRD.txt
+
+# Include dependencies
+include requirements*.txt
+
+# Include makefile
+include Makefile
+
+# Include docs
+recursive-include docs
+
+# Include Changelog
+include CHANGELOG
+
+# Include tests
+recursive-include tests/testsuites  *
+
+# Include scripts
+recursive-include scripts   *

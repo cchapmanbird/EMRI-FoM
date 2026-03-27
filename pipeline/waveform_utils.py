@@ -1,5 +1,6 @@
 import numpy as np
 import os
+from lisatools.detector import EqualArmlengthOrbits, ESAOrbits
 from fastlisaresponse import ResponseWrapper
 from few.waveform import GenerateEMRIWaveform
 from few.trajectory.ode import KerrEccEqFlux
@@ -80,13 +81,15 @@ def initialize_waveform_generator(T, dt, inspiral_kwargs, esaorbits=True, use_gp
     backend = 'gpu' if use_gpu else 'cpu'
     print("inspiral_kwargs:",inspiral_kwargs)
     temp_wave = GenerateEMRIWaveform("FastKerrEccentricEquatorialFlux", inspiral_kwargs=inspiral_kwargs, force_backend=backend, sum_kwargs=dict(pad_output=True))
-    orbits = "esa-trailing-orbits.h5" if esaorbits else "equalarmlength-orbits.h5"
-    orbit_file = os.path.join(os.path.dirname(__file__), '..', 'lisa-on-gpu', 'orbit_files', orbits)
-    orbit_kwargs = dict(orbit_file=orbit_file)
-    tdi_kwargs_esa = dict(orbit_kwargs=orbit_kwargs, order=25, tdi="2nd generation", tdi_chan="AE")
+    orbits = EqualArmlengthOrbits(force_backend=backend) if esaorbits else EqualArmlengthOrbits(force_backend=backend)
+    orbits.configure(linear_interp_setup=True)
+    tdi_kwargs_esa = dict(order=25, tdi="2nd generation", tdi_chan="AE")
     model = ResponseWrapper(
-            temp_wave, T, dt, 8, 7, t0=t0, flip_hx=True, use_gpu=use_gpu,
-            remove_sky_coords=False, is_ecliptic_latitude=False, remove_garbage="zero", **tdi_kwargs_esa
+            temp_wave, T, dt, 8, 7, t_buffer=t0, flip_hx=True,
+            remove_sky_coords=False, is_ecliptic_latitude=False, remove_garbage="zero", 
+            orbits=orbits,
+            force_backend=backend,
+            **tdi_kwargs_esa
         )
     # base_wave = wave_windowed_truncated(model, xp, t0)
     return model

@@ -120,7 +120,7 @@ python -m pip install --upgrade pip
 # Install core dependencies
 python -m pip install --no-cache-dir nvidia-cuda-runtime-cu12 astropy \
     eryn fastemriwaveforms-cuda12x multiprocess optax matplotlib scipy \
-    jupyter interpax numba Cython lisaanalysistools tabulate scienceplots \
+    jupyter interpax numba Cython tabulate scienceplots \
     healpy pandas filelock
 
 # Test FEW installation
@@ -135,8 +135,9 @@ export NVCC_PREPEND_FLAGS='-ccbin /usr/bin/g++'
 
 # Clone and install EMRI-FoM packages
 git clone https://github.com/lorenzsp/EMRI-FoM.git emri_fom_temp
-cd emri_fom_temp/lisa-on-gpu/
-python setup.py install
+pip install GPUBackendTools
+pip install LISAanalysistools
+pip install lisa-on-gpu
 cd ../StableEMRIFisher-package/
 python -m pip install .
 cd ..
@@ -176,7 +177,7 @@ conda activate fom_env
 
 # Install additional dependencies
 pip install tabulate markdown pypandoc scikit-learn healpy \
-    lisaanalysistools seaborn corner scipy tqdm jupyter \
+    seaborn corner scipy tqdm jupyter \
     ipython h5py requests matplotlib eryn Cython
 ```
 
@@ -206,6 +207,9 @@ export PATH=$PATH:/usr/local/cuda-12.5/bin/
 Then install the response package:
 
 ```bash
+pip install GPUBackendTools
+pip install LISAanalysistools
+pip install lisa-on-gpu
 cd lisa-on-gpu
 python setup.py install
 cd ..

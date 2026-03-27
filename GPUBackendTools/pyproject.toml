@@ -1,0 +1,166 @@
+[build-system]
+build-backend = "scikit_build_core.build"
+
+requires = [ "cython", "numpy", "scikit-build-core"]
+
+
+[project]
+name = "gpubackendtools" #@NAMESUFFIX@
+
+description = "GPU Backend Tools"
+
+readme = "README.md"
+
+authors = [
+  { name = "Michael Katz", email = "mikekatz04@gmail.com" },
+]
+requires-python = ">=3.10"
+
+classifiers = [
+  "License :: OSI Approved :: Apache Software License",
+  "Natural Language :: English",
+  "Programming Language :: C++",
+  "Programming Language :: Cython",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+]
+
+#@VERSION_ADD@
+
+# version is deduced from the lattest git tag
+# description is the docstring at the top of src/gpubackendtools/__init__.py
+dynamic = [ "version" ]
+
+dependencies = [
+  "exceptiongroup; python_version<'3.11'", # To access ExceptionGroup with Python 3.9 and 3.10
+  "jsonschema",                            # To validate content of file registry
+  "matplotlib",
+  "numpy",
+  "nvidia-ml-py",                          # To detect CUDA version if any
+  "platformdirs",                          # To locate config and data dir on all platforms
+  "pydantic",                              # To handle citations and references with advanced dataclasses
+  "pyyaml",                                # To read file registry
+  "requests",                              # To download files automatically
+  "rich",                                  # To display downlaod progress bar
+  "scipy",
+  "tqdm",
+  "wrapt",
+  #@DEPS_CUPYCUDA@,
+  #@DEPS_GPUBACKENDTOOLSCORE@,
+]
+
+optional-dependencies.doc = [
+  "ipykernel",
+  "ipython",
+  "ipywidgets",
+  "myst-parser",
+  "nbsphinx",
+  "pypandoc",
+  "sphinx",
+  "sphinx-rtd-theme",
+  "sphinx-tippy",
+]
+
+optional-dependencies.testing = [
+  "matplotlib",
+]
+
+[tool.pyproject-fmt]
+max_supported_python = "3.13"
+
+[tool.coverage]
+paths.source = [
+  "src/",
+  "**/site-packages/",
+]
+
+report.omit = [
+  "*/gpubackendtools/_version.py",
+  "*/gpubackendtools/tests/*.py",
+  "*/gpubackendtools/git_version.py",
+  "*/gpubackendtools_backend_*/git_version.py",
+]
+
+[tool.setuptools_scm]
+version_scheme = "no-guess-dev"
+local_scheme = "node-and-date"
+version_file = "src/gpubackendtools/_version.py"
+#@FALLBACK_VERSION@
+fallback_version = "0.1.1"
+search_parent_directories = false
+
+
+[tool.scikit-build]
+wheel.platlib = false
+wheel.py-api = "py3"
+metadata.version.provider = "scikit_build_core.metadata.setuptools_scm"
+sdist.include = [
+  "src/gpubackendtools/_version.py",
+  "src/gpubackendtools/git_version.py",                 #@SKIP_PLUGIN@
+  "#src/gpubackendtools_backend_cuda11x/git_version.py",
+  "#src/gpubackendtools_backend_cuda12x/git_version.py",
+  "tests/",
+  #"src/gpubackendtools/cutils/CubicSpline.cu",
+  #"src/gpubackendtools/cutils/Interpolate.cu",
+  #"src/gpubackendtools/cutils/Interpolate.hh",
+  "src/gpubackendtools/cutils/cuda_complex.hpp",
+  "src/gpubackendtools/cutils/gbt_global.h",
+  "src/gpubackendtools/cutils/pybind11_cuda_array_interface.hpp", 
+  "src/gpubackendtools/cutils/cmake_functions.cmake",
+]
+sdist.exclude = [
+  ".devcontainer/",
+  ".github/",
+  "dataset-preprocessing/",
+  "docs/",
+  "examples/",
+  ".cmake-format.yaml",
+  ".gitignore",
+  ".pre-commit-config.yaml",
+  "src/gpubackendtools/_editable.py",
+  "src/gpubackendtools/tests/base.py",
+  "src/gpubackendtools/git_version.py.in",
+]
+
+wheel.exclude = [
+  "**.pyx",
+  # "**.cu",
+  # "**.cxx",
+  # "**.hh",
+  # "**.h",
+  # "**.hpp",
+  "**/CMakeLists.txt",
+  "lib/pkgconfig",
+  "lib/cmake",
+  "lib/*.so",
+  "lib/*.a",
+]
+
+[tool.scikit-build.wheel.packages]
+gpubackendtools = "src/gpubackendtools"       #@SKIP_PLUGIN@
+"gpubackendtools/tests" = "tests" #@SKIP_PLUGIN@
+
+[tool.ruff]
+
+extend-include = [
+  "!*.py",
+  # Enable Ruff on a white-list approach for now
+  "!src/gpubackendtools/files/manager.py",
+  "!src/gpubackendtools/files/registry.py",
+  "!src/gpubackendtools/utils/config.py",
+  "!src/gpubackendtools/utils/exceptions.py",
+  "!src/gpubackendtools/utils/globals.py",
+]
+
+lint.extend-select = [
+  "I",
+  "T201", # Fail when "print" is used, to be replaced with logger calls
+]
+
+lint.ignore = [ "E741" ]
+
+lint.extend-per-file-ignores."*.ipynb" = [ "T201" ] # Allow "print" statements in notebooks
+
