@@ -110,7 +110,7 @@ Examples:
     
     job_ids = []
     for i in range(args.num_jobs):
-        job_id = submit_job(args.script_name, args.job_type, f"{args.job_type}_{i}/", i)
+        job_id = submit_job(args.script_name, args.job_type, f"data/{args.job_type}_{i}/", i)
         if job_id:
             job_ids.append(job_id)
     
