@@ -81,7 +81,7 @@ def initialize_waveform_generator(T, dt, inspiral_kwargs, esaorbits=True, use_gp
     backend = 'gpu' if use_gpu else 'cpu'
     print("inspiral_kwargs:",inspiral_kwargs)
     temp_wave = GenerateEMRIWaveform("FastKerrEccentricEquatorialFlux", inspiral_kwargs=inspiral_kwargs, force_backend=backend, sum_kwargs=dict(pad_output=True))
-    orbits = EqualArmlengthOrbits(force_backend=backend) if esaorbits else EqualArmlengthOrbits(force_backend=backend)
+    orbits = ESAOrbits(force_backend=backend) if esaorbits else EqualArmlengthOrbits(force_backend=backend)
     orbits.configure(linear_interp_setup=True)
     tdi_kwargs_esa = dict(order=25, tdi="2nd generation", tdi_chan="AE")
     model = ResponseWrapper(

@@ -79,7 +79,7 @@ def submit_slurm_job(source_params, pipeline_script="pipeline.py", partition="gp
 cd $HOME/GitHub/EMRI-FoM/pipeline/
 
 # Run the pipeline with parameters using Singularity container
-singularity exec --nv ../fom_final.sif {python_cmd}
+singularity exec --nv ../fom_resp {python_cmd}
 
 echo "Job ended."
 """
@@ -416,13 +416,13 @@ Examples:
     # Generate sources based on mode
     if args.mode == "snr":
         repo_root = "test_snr_" if args.test else "snr_"
-        sources = generate_snr_sources(test_mode=args.test, repo_root=repo_root)
+        sources = generate_snr_sources(test_mode=args.test, repo_root="./data/" + repo_root)
     elif args.mode == "pe":
         repo_root = "test_pe_" if args.test else "inference_"
-        sources = generate_pe_sources(test_mode=args.test, repo_root=repo_root)
+        sources = generate_pe_sources(test_mode=args.test, repo_root="./data/" + repo_root)
     else:  # m1 mode
         repo_root = "test_M1_inference_" if args.test else "M1_inferenceNew1h_" #"M1_inference_"
-        sources = generate_m1_sources(test_mode=args.test, repo_root=repo_root)
+        sources = generate_m1_sources(test_mode=args.test, repo_root="./data/" + repo_root)
     
     print(f"\nSubmitting {len(sources)} jobs in {args.mode} mode...")
     print(f"Partition: {args.partition}")
