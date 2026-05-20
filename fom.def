@@ -7,19 +7,33 @@ From: ghcr.io/nvidia/jax:jax-2024-07-24
     python -m pip install --no-cache-dir nvidia-cuda-runtime-cu12 astropy eryn fastemriwaveforms-cuda12x multiprocess optax matplotlib scipy jupyter interpax numba Cython lisaanalysistools tabulate scienceplots healpy pandas filelock
     python -c "import few; few.get_backend('cuda12x'); print('FEW installation successful')"
 
-    # Set compilers explicitly and unset conda variables
-    unset CC CXX CUDACXX
-    export CC=/usr/bin/gcc
-    export CXX=/usr/bin/g++
-    export CUDACXX=/usr/local/cuda/bin/nvcc
-    export NVCC_PREPEND_FLAGS='-ccbin /usr/bin/g++'
+    # # # Set compilers explicitly and unset conda variables
+    # # unset CC CXX CUDACXX
+    # export CC=/usr/bin/gcc
+    # export CXX=/usr/bin/g++
+    # export CUDACXX=/usr/local/cuda/bin/nvcc
+    # export NVCC_PREPEND_FLAGS='-ccbin /usr/bin/g++'
     
     # install lisa on gpu and StableEMRIFisher-package
     git clone https://github.com/cchapmanbird/EMRI-FoM.git emri_fom_temp
-    cd emri_fom_temp/lisa-on-gpu/
-    python setup.py install
-    cd ../StableEMRIFisher-package/
+    cd emri_fom_temp/
+    
+    cd ./StableEMRIFisher-package/
     python -m pip install .
+    
+    cd ../GPUBackendTools/
+    python -m pip install .
+    
+    cd ../LISAanalysistools/
+    python -m pip install .
+    
+    cd ../lisa-on-gpu/
+    python -m pip install .
+    
+    # Run tests
     cd ../
-    # python -m unittest test_waveform_and_response.py
-    # echo "LISA on GPU and StableEMRIFisher-package installation successful"
+    python -m unittest test_waveform_and_response.py
+
+    cd pipeline/
+    python pipeline.py --M 1e6 --mu 1e1 --a 0.99 --e_f 0.0 --T 0.25 --z 0.5 --psd_file TDI2_AE_psd_emri_background_4.5_yr.npy --dt 10.0 --use_gpu --N_montecarlo 1 --device 0 --power_law --nr 1 --repo test --calculate_fisher 1
+    echo "LISA on GPU and StableEMRIFisher-package installation successful"
