@@ -26,8 +26,8 @@ python submit_so3.py --mode pe
 ```
 
 Then postprocess:
-```
-python submit_and_postprocess.py --mode pe
+```bash
+python submit_postprocess.py inference
 ```
 
 ## Useful commands
