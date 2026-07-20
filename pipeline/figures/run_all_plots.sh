@@ -12,39 +12,23 @@ PIPELINE_DIR="$(dirname "$SCRIPT_DIR")"
 
 # List of generated plot files
 PLOT_FILES=(
-    "figures/z_at_snr.png"
-    "figures/snr_fom_ranges_m2_1_Tpl_0.25_prograde_retrograde.png"
-    "figures/scatter_snr_m1_vs_m2_spin_a0.99.png"
-    "figures/scatter_relative_precision_m1_m1_vs_m2_spin_a0.99.png"
-    "figures/scatter_relative_precision_m2_m1_vs_m2_spin_a0.99.png"
-    "figures/scatter_relative_precision_a_m1_vs_m2_spin_a0.99.png"
-    "figures/scatter_relative_precision_dist_m1_vs_m2_spin_a0.99.png"
-    "figures/scatter_absolute_precision_a_m1_vs_m2_spin_a0.99.png"
-    "figures/scatter_absolute_precision_OmegaS_m1_vs_m2_spin_a0.99.png"
-    "figures/scatter_relative_precision_m1_det_m1_vs_m2_spin_a0.99.png"
-    "figures/scatter_relative_precision_m2_det_m1_vs_m2_spin_a0.99.png"
-    "figures/precision_e0_vs_e0_by_mass_ratio_and_m1.png"
-    "figures/emri_trajectories_time_frequency.png"
-    "figures/emri_trajectories_frequency_eccentricity.png"
-    "figures/mbh_distance.png"
-    "figures/best_source_sensitivity.png"
-    "figures/emri_imri_masses_m1_m2.png"
-    "figures/tidal_radius_normalized.png"
-    "figures/tidal_radius_solar.png"
+    "figures/*.png"
+    "figures/*.pdf"
+    "figures/*.md"
 )
 
 # List of plot scripts to run
 PLOT_SCRIPTS=(
-    "figures/plot_redshift_at_snr.py"
-    "figures/plot_snr_fom_ranges.py"
-    "figures/plot_scatter_precision_m1_m2.py"
-    "figures/plot_precision_e0_vs_e0.py"
-    "figures/plot_mbh_distance.py"
-    "figures/plot_best_source_sensitivity.py"
-    "figures/plot_emri_imri_masses.py"
-    "figures/plot_emri_trajectories.py"
-    "figures/plot_tidal_radius.py"
-    "figures/plot_precision_vs_tpl.py"
+    "figures/plot_emri_imri_masses.py" # Fig 1
+    "figures/plot_emri_trajectories.py" # Fig 2
+    "figures/plot_redshift_at_snr.py" # Fig 4
+    "figures/plot_precision_m1_a.py" # Fig 5
+    "figures/plot_precision_e0_vs_e0.py" # Fig 6
+    "figures/plot_precision_OmegaS_dist.py" # Fig 7
+    "figures/plot_precision_vs_tpl.py" # Fig 8
+    "figures/plot_powerlaw.py" # Fig 9 - 11
+    "figures/plot_redshift_horizon_polar.py" # Fig 10
+    "figures/plot_redshift_horizon_polar_m2.py" # Fig 10
 )
 
 # Function to generate all plots

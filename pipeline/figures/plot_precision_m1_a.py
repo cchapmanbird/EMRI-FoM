@@ -47,7 +47,7 @@ title_map = {
 
 custom_r_grids = {
     "relative_precision_a": [0.01, 0.001, 0.0001, 0.00001],
-    "relative_precision_m1": [0.0001, 0.001,0.01, 0.1],
+    "relative_precision_m1": [0.001,0.01, 0.1, 1.0],
 }
 
 def format_sigfigs(v, n=2):
@@ -92,6 +92,7 @@ for inf_file in inference_files:
                 'run_type': run_type,
             }
             detector_precision = run_group['detector_measurement_precision'][()]
+            source_precision = run_group['source_measurement_precision'][()]
             param_names = run_group['param_names'][()]
             param_names = np.array(param_names, dtype=str).tolist()
             inference_metadata[key].update({"param_names": param_names})
@@ -100,8 +101,7 @@ for inf_file in inference_files:
                 if name == 'M':
                     inference_precision_data.setdefault(key, {})
                     inference_precision_data[key].update({
-                        "relative_precision_m1_det": detector_precision[:, param_names.index(name)] / (inference_metadata[key]['m1'] * (1 + inference_metadata[key]['redshift'])),
-                        "relative_precision_m1": detector_precision[:, param_names.index(name)] / inference_metadata[key]['m1']
+                        "relative_precision_m1": source_precision[:, param_names.index(name)] / inference_metadata[key]['m1']
                     })
                 elif name == 'a':
                     inference_precision_data.setdefault(key, {})
@@ -178,7 +178,7 @@ for ax_idx, (ax, metric, (precision_by_m2, all_m1_vals)) in enumerate(zip(axs.fl
         theta = np.linspace(0, 2 * np.pi, 500)
         ax.plot(theta, np.full_like(theta, r), color='gray', linestyle='--', linewidth=1.5, alpha=0.3)
         # Use scientific notation for grid label
-        ax.text(np.pi / 2 + 0.5, r*1.8, format_sigfigs(r), ha='left', va='bottom', fontsize=8, color='gray')
+        ax.text(np.pi / 2 + 0.6, r*1.8, format_sigfigs(r), ha='left', va='bottom', fontsize=6, color='gray')
     ax.spines['polar'].set_visible(False)
     # m1 labels at outer radius
     theta_mid_deg = [((i + 0.5) * (360 / num_m1)) for i in range(num_m1)]

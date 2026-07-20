@@ -206,7 +206,7 @@ q_keys = sorted(set(k[0] for k in data_by_q_m1.keys()))
 m1_keys = sorted(set(k[1] for k in data_by_q_m1.keys()))
 
 # Filter out mass ratio 2e-5
-q_keys = [q for q in q_keys if not np.isclose(q, 2e-5, rtol=1e-2)]
+# q_keys = [q for q in q_keys if not np.isclose(q, 2e-5, rtol=1e-2)]
 
 # Create colormap for mass ratios
 colors = plt.cm.tab10(np.linspace(0, 1, len(q_keys)))
