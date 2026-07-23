@@ -2,6 +2,11 @@
 import os
 print("PID:",os.getpid())
 
+import sys
+base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+common_dir = os.path.join(base_dir, "pipeline")
+sys.path.append(common_dir)
+
 import logging
 import argparse
 import numpy as np
@@ -181,7 +186,7 @@ if __name__ == "__main__":
     a = np.abs(args.a)
     if args.power_law: #Beyond-GR only considered for circular case
         e_f = 0.0
-    elif args.use_scalar_charge: #and args.ScalarMass != 0.0: #massive case is circular only 
+    elif args.use_scalar_charge: #scalar charge case (both massless and massive) case are circular only 
         e_f = 0.0  
     else:
         e_f = args.e_f 
