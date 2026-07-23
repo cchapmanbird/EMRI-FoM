@@ -11,6 +11,7 @@ from scipy.interpolate import CubicSpline
 from few.trajectory.inspiral import EMRIInspiral
 from few.trajectory.ode.flux import KerrEccEqFlux, get_separatrix
 from few.waveform import GenerateEMRIWaveform
+from few.utils.constants import YRSID_SI
 
 warnings.filterwarnings("ignore")
 
@@ -77,7 +78,7 @@ def get_psd_wrapper(psd="LISA"):
     return cubic_spline_psd, fmin, fmax
 
 
-def get_initial_conditions(params, err=1e-6):
+def get_initial_conditions(params, Tobs=None, err=1e-6):
     m1, m2, a, Tpl, ef = params
     x0 = 1.0
     RHS.add_fixed_parameters(m1, m2, a)
@@ -99,10 +100,16 @@ def get_initial_conditions(params, err=1e-6):
     p0 = backwards_result[1][-1]
     e0 = backwards_result[2][-1]
     x0 = backwards_result[3][-1]
+    # check that the final time is close to Tpl
+    if np.abs(1-backwards_result[0][-1]/YRSID_SI / Tpl) > 1e-3:
+        print(f"Final time {backwards_result[0][-1]/YRSID_SI} is not close to Tpl={Tpl}")
     
-    f_phi_theta_r = TRAJ.inspiral_generator.eval_integrator_derivative_spline(backwards_result[0], order=1)
-    f_phi = -f_phi_theta_r[:, 3] / (2 * np.pi)
-    f_r = -f_phi_theta_r[:, 5] / (2 * np.pi)
+    if Tobs is not None:
+        forward_result = TRAJ(m1, m2, a, p0, e0, x0, T=Tobs, integrate_backwards=False, err=err)
+    
+    f_phi_theta_r = TRAJ.inspiral_generator.eval_integrator_derivative_spline(forward_result[0], order=1)
+    f_phi = f_phi_theta_r[:, 3] / (2 * np.pi)
+    f_r = f_phi_theta_r[:, 5] / (2 * np.pi)
     return p0, e0, x0, f_phi, f_r
 
 
@@ -137,7 +144,9 @@ def compute_snr(
     
     dist = redshift_to_luminosity_distance(z)
     try:
-        p0, e0, x0, fphi, fr = get_initial_conditions(np.asarray([m1 * (1 + z), m2 * (1 + z), a, Tpl, ef]))
+        p0, e0, x0, fphi, fr = get_initial_conditions(np.asarray([m1 * (1 + z), m2 * (1 + z), a, Tpl, ef]), Tobs=Tobs)
+        # print(f"Initial conditions for m1={m1}, m2={m2}, a={a}, Tpl={Tpl}, ef={ef}, z={z}: p0={p0}, e0={e0}")
+        print(f"Frequency range 2 fphi: {2*fphi.min()} - {2*fphi.max()} Hz")
     except Exception as exc:
         print(f"Error computing initial conditions for m1={m1}, m2={m2}, a={a}, Tpl={Tpl}, ef={ef}, z={z}: {exc}")
         return 0.0
@@ -147,7 +156,7 @@ def compute_snr(
     fmin = max(fmin, 1*fphi.min())  # Limit fmin to 0.1 times the first orbital frequency to avoid extrapolation
     f_pos = np.linspace(fmin, fmax, num=num_freq)
     freq = np.hstack((-f_pos[::-1], np.asarray([0.0]), f_pos))
-    print(f"fmin={fmin}, fmax={fmax}")
+    # print(f"fmin={fmin}, fmax={fmax}")
 
     hf = FEW_GEN(
         m1 * (1 + z),
