@@ -83,7 +83,7 @@ def get_initial_conditions(params, err=1e-6):
     RHS.add_fixed_parameters(m1, m2, a)
 
     p_0 = TRAJ.inspiral_generator.func.separatrix_buffer_dist + get_separatrix(a, ef, x0) + 1e-3
-    forward_result = TRAJ(m1, m2, a, p_0, ef, x0, T=10.0, integrate_backwards=False, err=err)
+    forward_result = TRAJ(m1, m2, a, p_0, ef, x0, T=1e6, integrate_backwards=False, err=err)
     backwards_result = TRAJ(
         m1,
         m2,
@@ -99,7 +99,7 @@ def get_initial_conditions(params, err=1e-6):
     p0 = backwards_result[1][-1]
     e0 = backwards_result[2][-1]
     x0 = backwards_result[3][-1]
-
+    
     f_phi_theta_r = TRAJ.inspiral_generator.eval_integrator_derivative_spline(backwards_result[0], order=1)
     f_phi = -f_phi_theta_r[:, 3] / (2 * np.pi)
     f_r = -f_phi_theta_r[:, 5] / (2 * np.pi)
@@ -110,9 +110,10 @@ def compute_snr(
     m1,
     m2,
     a,
-    Tobs,
+    Tpl,
     ef,
     z,
+    Tobs=None,
     qS=None,
     phiS=None,
     qK=None,
@@ -131,17 +132,22 @@ def compute_snr(
     Phi_phi0 = DEFAULT_ANGLES["Phi_phi0"] if Phi_phi0 is None else Phi_phi0
     Phi_theta0 = DEFAULT_ANGLES["Phi_theta0"] if Phi_theta0 is None else Phi_theta0
     Phi_r0 = DEFAULT_ANGLES["Phi_r0"] if Phi_r0 is None else Phi_r0
-
+    if Tobs is None:
+        Tobs = Tpl
+    
     dist = redshift_to_luminosity_distance(z)
     try:
-        p0, e0, x0, _, _ = get_initial_conditions(np.asarray([m1 * (1 + z), m2 * (1 + z), a, Tobs, ef]))
+        p0, e0, x0, fphi, fr = get_initial_conditions(np.asarray([m1 * (1 + z), m2 * (1 + z), a, Tpl, ef]))
     except Exception as exc:
-        print(f"Error computing initial conditions for m1={m1}, m2={m2}, a={a}, Tobs={Tobs}, ef={ef}, z={z}: {exc}")
+        print(f"Error computing initial conditions for m1={m1}, m2={m2}, a={a}, Tpl={Tpl}, ef={ef}, z={z}: {exc}")
         return 0.0
 
     cubic_spline_psd, fmin, fmax = get_psd_wrapper(psd)
+    fmax = min(fmax, 5*fphi.max())  # Limit fmax to 4 times the last orbital frequency to avoid extrapolation
+    fmin = max(fmin, 1*fphi.min())  # Limit fmin to 0.1 times the first orbital frequency to avoid extrapolation
     f_pos = np.linspace(fmin, fmax, num=num_freq)
     freq = np.hstack((-f_pos[::-1], np.asarray([0.0]), f_pos))
+    print(f"fmin={fmin}, fmax={fmax}")
 
     hf = FEW_GEN(
         m1 * (1 + z),
@@ -180,9 +186,10 @@ def average_snr(
     m1,
     m2,
     a,
-    Tobs,
+    Tpl,
     ef,
     z,
+    Tobs=None,
     psd="LISA",
     num_freq=5000,
     num_samples=16,
@@ -210,15 +217,17 @@ def average_snr(
             Phi_phi0 = DEFAULT_ANGLES["Phi_phi0"]
             Phi_theta0 = DEFAULT_ANGLES["Phi_theta0"]
             Phi_r0 = DEFAULT_ANGLES["Phi_r0"]
-
+        if Tobs is None:
+            Tobs = Tpl
         sample_args.append(
             (
                 m1,
                 m2,
                 a,
-                Tobs,
+                Tpl,
                 ef,
                 z,
+                Tobs,
                 qS,
                 phiS,
                 qK,
