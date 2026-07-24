@@ -1,4 +1,4 @@
-gradio
+gradio>=6.7.0
 numpy
 matplotlib
 scipy
