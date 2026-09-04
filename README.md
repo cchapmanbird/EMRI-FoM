@@ -294,13 +294,18 @@ If you use the results or code provided in this repository, please cite:
 
 ```bibtex
 @article{Speri:2026ade,
-    author = "Speri, Lorenzo and Duque, Francisco and Barsanti, Susanna and Santini, Alessandro and Kejriwal, Shubham and Burke, Ollie and Chapman-Bird, Christian E. A.",
-    title = "{Quantifying the Scientific Potential of Intermediate and Extreme Mass Ratio Inspirals with the Laser Interferometer Space Antenna}",
-    eprint = "2603.17072",
-    archivePrefix = "arXiv",
-    primaryClass = "astro-ph.IM",
-    month = "3",
-    year = "2026"
+  title = {Quantifying the scientific potential of intermediate and extreme mass ratio inspirals with the Laser Interferometer Space Antenna},
+  author = {Speri, Lorenzo and Duque, Francisco and Barsanti, Susanna and Santini, Alessandro and Kejriwal, Shubham and Burke, Ollie and Chapman-Bird, Christian E. A.},
+  journal = {Phys. Rev. D},
+  volume = {114},
+  issue = {6},
+  pages = {064012},
+  numpages = {28},
+  year = {2026},
+  month = {Sep},
+  publisher = {American Physical Society},
+  doi = {10.1103/k15y-nq5f},
+  url = {https://link.aps.org/doi/10.1103/k15y-nq5f}
 }
 ```
 
