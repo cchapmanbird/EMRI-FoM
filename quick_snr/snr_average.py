@@ -1,4 +1,5 @@
 import argparse
+import few
 import multiprocess
 import warnings
 import time
@@ -13,11 +14,13 @@ from few.trajectory.ode.flux import KerrEccEqFlux, get_separatrix
 from few.waveform import GenerateEMRIWaveform
 from few.utils.constants import YRSID_SI
 
-warnings.filterwarnings("ignore")
+# warnings.filterwarnings("ignore")
+print(f"Using FEW version: {few.__version__}")
+assert few.__version__ == "2.0.0"
 
 DT = 10.0
 EPS = 1e-2
-MODES = [(ll, mm, nn) for ll in range(2, 5) for mm in range(1, ll + 1) for nn in range(-1, 3)]
+# MODES = [(ll, mm, nn) for ll in range(2, 5) for mm in range(1, ll + 1) for nn in range(-1, 3)]
 
 DEFAULT_ANGLES = {
     "qS": np.pi / 3,
@@ -33,7 +36,6 @@ DEFAULT_ANGLES = {
 global FEW_GEN, TRAJ, RHS
 
 TRAJ = EMRIInspiral(func=KerrEccEqFlux)
-RHS = KerrEccEqFlux()
 FEW_GEN = GenerateEMRIWaveform(
     "FastKerrEccentricEquatorialFlux",
     sum_kwargs=dict(pad_output=True, output_type="fd", odd_len=True),
@@ -81,7 +83,6 @@ def get_psd_wrapper(psd="LISA"):
 def get_initial_conditions(params, Tobs=None, err=1e-6):
     m1, m2, a, Tpl, ef = params
     x0 = 1.0
-    RHS.add_fixed_parameters(m1, m2, a)
 
     p_0 = TRAJ.inspiral_generator.func.separatrix_buffer_dist + get_separatrix(a, ef, x0) + 1e-3
     forward_result = TRAJ(m1, m2, a, p_0, ef, x0, T=1e6, integrate_backwards=False, err=err)
@@ -146,7 +147,7 @@ def compute_snr(
     try:
         p0, e0, x0, fphi, fr = get_initial_conditions(np.asarray([m1 * (1 + z), m2 * (1 + z), a, Tpl, ef]), Tobs=Tobs)
         # print(f"Initial conditions for m1={m1}, m2={m2}, a={a}, Tpl={Tpl}, ef={ef}, z={z}: p0={p0}, e0={e0}")
-        print(f"Frequency range 2 fphi: {2*fphi.min()} - {2*fphi.max()} Hz")
+        # print(f"Frequency range 2 fphi: {2*fphi.min()} - {2*fphi.max()} Hz")
     except Exception as exc:
         print(f"Error computing initial conditions for m1={m1}, m2={m2}, a={a}, Tpl={Tpl}, ef={ef}, z={z}: {exc}")
         return 0.0
@@ -177,7 +178,7 @@ def compute_snr(
         dt=DT,
         f_arr=freq,
         mask_positive=True,
-        mode_selection=MODES,
+        eps=EPS,
     )
 
     h_plus = np.asarray(hf[0])[1:]
